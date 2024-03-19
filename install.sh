@@ -72,11 +72,11 @@ else
   log_done "Chezmoi already installed! 🏠"
 fi
 
-# POSIX way to get script's dir: https://stackoverflow.com/a/29834779/12156188
-script_dir="$(cd -P -- "$(dirname -- "$(command -v -- "$0")")" && pwd -P)"
+DOTFILES_DIR=${DOTFILES_DIR:-"$HOME/.dotfiles"}
+mkdir -p "$DOTFILES_DIR"
 
-log_task "Running 'chezmoi init --source=$script_dir'"
-chezmoi init --source=$script_dir
+log_task "Running 'chezmoi init --source=$DOTFILES_DIR'"
+chezmoi init --source=$DOTFILES_DIR
 
 log_task "Running 'chezmoi apply --force'"
 chezmoi apply --force
