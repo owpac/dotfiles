@@ -1,0 +1,181 @@
+{{/* boolean feature tags */}}
+{{- $minimum := false -}} {{/* true if this machine is ephemeral, e.g. a cloud or VM instance */}}
+{{- $headless := false -}} {{/* true if this machine does not have a screen and keyboard */}}
+{{- $work := false -}} {{/* true if this machine is used for work */}}
+{{- $personal := false -}} {{/* true if this machine should have personal secrets */}}
+
+{{/* feature detection */}}
+{{- $chezmoiForce := or (has "--force" .chezmoi.args) (has "--force=true" .chezmoi.args) -}}
+{{- $interactive := and stdinIsATTY (not $chezmoiForce) -}}
+{{- $minimum := or (env "REMOTE_CONTAINERS") (env "CODESPACES") (env "VSCODE_REMOTE_CONTAINERS_SESSION") (env "GITPOD_HOST") | not | not -}}
+{{- $headless := env "SSH_CLIENT" | not | not -}}
+
+{{- $osID := .chezmoi.os -}}
+{{- if (and (eq .chezmoi.os "linux") (hasKey .chezmoi.osRelease "id")) -}}
+{{-   $osID = printf "%s-%s" .chezmoi.os .chezmoi.osRelease.id -}}
+{{- end -}}
+
+{{- $hostname := .chezmoi.hostname -}}
+{{- if eq .chezmoi.os "darwin" -}}
+{{-   $computerName := output "hostname" | trim -}}
+{{-   if $personal -}}
+{{-     $hostname = "mbp-thomas" -}}
+{{-   else -}}
+{{-     $hostname = $computerName -}}
+{{-   end -}}
+{{- end -}}
+
+{{- $name := "" -}}
+{{- if hasKey . "name" -}}
+{{-   $name = .name -}}
+{{- end -}}
+{{- if $interactive -}}
+{{-   range $i := until 10 -}}
+{{-     $question := "🙋 What is your full name" -}}
+{{-     $answer := "" -}}
+{{-     if $name -}}
+{{-       $answer = promptString $question $name -}}
+{{-     else -}}
+{{-       $answer = promptString $question -}}
+{{-     end -}}
+{{-     if regexMatch "^[A-Z][-' a-zA-Z]+$" $answer -}}
+{{-       $name = $answer -}}
+{{-       writeToStdout (printf "✅ Name set as '%s'\n" $name) -}}
+{{-       break -}}
+{{-     end -}}
+{{-     writeToStdout (printf "❌ '%s' is an invalid name\n" $answer) -}}
+{{-     if eq $i 9 -}}
+{{-       writeToStdout "❌ ERROR: maximum tries exceeded\n" -}}
+{{-       exit 1 -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+
+{{- $email := "" -}}
+{{- if hasKey . "email" -}}
+{{-   $email = .email -}}
+{{- end -}}
+{{- if $interactive -}}
+{{-   range $i := until 10 -}}
+{{-     $question := "🙋 What is your email" -}}
+{{-     $answer := "" -}}
+{{-     if $email -}}
+{{-       $answer = promptString $question $email -}}
+{{-     else -}}
+{{-       $answer = promptString $question -}}
+{{-     end -}}
+{{-     $answer = lower $answer -}}
+{{-     if regexMatch "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$" $answer -}}
+{{-       $email = $answer -}}
+{{-       writeToStdout (printf "✅ Email set as '%s'\n" $email) -}}
+{{-       break -}}
+{{-     end -}}
+{{-     writeToStdout (printf "❌ '%s' is an invalid email\n" $answer) -}}
+{{-     if eq $i 9 -}}
+{{-       writeToStdout "❌ ERROR: maximum tries exceeded\n" -}}
+{{-       exit 1 -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+
+{{- if hasKey . "is_minimum" -}}
+{{-   $minimum = .is_minimum -}}
+{{- end -}}
+{{- if $interactive -}}
+{{-   $question := "🙋 Should install in minimum mode (see README)" -}}
+{{-   $minimum = promptBool $question $minimum -}}
+{{-   if $minimum -}}
+{{-     writeToStdout "✅ Minimum mode enabled\n" -}}
+{{-   else -}}
+{{-     writeToStdout "✅ Minimum mode disabled\n" -}}
+{{-   end -}}
+{{- end -}}
+
+{{- if hasKey . (and "is_personal" "is_work") -}}
+{{-   $personal = .is_personal -}}
+{{-   $work = .is_work -}}
+{{- end -}}
+{{- if and $interactive (not $minimum) -}}
+{{-   $choices := list "personal" "work" -}}
+{{-   $question := "🙋 What profile do you want" -}}
+{{-   $profileType := promptChoice $question $choices -}}
+{{-   if eq $profileType "personal" -}}
+{{-     $personal = true -}}
+{{-     $work = false -}}
+{{-   else if eq $profileType "work" -}}
+{{-     $personal = false -}}
+{{-     $work = true -}}
+{{-   end -}}
+{{-   writeToStdout (printf "✅ Profile type set to '%s'\n" $profileType) -}}
+{{- end -}}
+
+{{- $email_work := "" -}}
+{{- if hasKey . "email_work" -}}
+{{-   $email_work = .email_work -}}
+{{- end -}}
+{{- if and $interactive $work -}}
+{{-   range $i := until 10 -}}
+{{-     $question := "🙋 What is your work email" -}}
+{{-     $answer := "" -}}
+{{-     if $email_work -}}
+{{-       $answer = promptString $question $email_work -}}
+{{-     else -}}
+{{-       $answer = promptString $question -}}
+{{-     end -}}
+{{-     $answer = lower $answer -}}
+{{-     if regexMatch "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$" $answer -}}
+{{-       $email_work = $answer -}}
+{{-       writeToStdout (printf "✅ Work email set as '%s'\n" $email_work) -}}
+{{-       break -}}
+{{-     end -}}
+{{-     writeToStdout (printf "❌ '%s' is an invalid email\n" $answer) -}}
+{{-     if eq $i 9 -}}
+{{-       writeToStdout "❌ ERROR: maximum tries exceeded\n" -}}
+{{-       exit 1 -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+
+
+# mode: "symlink"
+
+{{/* This retains the value passed with --source on chezmoi init, which is used in the install.sh script */}}
+sourceDir: "{{ .chezmoi.workingTree }}"
+
+encryption: "age"
+age:
+  identity: "~/.ssh/encryption_ed25519"
+  symmetric: true
+
+edit:
+  command: "code"
+  args:
+    - "--wait"
+
+diff:
+  command: "code"
+  args:
+    - "--wait"
+    - "--diff"
+    - "{{ `{{ .Destination }}` }}"
+    - "{{ `{{ .Target }}` }}"
+
+merge:
+  command: "bash"
+  args:
+    - "-c"
+    - "cp {{ `{{ .Target }}` }} {{ `{{ .Target }}` }}.base && code --wait --new-window --merge {{ `{{ .Destination }}` }} {{ `{{ .Target  }}` }} {{ `{{ .Target }}` }}.base {{ `{{ .Source }}` }}"
+
+data:
+  name: {{ $name | quote }}
+  email: {{ $email | quote }}
+  email_work: {{ $email_work | quote }}
+
+  osid: {{ $osID | quote }}
+  hostname: {{ $hostname | quote }}
+  editor: "code --wait"
+
+  is_headless: {{ $headless }}
+  is_minimum: {{ $minimum }}
+  is_personal: {{ $personal }}
+  is_work: {{ $work }}

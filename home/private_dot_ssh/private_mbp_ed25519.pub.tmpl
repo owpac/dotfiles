@@ -1,0 +1,3 @@
+{{- if or .is_personal .is_work -}}
+{{-   onepasswordRead "op://Personal/mbp_ed25519/public key" -}}
+{{- end -}}

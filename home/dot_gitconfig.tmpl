@@ -1,0 +1,31 @@
+[core]
+  editor = {{ .editor }}
+[user]
+  name = owpac
+  email = {{ .email }}
+  signingkey = {{ onepasswordRead "op://Personal/sign_ed25519/public key" }}
+
+[commit]
+  gpgsign = true
+[pull]
+  rebase = false
+
+[gpg]
+  format = ssh
+[gpg "ssh"]
+  program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+
+[diff]
+  tool = vscode
+[difftool "vscode"]
+  cmd = code --wait --diff $LOCAL $REMOTE
+
+[merge]
+  tool = vscode
+[mergetool "vscode"]
+  cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+
+{{ if .is_work -}}
+[includeIf "gitdir:~/Workspace/doctolib/"]
+  path = ~/Workspace/doctolib/.gitconfig
+{{- end -}}

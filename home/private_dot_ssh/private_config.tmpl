@@ -1,0 +1,22 @@
+{{ if not .is_minimum -}}
+# Use 1Password SSH agent
+Host *
+  IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+
+Host raspberrypi
+  HostName 10.0.0.10
+  User thomas
+  IdentityFile ~/.ssh/mbp_ed25519.pub
+  IdentitiesOnly yes
+{{- end }}
+
+{{ if .is_work -}}
+Include /Users/thomas/.colima/ssh_config
+
+# Doctolib
+Host doctolib
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/doctolib_ed25519.pub
+  IdentitiesOnly yes
+{{- end }}

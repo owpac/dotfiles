@@ -1,0 +1,66 @@
+{{- if and (eq .chezmoi.os "darwin") (not .is_minimum) -}}
+#!/bin/bash
+
+set -eufo pipefail
+
+source {{ .chezmoi.workingTree }}/lib/logs.sh
+
+{{ $taps := list
+      "homebrew/bundle"
+      "homebrew/cask"
+      "homebrew/cask-fonts"
+      "homebrew/cask-versions"
+      "homebrew/core"
+      "homebrew/services"
+-}}
+{{ $brews := list
+      "asdf"
+      "chezmoi"
+      "docker"
+      "docker-compose"
+      "gh"
+      "git"
+      "htop"
+      "mas"
+      "mtr"
+      "nmap"
+      "pipenv"
+      "pipx"
+      "tree"
+      "yarn"
+-}}
+{{ $casks := list
+      "appcleaner"
+      "arc"
+      "blender"
+      "discord"
+      "elgato-stream-deck"
+      "elgato-wave-link"
+      "firefox"
+      "font-jetbrains-mono-nerd-font"
+      "google-drive"
+      "iterm2"
+      "raycast"
+      "readdle-spark"
+      "rectangle"
+      "signal"
+      "spotify"
+      "viscosity"
+      "visual-studio-code"
+-}}
+
+log_task "Installing Homebrew taps, brews, and casks..."
+brew bundle --no-lock --file=/dev/stdin <<EOF
+{{ range ($taps | sortAlpha | uniq) -}}
+tap "{{ . }}"
+{{ end -}}
+{{ range ($brews | sortAlpha | uniq) -}}
+brew "{{ . }}"
+{{ end -}}
+{{ range ($casks | sortAlpha | uniq) -}}
+cask "{{ . }}"
+{{ end -}}
+EOF
+log_done "Homebrew apps installed! 🍺"
+
+{{- end -}}
