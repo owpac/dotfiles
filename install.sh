@@ -76,7 +76,7 @@ DOTFILES_DIR=${DOTFILES_DIR:-"$HOME/.dotfiles"}
 mkdir -p "$DOTFILES_DIR"
 
 log_task "Running 'chezmoi init --source=$DOTFILES_DIR'"
-chezmoi init --source=$DOTFILES_DIR
+chezmoi init --source=$DOTFILES_DIR owpac
 
 log_task "Running 'chezmoi apply --force'"
 chezmoi apply --force
