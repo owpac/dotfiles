@@ -1,0 +1,5 @@
+{{- if .is_headless }}
+{{ range gitHubKeys "owpac" -}}
+{{   .Key }}
+{{ end -}}
+{{- end }}
