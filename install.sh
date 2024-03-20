@@ -72,11 +72,10 @@ else
   log_done "Chezmoi already installed! 🏠"
 fi
 
-DOTFILES_DIR=${DOTFILES_DIR:-"$HOME/.dotfiles"}
-mkdir -p "$DOTFILES_DIR"
+GiTHUB_USER = ${GITHUB_USER:-"owpac"}
 
-log_task "Running 'chezmoi init --source=$DOTFILES_DIR'"
-chezmoi init --source=$DOTFILES_DIR owpac
+log_task "Running 'chezmoi init $GITHUB_USER"
+chezmoi init $GITHUB_USER
 
 log_task "Running 'chezmoi apply --force'"
 chezmoi apply --force
