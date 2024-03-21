@@ -75,7 +75,10 @@ fi
 DOTFILES_USER=${DOTFILES_USER:-"owpac"}
 
 log_task "Running 'chezmoi init $DOTFILES_USER'"
+# use HTTPS clone URL to avoid SSH key setup without 1Password
 chezmoi init $DOTFILES_USER
+# update the remote URL to SSH
+chezmoi cd && git remote set-url origin git@github.com:$DOTFILES_USER/dotfiles.git
 
 log_task "Running 'chezmoi apply --force'"
 chezmoi apply --force
