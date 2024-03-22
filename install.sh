@@ -73,13 +73,18 @@ else
 fi
 
 DOTFILES_USER=${DOTFILES_USER:-"owpac"}
+DOTFILES_HTTPS_URL=${DOTFILES_HTTPS_URL:-"https://github.com/${DOTFILES_USER}/dotfiles.git"}
+DOTFILES_SSH_URL=${DOTFILES_SSH_URL:-"git@github.com:${DOTFILES_USER}/dotfiles.git"}
+DOTFILES_DIR=${DOTFILES_DIR:-"${HOME}/.dotfiles"}
 
-log_task "Running 'chezmoi init $DOTFILES_USER'"
 # use HTTPS clone URL to avoid SSH key setup without 1Password
-chezmoi init $DOTFILES_USER
+git clone $DOTFILES_HTTPS_URL $DOTFILES_DIR
+cd $DOTFILES_DIR
 # update the remote URL to SSH
-cd $(chezmoi source-path)
-git remote set-url origin git@github.com:$DOTFILES_USER/dotfiles.git
+git remote set-url origin $DOTFILES_SSH_URL
+
+log_task "Running 'chezmoi init --source $DOTFILES_DIR'"
+chezmoi init --source $DOTFILES_DIR
 
 log_task "Running 'chezmoi apply --force'"
 chezmoi apply --force
