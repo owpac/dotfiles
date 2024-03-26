@@ -23,6 +23,14 @@ plugins=(
 )
 source $ZSH/oh-my-zsh.sh
 
+### Editor
+
+if [ "$(command -v code)" ]; then
+  export EDITOR='code --wait'
+else
+  export EDITOR='vim'
+fi
+
 ### Aliases
 
 alias terractx='terraform workspace select $1'
