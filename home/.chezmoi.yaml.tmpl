@@ -10,26 +10,32 @@
 {{- $minimum := or (env "REMOTE_CONTAINERS") (env "CODESPACES") (env "VSCODE_REMOTE_CONTAINERS_SESSION") (env "GITPOD_HOST") | not | not -}}
 {{- $headless := env "SSH_CLIENT" | not | not -}}
 
+{{/* OS detection, usefull especially to differenciate linux based OS */}}
 {{- $osID := .chezmoi.os -}}
 {{- if (and (eq .chezmoi.os "linux") (hasKey .chezmoi.osRelease "id")) -}}
 {{-   $osID = printf "%s-%s" .chezmoi.os .chezmoi.osRelease.id -}}
 {{- end -}}
 
-{{- $hostname := .chezmoi.hostname -}}
-{{- if eq .chezmoi.os "darwin" -}}
-{{-   $computerName := output "hostname" | trim -}}
-{{-   if $personal -}}
-{{-     $hostname = "mbp-thomas" -}}
+{{/* minimum configuration */}}
+{{- if hasKey . "is_minimum" -}}
+{{-   $minimum = .is_minimum -}}
+{{- end -}}
+{{- if $interactive -}}
+{{-   $question := "🙋 Should install in minimum mode" -}}
+{{-   $minimum = promptBool $question $minimum -}}
+{{-   if $minimum -}}
+{{-     writeToStdout "✅ Minimum mode enabled\n" -}}
 {{-   else -}}
-{{-     $hostname = $computerName -}}
+{{-     writeToStdout "✅ Minimum mode disabled\n" -}}
 {{-   end -}}
 {{- end -}}
 
+{{/* full name configuration */}}
 {{- $name := "" -}}
 {{- if hasKey . "name" -}}
 {{-   $name = .name -}}
 {{- end -}}
-{{- if $interactive -}}
+{{- if and $interactive (not $minimum) -}}
 {{-   range $i := until 10 -}}
 {{-     $question := "🙋 What is your full name" -}}
 {{-     $answer := "" -}}
@@ -51,11 +57,12 @@
 {{-   end -}}
 {{- end -}}
 
+{{/* email configuration */}}
 {{- $email := "" -}}
 {{- if hasKey . "email" -}}
 {{-   $email = .email -}}
 {{- end -}}
-{{- if $interactive -}}
+{{- if and $interactive (not $minimum) -}}
 {{-   range $i := until 10 -}}
 {{-     $question := "🙋 What is your email" -}}
 {{-     $answer := "" -}}
@@ -78,19 +85,7 @@
 {{-   end -}}
 {{- end -}}
 
-{{- if hasKey . "is_minimum" -}}
-{{-   $minimum = .is_minimum -}}
-{{- end -}}
-{{- if $interactive -}}
-{{-   $question := "🙋 Should install in minimum mode (see README)" -}}
-{{-   $minimum = promptBool $question $minimum -}}
-{{-   if $minimum -}}
-{{-     writeToStdout "✅ Minimum mode enabled\n" -}}
-{{-   else -}}
-{{-     writeToStdout "✅ Minimum mode disabled\n" -}}
-{{-   end -}}
-{{- end -}}
-
+{{/* profile configuration */}}
 {{- if hasKey . (and "is_personal" "is_work") -}}
 {{-   $personal = .is_personal -}}
 {{-   $work = .is_work -}}
@@ -109,11 +104,12 @@
 {{-   writeToStdout (printf "✅ Profile type set to '%s'\n" $profileType) -}}
 {{- end -}}
 
+{{/* email pro configuration */}}
 {{- $email_work := "" -}}
 {{- if hasKey . "email_work" -}}
 {{-   $email_work = .email_work -}}
 {{- end -}}
-{{- if and $interactive $work -}}
+{{- if and $interactive $work (not $minimum) -}}
 {{-   range $i := until 10 -}}
 {{-     $question := "🙋 What is your work email" -}}
 {{-     $answer := "" -}}
@@ -139,7 +135,7 @@
 
 # mode: "symlink"
 
-{{/* This retains the value passed with --source on chezmoi init, which is used in the install.sh script */}}
+{{/* this retains the value passed with --source on chezmoi init, which is used in the install.sh script */}}
 sourceDir: "{{ .chezmoi.workingTree }}"
 
 encryption: "age"
@@ -147,6 +143,7 @@ age:
   identity: "~/.ssh/encryption_ed25519"
   symmetric: true
 
+{{ if stat "/opt/homebrew/bin/code" -}}
 edit:
   command: "code"
   args:
@@ -165,6 +162,7 @@ merge:
   args:
     - "-c"
     - "cp {{ `{{ .Target }}` }} {{ `{{ .Target }}` }}.base && code --wait --new-window --merge {{ `{{ .Destination }}` }} {{ `{{ .Target  }}` }} {{ `{{ .Target }}` }}.base {{ `{{ .Source }}` }}"
+{{- end}}
 
 data:
   name: {{ $name | quote }}
@@ -172,10 +170,13 @@ data:
   email_work: {{ $email_work | quote }}
 
   osid: {{ $osID | quote }}
-  hostname: {{ $hostname | quote }}
+  {{ if stat "/opt/homebrew/bin/code" -}}
   editor: "code --wait"
+  {{- else -}}
+  editor: "vim"
+  {{- end }}
 
-  is_headless: {{ $headless }}
   is_minimum: {{ $minimum }}
+  is_headless: {{ $headless }}
   is_personal: {{ $personal }}
   is_work: {{ $work }}
