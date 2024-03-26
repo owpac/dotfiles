@@ -90,7 +90,7 @@
 {{-   $personal = .is_personal -}}
 {{-   $work = .is_work -}}
 {{- end -}}
-{{- if and $interactive (not $minimum) -}}
+{{- if and $interactive (not $minimum) (not $headless) -}}
 {{-   $choices := list "personal" "work" -}}
 {{-   $question := "🙋 What profile do you want" -}}
 {{-   $profileType := promptChoice $question $choices -}}
@@ -109,7 +109,7 @@
 {{- if hasKey . "email_work" -}}
 {{-   $email_work = .email_work -}}
 {{- end -}}
-{{- if and $interactive $work (not $minimum) -}}
+{{- if and $interactive $work (not $minimum) (not $headless) -}}
 {{-   range $i := until 10 -}}
 {{-     $question := "🙋 What is your work email" -}}
 {{-     $answer := "" -}}
