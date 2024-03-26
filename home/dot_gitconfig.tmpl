@@ -15,6 +15,7 @@
 [gpg "ssh"]
   program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
 
+{{ if stat "/opt/homebrew/bin/code" -}}
 [diff]
   tool = vscode
 [difftool "vscode"]
@@ -24,6 +25,7 @@
   tool = vscode
 [mergetool "vscode"]
   cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+{{- end }}
 
 {{ if .is_work -}}
 [includeIf "gitdir:~/Workspace/doctolib/"]
