@@ -1,0 +1,15 @@
+{{- if or .is_minimum .is_headless -}}
+**
+**/**
+!dot_zshrc.tmpl
+!dot_p10k.zsh
+{{- end -}}
+
+{{- if .is_headless -}}
+!private_dot_ssh/private_authorized_keys.tmpl
+{{- end -}}
+
+{{- if ne .chezmoi.os "darwin" -}}
+private_Library/private_Preferences/
+private_Library/private_Preferences/**
+{{- end -}}
