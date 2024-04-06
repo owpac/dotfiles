@@ -72,22 +72,18 @@ install_chezmoi() {
 install_based_on_os() {
   package_name="$1"
 
-  if [[ "$(uname)" == "Darwin" ]]; then
+  if [ "$(uname)" = "Darwin" ]; then
     log_task "Using brew."
 
     if [ ! "$(command -v brew)" ]; then
       log_error "Homebrew is not installed."
       install_hombrew
-
-      if [ "$package_name" == "brew" ]; then
-        return # exit from the function because we just installed brew
-      fi
     fi
 
     log_task "Installing '$package_name'..."
     brew install "$package_name"
 
-  elif [[ "$(uname)" == "Linux" ]]; then
+  elif [ "$(uname)" = "Linux" ]; then
     log_task "Using apt."
 
     if [ ! "$(command -v apt)" ]; then
@@ -123,10 +119,11 @@ install() {
   fi
 }
 
-install "brew"
+# install dependencies
 install "chezmoi"
 install "git"
 
+# set default values
 DOTFILES_USER=${DOTFILES_USER:-"owpac"}
 DOTFILES_HTTPS_URL=${DOTFILES_HTTPS_URL:-"https://github.com/${DOTFILES_USER}/dotfiles.git"}
 DOTFILES_SSH_URL=${DOTFILES_SSH_URL:-"git@github.com:${DOTFILES_USER}/dotfiles.git"}
