@@ -8,18 +8,20 @@ fi
 ### OMZ
 
 export ZSH=$HOME/.oh-my-zsh
+export HOMEBREW_NO_ANALYTICS=1
+
 ZSH_THEME="powerlevel10k/powerlevel10k"
 plugins=(
-    asdf
-    git
-    pipenv
-    virtualenv
-    terraform
-    kubectl
-    autoupdate
-    colored-man-pages
-    zsh-syntax-highlighting
-    zsh-autosuggestions
+  asdf
+  git
+  pipenv
+  virtualenv
+  terraform
+  kubectl
+  autoupdate
+  colored-man-pages
+  zsh-syntax-highlighting
+  zsh-autosuggestions
 )
 source $ZSH/oh-my-zsh.sh
 
