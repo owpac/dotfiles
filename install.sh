@@ -40,37 +40,92 @@ error() {
   exit 1
 }
 
-# install Homebrew
-if [ ! "$(command -v brew)" ]; then
-  log_task "Installing 'brew'..."
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-else
-  log_done "Homebrew already installed! 🍺"
-fi
+install_hombrew() {
+  if [ ! "$(command -v brew)" ]; then
+    log_task "Installing 'brew'..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  else
+    log_done "Homebrew already installed! 🍺"
+  fi
+}
 
-# install git
-if [ ! "$(command -v git)" ]; then
-  log_task "Installing 'git'..."
-  brew install git
-else
-  log_done "Git already installed! 🐙"
-fi
+install_chezmoi() {
+  if [ ! "$(command -v chezmoi)" ]; then
+    log_task "Installing 'chezmoi'..."
 
-# install 1password
-if [ ! "$(command -v op)" ]; then
-  log_task "Installing '1password'..."
-  brew install 1password 1password-cli
-else
-  log_done "1password already installed! 🔐"
-fi
+    bin_dir="${HOME}/.local/bin"
+    chezmoi_dir="${bin_dir}/chezmoi"
+    log_task "Installing chezmoi to '${chezmoi_dir}'"
+    if [ "$(command -v curl)" ]; then
+      chezmoi_install_script="$(curl -fsSL https://get.chezmoi.io)"
+    elif [ "$(command -v wget)" ]; then
+      chezmoi_install_script="$(wget -qO- https://get.chezmoi.io)"
+    else
+      error "To install chezmoi, you must have curl or wget."
+    fi
+    sh -c "${chezmoi_install_script}" -- -b "${bin_dir}"
+  else
+    log_done "Chezmoi already installed! 🏠"
+  fi
+}
 
-# install chezmoi
-if [ ! "$(command -v chezmoi)" ]; then
-  log_task "Installing 'chezmoi'..."
-  brew install chezmoi
-else
-  log_done "Chezmoi already installed! 🏠"
-fi
+install_based_on_os() {
+  package_name="$1"
+
+  if [[ "$(uname)" == "Darwin" ]]; then
+    log_task "Using brew."
+
+    if [ ! "$(command -v brew)" ]; then
+      log_error "Homebrew is not installed."
+      install_hombrew
+
+      if [ "$package_name" == "brew" ]; then
+        return # exit from the function because we just installed brew
+      fi
+    fi
+
+    log_task "Installing '$package_name'..."
+    brew install "$package_name"
+
+  elif [[ "$(uname)" == "Linux" ]]; then
+    log_task "Using apt."
+
+    if [ ! "$(command -v apt)" ]; then
+      error "Apt is not available."
+    fi
+
+    if [ ! "$(command -v chezmoi)" ]; then
+      log_error "'chezmoi' is not installed."
+      install_chezmoi
+
+      if [ "$package_name" == "chezmoi" ]; then
+        return # exit from the function because we just installed chezmoi
+      fi
+    fi
+
+    log_task "Installing '$package_name'..."
+    sudo apt update
+    sudo apt install -y "$package_name"
+
+  else
+    error "Unsupported operating system."
+  fi
+}
+
+install() {
+  package_name="$1"
+
+  if [ ! "$(command -v $package_name)" ]; then
+    log_error "'$package_name' not installed."
+    install_based_on_os "$package_name"
+  else
+    log_done "'$package_name' already installed! 📦"
+  fi
+}
+
+install "brew"
+install "chezmoi"
+install "git"
 
 DOTFILES_USER=${DOTFILES_USER:-"owpac"}
 DOTFILES_HTTPS_URL=${DOTFILES_HTTPS_URL:-"https://github.com/${DOTFILES_USER}/dotfiles.git"}
