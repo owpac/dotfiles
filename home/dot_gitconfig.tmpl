@@ -5,6 +5,9 @@
   email = {{ .email }}
   signingkey = {{ onepasswordRead "op://Personal/sign_ed25519/public key" }}
 
+[url "git@github.com:owpac/"]
+	insteadOf = https://github.com/owpac/
+
 [commit]
   gpgsign = true
 [pull]
