@@ -41,68 +41,47 @@ error() {
 }
 
 install_hombrew() {
-  if [ ! "$(command -v brew)" ]; then
-    log_task "Installing 'brew'..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  else
-    log_done "Homebrew already installed! 🍺"
-  fi
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 }
 
 install_chezmoi() {
-  if [ ! "$(command -v chezmoi)" ]; then
-    log_task "Installing 'chezmoi'..."
-
-    bin_dir="${HOME}/.local/bin"
-    chezmoi_dir="${bin_dir}/chezmoi"
-    log_task "Installing chezmoi to '${chezmoi_dir}'"
-    if [ "$(command -v curl)" ]; then
-      chezmoi_install_script="$(curl -fsSL https://get.chezmoi.io)"
-    elif [ "$(command -v wget)" ]; then
-      chezmoi_install_script="$(wget -qO- https://get.chezmoi.io)"
-    else
-      error "To install chezmoi, you must have curl or wget."
-    fi
-    sh -c "${chezmoi_install_script}" -- -b "${bin_dir}"
+  bin_dir="${HOME}/.local/bin"
+  chezmoi_dir="${bin_dir}/chezmoi"
+  log_task "Installing 'chezmoi‘ in '${chezmoi_dir}'..."
+  if [ "$(command -v curl)" ]; then
+    chezmoi_install_script="$(curl -fsSL https://get.chezmoi.io)"
+  elif [ "$(command -v wget)" ]; then
+    chezmoi_install_script="$(wget -qO- https://get.chezmoi.io)"
   else
-    log_done "Chezmoi already installed! 🏠"
+    error "To install chezmoi, you must have curl or wget."
   fi
+  sh -c "${chezmoi_install_script}" -- -b "${bin_dir}"
 }
 
 install_based_on_os() {
   package_name="$1"
 
   if [ "$(uname)" = "Darwin" ]; then
-    log_task "Using brew."
 
     if [ ! "$(command -v brew)" ]; then
-      log_error "Homebrew is not installed."
       install_hombrew
     fi
 
-    log_task "Installing '$package_name'..."
     brew install "$package_name"
 
   elif [ "$(uname)" = "Linux" ]; then
-    log_task "Using apt."
 
     if [ ! "$(command -v apt)" ]; then
       error "Apt is not available."
     fi
 
-    if [ ! "$(command -v chezmoi)" ]; then
-      log_error "'chezmoi' is not installed."
+    if [ "$package_name" = "chezmoi" ]; then
       install_chezmoi
-
-      if [ "$package_name" == "chezmoi" ]; then
-        return # exit from the function because we just installed chezmoi
-      fi
+      return # exit from the function because we just installed chezmoi
     fi
 
-    log_task "Installing '$package_name'..."
     sudo apt update
     sudo apt install -y "$package_name"
-
   else
     error "Unsupported operating system."
   fi
@@ -112,7 +91,7 @@ install() {
   package_name="$1"
 
   if [ ! "$(command -v $package_name)" ]; then
-    log_error "'$package_name' not installed."
+    log_task "Installing '$package_name'..."
     install_based_on_os "$package_name"
   else
     log_done "'$package_name' already installed! 📦"
@@ -120,8 +99,8 @@ install() {
 }
 
 # install dependencies
-install "chezmoi"
 install "git"
+install "chezmoi"
 
 # set default values
 DOTFILES_USER=${DOTFILES_USER:-"owpac"}
