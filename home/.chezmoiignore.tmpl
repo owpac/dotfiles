@@ -1,0 +1,23 @@
+{{- if .is_minimum }}
+.ssh/
+.ssh/*
+{{- end -}}
+
+{{- if .is_headless }}
+.ssh/*
+!.ssh/authorized_keys
+{{- end -}}
+
+{{- if ne .chezmoi.os "darwin" }}
+Library/
+Library/*
+{{- end -}}
+
+{{- if not .is_personal }}
+.gitconfig
+{{- end -}}
+
+{{- if not .is_work }}
+Workspace/
+Workspace/*
+{{- end -}}
