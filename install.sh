@@ -46,8 +46,8 @@ install_hombrew() {
 
 install_chezmoi() {
   bin_dir="${HOME}/.local/bin"
-  chezmoi_dir="${bin_dir}/chezmoi"
-  log_task "Installing 'chezmoi‘ in '${chezmoi_dir}'..."
+  chezmoi="${bin_dir}/chezmoi"
+  log_task "Installing 'chezmoi‘ in '${chezmoi}'..."
   if [ "$(command -v curl)" ]; then
     chezmoi_install_script="$(curl -fsSL https://get.chezmoi.io)"
   elif [ "$(command -v wget)" ]; then
@@ -68,6 +68,10 @@ install_based_on_os() {
     fi
 
     brew install "$package_name"
+
+    if [ "$package_name" = "chezmoi" ]; then
+      chezmoi=chezmoi
+    fi
 
   elif [ "$(uname)" = "Linux" ]; then
 
@@ -115,9 +119,9 @@ cd $DOTFILES_DIR
 git remote set-url origin $DOTFILES_SSH_URL
 
 log_task "Running 'chezmoi init --source $DOTFILES_DIR'"
-chezmoi init --source $DOTFILES_DIR
+"${chezmoi}" init --source $DOTFILES_DIR
 
 log_task "Running 'chezmoi apply --force'"
-chezmoi apply --force
+"${chezmoi}" apply --force
 
 log_done "Configuration successfully applied! 🎉"
