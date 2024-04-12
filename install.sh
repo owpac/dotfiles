@@ -69,10 +69,6 @@ install_based_on_os() {
 
     brew install "$package_name"
 
-    if [ "$package_name" = "chezmoi" ]; then
-      chezmoi=chezmoi
-    fi
-
   elif [ "$(uname)" = "Linux" ]; then
 
     if [ ! "$(command -v apt)" ]; then
@@ -117,6 +113,12 @@ git clone $DOTFILES_HTTPS_URL $DOTFILES_DIR
 cd $DOTFILES_DIR
 # update the remote URL to SSH
 git remote set-url origin $DOTFILES_SSH_URL
+
+if [ ! $(command -v chezmoi) ]; then
+  error "chezmoi is not installed."
+else
+  chezmoi=chezmoi
+fi
 
 log_task "Running 'chezmoi init --source $DOTFILES_DIR'"
 "${chezmoi}" init --source $DOTFILES_DIR
