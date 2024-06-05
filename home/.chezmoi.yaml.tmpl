@@ -143,6 +143,11 @@ age:
   identity: "~/.ssh/encryption_ed25519"
   symmetric: true
 
+git:
+  autoCommit: true
+  autoPush: true
+  commitMessageTemplate: "💾 Automatic backup"
+
 {{ if stat "/opt/homebrew/bin/code" -}}
 edit:
   command: "code"
