@@ -48,18 +48,18 @@ There are 3 possible modes, listed be order of priority:
 2.  [**Personal mode**](#personal-mode): it is the base configuration for any other Profiles.
 3.  [**Work mode**](#work-mode): it is a derived Profile from the base, adding work email & other work related configurations.
 
-> [!NOTE]
-> There is an automatic [**Headless**](#headless-mode) mode: if `SSH_CLIENT` env var is detected during init, the headless mode installs .ssh/authorized_keys files.
+> [!TIP]
+> There is an automatic **Headless mode**: if `SSH_CLIENT` env var is detected during init, the headless mode installs .ssh/authorized_keys files.
 
 ### Minimum mode
 
-The first step of installation will ask if you want a **minimum mode installation**. The minimum mode only installs the needed dotfiles for the command prompt and is compatible with more distributions. It's also suit for ephemeral environment.
+The first step of installation will ask if you want a **Minimum** mode installation. The minimum mode only installs the needed dotfiles for the command prompt and is compatible with more distributions. It's also suit for ephemeral environment.
 
 It will be enabled by default when running in a Dev Container.
 
 ### Personal mode
 
-The installation will ask if the machine is a **Personal** profile type. The personal profile is the base of every dotfiles configuration. All other profiles inherite from it.
+The installation will ask if the machine is a **Personal** profile type. The personal profile is the base of every dotfiles configuration. All other profiles inherits from it.
 
 ### Work mode
 
