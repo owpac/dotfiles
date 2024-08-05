@@ -42,22 +42,20 @@ The below information is more for reference purposes.
 
 _**TL;DR**:_
 
-> There are 4 possible modes, listed be order of priority:
->
-> 1.  [**Minimum mode**](#minimum-mode): it contains command prompt configuration.
-> 2.  [**Headless mode**](#headless-mode): it contains command prompt configuration + SSH authorized keys.
-> 3.  [**Personal mode**](#personal-mode): it is the base configuration for any other Profiles.
-> 4.  [**Work mode**](#work-mode): it is a derived Profile from the base, adding work email & other work related configurations.
+There are 3 possible modes, listed be order of priority:
+
+1.  [**Minimum mode**](#minimum-mode): it contains command prompt configuration.
+2.  [**Personal mode**](#personal-mode): it is the base configuration for any other Profiles.
+3.  [**Work mode**](#work-mode): it is a derived Profile from the base, adding work email & other work related configurations.
+
+> [!NOTE]
+> There is an automatic [**Headless**](#headless-mode) mode: if `SSH_CLIENT` env var is detected during init, the headless mode installs .ssh/authorized_keys files.
 
 ### Minimum mode
 
 The first step of installation will ask if you want a **minimum mode installation**. The minimum mode only installs the needed dotfiles for the command prompt and is compatible with more distributions. It's also suit for ephemeral environment.
 
 It will be enabled by default when running in a Dev Container.
-
-### Headless mode
-
-It's an automatic mode when SSH is detected. The minimum mode only installs the needed dotfiles for the command prompt + SSH authorized keys used to authorized specific SSH key to authorized the connection from.
 
 ### Personal mode
 
