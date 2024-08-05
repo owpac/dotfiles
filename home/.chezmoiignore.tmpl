@@ -1,6 +1,12 @@
 {{- if .is_minimum }}
+.asdfrc
+.gitconfig
 .ssh/
 .ssh/*
+Library/
+Library/*
+Workspace/
+Workspace/*
 {{- end -}}
 
 {{- if .is_headless }}
@@ -11,10 +17,6 @@
 {{- if ne .chezmoi.os "darwin" }}
 Library/
 Library/*
-{{- end -}}
-
-{{- if not .is_personal }}
-.gitconfig
 {{- end -}}
 
 {{- if not .is_work }}
