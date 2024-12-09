@@ -8,9 +8,6 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
 {{ $taps := list
       "homebrew/bundle"
       "homebrew/cask"
-      "homebrew/cask-fonts"
-      "homebrew/cask-versions"
-      "homebrew/core"
       "homebrew/services"
 -}}
 {{ $brews := list
@@ -35,7 +32,6 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
       "1password-cli"
       "appcleaner"
       "arc"
-      "blender"
       "discord"
       "elgato-stream-deck"
       "elgato-wave-link"
