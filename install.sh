@@ -110,8 +110,14 @@ DOTFILES_SSH_URL=${DOTFILES_SSH_URL:-"git@github.com:${DOTFILES_USER}/dotfiles.g
 DOTFILES_DIR=${DOTFILES_DIR:-"${HOME}/.dotfiles"}
 
 # use HTTPS clone URL to avoid SSH key setup without 1Password
-git clone $DOTFILES_HTTPS_URL $DOTFILES_DIR
-cd $DOTFILES_DIR
+if [ -d "$DOTFILES_DIR" ]; then
+  log_task "'$DOTFILES_DIR' already exists. Pulling latest changes..."
+  cd "$DOTFILES_DIR"
+  git pull
+else
+  git clone $DOTFILES_HTTPS_URL $DOTFILES_DIR
+  cd "$DOTFILES_DIR"
+fi
 # update the remote URL to SSH
 git remote set-url origin $DOTFILES_SSH_URL
 
