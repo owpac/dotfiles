@@ -80,14 +80,12 @@ defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 31 "<dic
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 184 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>115</integer><integer>1</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
 
 ### Speaker overlay
-log_task 'Configuring Speaker overlay shortcuts...'
 # Activer ou désactiver l'incrustation de l'intervenant (petite) - DISABLED
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 224 "$DISABLED_SHORTCUT"
 # Activer ou désactiver l'incrustation de l'intervenant (grande) - DISABLED
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 223 "$DISABLED_SHORTCUT"
 
 ### Spotlight
-log_task 'Configuring Spotlight shortcuts...'
 # Afficher la recherche Spotlight - DISABLED (CMD + SPACE)
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 64 "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>49</integer><integer>1048576</integer></array><key>type</key><string>standard</string></dict></dict>"
 # Afficher la fenêtre de recherche du Finder - DISABLED (ALT + CMD + SPACE)

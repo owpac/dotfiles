@@ -1,9 +1,28 @@
 {{- if and (eq .chezmoi.os "darwin") (not .is_minimum) -}}
 #!/usr/bin/env bash
 
+source {{ .chezmoi.workingTree }}/lib/logs.sh
+
 if [ "$(command -v brew)" ]; then
+  log_task "Upgrading packages..."
   brew upgrade
+  log_task "Cleaning up..."
   brew cleanup
+fi
+
+if [ "$(command -v asdf)" ]; then
+  log_task "Updating asdf plugins..."
+  asdf plugin-update --all
+fi
+
+if [ "$(command -v softwareupdate)" ]; then
+  log_task "Upgrading macOS..."
+  softwareupdate -ia
+fi
+
+if [ "$(command -v mas)" ]; then
+  log_task "Upgrading mas..."
+  mas upgrade
 fi
 
 {{- end -}}
