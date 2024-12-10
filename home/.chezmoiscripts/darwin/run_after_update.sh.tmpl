@@ -1,0 +1,9 @@
+{{- if and (eq .chezmoi.os "darwin") (not .is_minimum) -}}
+#!/usr/bin/env bash
+
+if [ "$(command -v brew)" ]; then
+  brew upgrade
+  brew cleanup
+fi
+
+{{- end -}}
