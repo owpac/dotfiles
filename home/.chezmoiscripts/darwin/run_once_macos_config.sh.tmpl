@@ -1,0 +1,139 @@
+{{- if and (eq .chezmoi.os "darwin") (not .is_minimum) -}}
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+source {{ .chezmoi.workingTree }}/lib/logs.sh
+
+###############################################################################
+# Shortcuts                                                                   #
+###############################################################################
+
+log_task 'Configuring shortcuts...'
+
+DISABLED_SHORTCUT="<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>65535</integer><integer>0</integer></array><key>type</key><string>standard</string></dict></dict>"
+
+### Launchpad and Dock
+# Activer ou désactiver le masquage du Dock - ENABLED (ALT + CMD + D)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 52 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>100</integer><integer>2</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Afficher le Launchpad - ENABLED (ALT + CMD + L)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 160 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>108</integer><integer>37</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
+
+### Screen
+# Réduire la luminosité de l'écran - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 53 "$DISABLED_SHORTCUT"
+# Augmenter la luminosité de l'écran - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 54 "$DISABLED_SHORTCUT"
+
+### Mission control
+# Mission control - ENABLED (ALT + CMD + UP)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 32 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>126</integer><integer>12058624</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Afficher le centre de notification - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 163 "$DISABLED_SHORTCUT"
+# Activer ou désactiver Ne pas déranger - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 175 "$DISABLED_SHORTCUT"
+# Fenêtre de l'application - ENABLED (ALT + CMD + DOWN)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 33 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>125</integer><integer>12058624</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Afficher le bureau - ENABLED (ALT + CMD + B)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 36 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>98</integer><integer>11</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Activer ou désactiver Stage Manager - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 222 "$DISABLED_SHORTCUT"
+# Déplacer d'un Space vers la gauche - ENABLED (ALT + CMD + LEFT)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 79 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>123</integer><integer>12058624</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Déplacer d'un Space vers la droite - ENABLED (ALT + CMD + RIGHT)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 81 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>124</integer><integer>12058624</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Passer au Bureau n°1 - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 118 "$DISABLED_SHORTCUT"
+# Passer au Bureau n°2 - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 119 "$DISABLED_SHORTCUT"
+# Note rapide - ENABLED (ALT + CMD + N)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 190 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>110</integer><integer>45</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
+
+### Keyboard
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 10 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 11 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 12 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 13 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 159 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 27 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 57 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 7 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 8 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 9 "$DISABLED_SHORTCUT"
+
+### Input methods
+# Sélectionner la méthode de saisie précédente - DISABLED (CRTL + SPACE)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 60 "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>262144</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Sélectionner la méthode de saisie suivante - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 61 "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>32</integer><integer>49</integer><integer>786432</integer></array><key>type</key><string>standard</string></dict></dict>"
+
+### Screenshot
+# Enregistrer l'image de l'écran sous forme de fichier - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 28 "$DISABLED_SHORTCUT"
+# Copier l'image dans le presse-papier - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 29 "$DISABLED_SHORTCUT"
+# Enregistrer l'image de la zone sélectionnée - ENABLED (CMD + SHIFT + ALT + S)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 30 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>115</integer><integer>1</integer><integer>1703936</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Copier l'image de la zone sélectionnée dans le presse-papier - ENABLED (CMD + SHIFT + S)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 31 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>115</integer><integer>1</integer><integer>1179648</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Options de capture d'écran et d'enregistrement - ENABLED (ALT + CMD + S)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 184 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>115</integer><integer>1</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
+
+### Speaker overlay
+log_task 'Configuring Speaker overlay shortcuts...'
+# Activer ou désactiver l'incrustation de l'intervenant (petite) - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 224 "$DISABLED_SHORTCUT"
+# Activer ou désactiver l'incrustation de l'intervenant (grande) - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 223 "$DISABLED_SHORTCUT"
+
+### Spotlight
+log_task 'Configuring Spotlight shortcuts...'
+# Afficher la recherche Spotlight - DISABLED (CMD + SPACE)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 64 "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>49</integer><integer>1048576</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Afficher la fenêtre de recherche du Finder - DISABLED (ALT + CMD + SPACE)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 65 "<dict><key>enabled</key><false/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>49</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
+
+### Accessibility
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 15 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 162 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 17 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 179 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 19 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 21 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 225 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 226 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 227 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 228 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 229 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 23 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 230 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 231 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 232 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 25 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 26 "$DISABLED_SHORTCUT"
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 59 "$DISABLED_SHORTCUT"
+
+### Apps shortcuts
+# Afficher le menu d'aide - ENABLED (CMD + SHIFT + H)
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 98 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>104</integer><integer>4</integer><integer>1179648</integer></array><key>type</key><string>standard</string></dict></dict>"
+
+log_done 'Shortcuts configured! 🎉'
+log_blue '⚠️ Please note that you should either restart or disconnet from you session for the changes to take effect!'
+
+###############################################################################
+# Dock                                                                        #
+###############################################################################
+
+# defaults write com.apple.dock "show-recents" -bool "false" && killall Dock
+
+# printf "%s\n" "Dock - Remove all default app icons."
+# defaults write com.apple.dock persistent-apps -array
+
+# printf "%s\n" "Dock - Automatically hide and show."
+# defaults write com.apple.dock autohide -bool true
+
+# printf "%s\n" "Dock - Remove the auto-hiding delay."
+# defaults write com.apple.Dock autohide-delay -float 0
+
+# defaults write com.apple.dock "tilesize" -int "26"
+{{- end -}}
