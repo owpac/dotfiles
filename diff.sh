@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# source: https://github.com/yannbertrand/macos-defaults
+
 echo -n -e "\033[1m❓ Insert diff name (to store it for future usage)\033[0m "
 read name
 name=${name:-default}
