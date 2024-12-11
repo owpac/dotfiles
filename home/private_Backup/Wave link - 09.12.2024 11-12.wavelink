@@ -1,0 +1,91 @@
+{
+    "WaveLinkSettings": {
+        "bufferSetting": {
+            "audioFilterBuffer": 10,
+            "inputBuffer": 30,
+            "mixerBuffer": 30,
+            "outputBuffer": 30
+        },
+        "inputs": [
+            {
+                "identifier": "com.hnc.Discord",
+                "mutedMixerIDs": [
+                    "com.elgato.mix.microphoneFX",
+                    "com.elgato.mix.stream"
+                ],
+                "name": "Discord",
+                "nodeType": 3,
+                "volumes": {
+                    "com.elgato.mix.local": 0.48,
+                    "com.elgato.mix.microphoneFX": 1.0,
+                    "com.elgato.mix.stream": 1.0
+                },
+                "volumesLinked": true
+            },
+            {
+                "identifier": "company.thebrowser.Browser",
+                "mutedMixerIDs": [
+                    "com.elgato.mix.microphoneFX",
+                    "com.elgato.mix.stream"
+                ],
+                "name": "Arc",
+                "nodeType": 3,
+                "volumes": {
+                    "com.elgato.mix.local": 0.51,
+                    "com.elgato.mix.microphoneFX": 1.0,
+                    "com.elgato.mix.stream": 0.9700000000000003
+                },
+                "volumesLinked": true
+            },
+            {
+                "identifier": "com.spotify.client",
+                "mutedMixerIDs": [
+                    "com.elgato.mix.microphoneFX",
+                    "com.elgato.mix.stream"
+                ],
+                "name": "Spotify",
+                "nodeType": 3,
+                "volumes": {
+                    "com.elgato.mix.local": 0.49,
+                    "com.elgato.mix.microphoneFX": 1.0
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "identifier": "AC-80-0A-F4-01-39:output@@SystemDefaultDevice@@",
+                "mixerID": "com.elgato.mix.local",
+                "muted": false,
+                "name": "WH-1000XM5",
+                "nodeType": 1,
+                "systemDefaultDevice": true,
+                "terminalType": 0,
+                "volume": 1.0
+            },
+            {
+                "identifier": "ElgatoWaveLinkStreamOut",
+                "mixerID": "com.elgato.mix.stream",
+                "muted": false,
+                "name": "Wave Link Stream",
+                "nodeType": 2,
+                "systemDefaultDevice": false,
+                "terminalType": 0,
+                "volume": 1.0
+            },
+            {
+                "identifier": "ElgatoWaveLinkMicrophoneFXOut",
+                "mixerID": "com.elgato.mix.microphoneFX",
+                "muted": false,
+                "name": "Wave Link MicrophoneFX",
+                "nodeType": 2,
+                "systemDefaultDevice": false,
+                "terminalType": 0,
+                "volume": 1.0
+            }
+        ]
+    },
+    "appVersion": "1.10.1.2293",
+    "format": 1,
+    "platform": "Mac",
+    "type": "WaveLinkSettings"
+}
