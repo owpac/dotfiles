@@ -38,8 +38,11 @@ alias terractx='terraform workspace select $1'
 alias ghpr='gh pr create -df -t $(git_current_branch) && gh pr view -w && bin/dev ci:build'
 alias gbrm="git for-each-ref --format='%(refname:short)' refs/heads | grep -v \"master\|main\" | xargs git branch -D"
 
-# fix for monolith
-# LLVM_HOME="$(brew --prefix)/opt/llvm"
+{{ if .is_work -}}
+### Work
+
+source "$HOME/.workrc"
+{{- end }}
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
