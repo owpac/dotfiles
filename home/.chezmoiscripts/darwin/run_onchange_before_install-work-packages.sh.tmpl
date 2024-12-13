@@ -1,0 +1,41 @@
+{{- if and (eq .chezmoi.os "darwin") (.is_work) (not .is_minimum) -}}
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+source {{ .chezmoi.workingTree }}/lib/logs.sh
+
+{{ $taps := list
+-}}
+{{ $brews := list
+      "awscli"
+      "aws-vault"
+      "colima"
+      "cmake"
+      "gnu-sed"
+      "graphviz"
+      "jq"
+      "libsodium"
+      "openssl@3"
+      "postgresql@15"
+      "rust"
+      "yq"
+-}}
+{{ $casks := list
+-}}
+
+log_task "Installing work related Homebrew taps, brews, and casks..."
+brew bundle --no-lock --file=/dev/stdin <<EOF || true
+{{ range ($taps | sortAlpha | uniq) -}}
+tap "{{ . }}"
+{{ end -}}
+{{ range ($brews | sortAlpha | uniq) -}}
+brew "{{ . }}"
+{{ end -}}
+{{ range ($casks | sortAlpha | uniq) -}}
+cask "{{ . }}"
+{{ end -}}
+EOF
+log_done "Homebrew work apps installed! 🍺"
+
+{{- end -}}
