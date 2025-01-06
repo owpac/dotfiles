@@ -9,17 +9,23 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
 -}}
 {{ $brews := list
       "awscli"
+      "aws-iam-authenticator"
       "aws-vault"
       "colima"
+      "coreutils"
       "cmake"
+      "gpg"
       "gnu-sed"
       "graphviz"
       "jq"
+      "kubectl"
       "libsodium"
+      "libyaml"
       "openssl@3"
       "postgresql@15"
       "rust"
       "yq"
+      "watchman"
 -}}
 {{ $casks := list
 -}}
