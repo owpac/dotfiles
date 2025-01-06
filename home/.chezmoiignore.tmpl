@@ -1,8 +1,12 @@
 {{- if .is_minimum }}
 .asdfrc
 .gitconfig
+.npmrc
+.workrc
 .ssh/
 .ssh/*
+Backup/
+Backup/*
 Library/
 Library/*
 Workspace/
@@ -20,6 +24,8 @@ Library/*
 {{- end -}}
 
 {{- if not .is_work }}
+.npmrc
+.workrc
 Workspace/
 Workspace/*
 {{- end -}}

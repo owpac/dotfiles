@@ -41,7 +41,7 @@ alias gbrm="git for-each-ref --format='%(refname:short)' refs/heads | grep -v \"
 {{ if .is_work -}}
 ### Work
 
-source "$HOME/.workrc"
+[[ ! -f ~/.workrc ]] || source ~/.workrc
 {{- end }}
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
