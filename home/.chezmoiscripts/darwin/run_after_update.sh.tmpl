@@ -10,9 +10,9 @@ if [ "$(command -v brew)" ]; then
   brew cleanup
 fi
 
-if [ "$(command -v asdf)" ]; then
-  log_task "Updating asdf plugins..."
-  asdf plugin-update --all
+if [ "$(command -v mise)" ]; then
+  log_task "Updating mise plugins..."
+  mise plugins update
 fi
 
 if [ "$(command -v softwareupdate)" ]; then
