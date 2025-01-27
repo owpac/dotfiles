@@ -51,6 +51,7 @@
     background_jobs         # presence of background jobs
     direnv                  # direnv status (https://direnv.net/)
     asdf                    # asdf version manager (https://github.com/asdf-vm/asdf)
+    mise                    # mise version manager (https://mise.jdx.dev/)
     virtualenv              # python virtual environment (https://docs.python.org/3/library/venv.html)
     anaconda                # conda environment (https://conda.io/)
     pyenv                   # python environment (https://github.com/pyenv/pyenv)
@@ -242,6 +243,7 @@
     .perl-version
     .php-version
     .tool-versions
+    .mise.toml
     .shorten_folder_marker
     .svn
     .terraform
@@ -727,7 +729,7 @@
   typeset -g POWERLEVEL9K_RANGER_FOREGROUND=178
   # Custom icon.
   # typeset -g POWERLEVEL9K_RANGER_VISUAL_IDENTIFIER_EXPANSION='⭐'
-  
+
   ####################[ yazi: yazi shell (https://github.com/sxyazi/yazi) ]#####################
   # Yazi shell color.
   typeset -g POWERLEVEL9K_YAZI_FOREGROUND=178
@@ -1656,6 +1658,34 @@
   function prompt_example() {
     p10k segment -f 208 -i '⭐' -t 'hello, %n'
   }
+
+  function prompt_mise() {
+    local plugins=("${(@f)$(mise ls --current --offline 2>/dev/null | awk '!/\(symlink\)/ && $3!="~/.tool-versions" && $3!="~/.config/mise/config.toml" && $3!="(missing)" {if ($1) print $1, $2}')}")
+    local plugin
+    for plugin in ${(k)plugins}; do
+      local parts=("${(@s/ /)plugin}")
+      local tool=${(U)parts[1]}
+      local version=${parts[2]}
+      p10k segment -r -i "${tool}_ICON" -s $tool -t "$version"
+    done
+  }
+
+  typeset -g POWERLEVEL9K_MISE_RUBY_FOREGROUND=168
+  typeset -g POWERLEVEL9K_MISE_PYTHON_FOREGROUND=37
+  typeset -g POWERLEVEL9K_MISE_GOLANG_FOREGROUND=37
+  typeset -g POWERLEVEL9K_MISE_NODE_FOREGROUND=70
+  typeset -g POWERLEVEL9K_MISE_RUST_FOREGROUND=37
+  typeset -g POWERLEVEL9K_MISE_DOTNET_CORE_FOREGROUND=134
+  typeset -g POWERLEVEL9K_MISE_FLUTTER_FOREGROUND=38
+  typeset -g POWERLEVEL9K_MISE_LUA_FOREGROUND=32
+  typeset -g POWERLEVEL9K_MISE_JAVA_FOREGROUND=32
+  typeset -g POWERLEVEL9K_MISE_PERL_FOREGROUND=67
+  typeset -g POWERLEVEL9K_MISE_ERLANG_FOREGROUND=125
+  typeset -g POWERLEVEL9K_MISE_ELIXIR_FOREGROUND=129
+  typeset -g POWERLEVEL9K_MISE_POSTGRES_FOREGROUND=31
+  typeset -g POWERLEVEL9K_MISE_PHP_FOREGROUND=99
+  typeset -g POWERLEVEL9K_MISE_HASKELL_FOREGROUND=172
+  typeset -g POWERLEVEL9K_MISE_JULIA_FOREGROUND=70
 
   # User-defined prompt segments may optionally provide an instant_prompt_* function. Its job
   # is to generate the prompt segment for display in instant prompt. See
