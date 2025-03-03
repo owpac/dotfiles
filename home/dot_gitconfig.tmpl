@@ -1,3 +1,4 @@
+{{ if not .is_minimum -}}
 [core]
   editor = {{ .editor }}
 [user]
@@ -7,6 +8,7 @@
 
 [url "git@github.com:owpac/"]
 	insteadOf = https://github.com/owpac/
+{{- end }}
 
 [commit]
   gpgsign = true
@@ -19,8 +21,10 @@
 
 [gpg]
   format = ssh
+{{ if not .is_minimum -}}
 [gpg "ssh"]
   program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+{{- end }}
 
 {{ if stat "/opt/homebrew/bin/code" -}}
 [diff]
