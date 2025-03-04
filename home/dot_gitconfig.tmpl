@@ -5,13 +5,8 @@
   email = {{ .email }}
 {{ if not .is_headless -}}
   signingkey = {{ onepasswordRead "op://Personal/sign_ed25519/public key" }}
-{{- end }}
+{{- end -}}
 
-[url "git@github.com:owpac/"]
-	insteadOf = https://github.com/owpac/
-
-[commit]
-  gpgsign = true
 [push]
   autoSetupRemote = true
 [pull]
@@ -19,7 +14,12 @@
 [fetch]
   prune = true
 
+[url "git@github.com:owpac/"]
+	insteadOf = https://github.com/owpac/
+
 {{ if not .is_headless -}}
+[commit]
+  gpgsign = true
 [gpg]
   format = ssh
 [gpg "ssh"]
