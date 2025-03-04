@@ -3,7 +3,7 @@
 [user]
   name = owpac
   email = {{ .email }}
-{{ if not .is_headless -}}
+{{- if not .is_headless }}
   signingkey = {{ onepasswordRead "op://Personal/sign_ed25519/public key" }}
 {{- end }}
 
