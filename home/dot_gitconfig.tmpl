@@ -1,14 +1,14 @@
-{{ if not .is_minimum -}}
 [core]
   editor = {{ .editor }}
 [user]
   name = owpac
   email = {{ .email }}
+{{ if not .is_headless -}}
   signingkey = {{ onepasswordRead "op://Personal/sign_ed25519/public key" }}
+{{- end }}
 
 [url "git@github.com:owpac/"]
 	insteadOf = https://github.com/owpac/
-{{- end }}
 
 [commit]
   gpgsign = true
@@ -19,9 +19,9 @@
 [fetch]
   prune = true
 
+{{ if not .is_headless -}}
 [gpg]
   format = ssh
-{{ if not .is_minimum -}}
 [gpg "ssh"]
   program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
 {{- end }}

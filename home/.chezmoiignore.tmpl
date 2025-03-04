@@ -1,6 +1,7 @@
 .asdfrc
 
 {{- if .is_minimum }}
+.gitconfig
 .npmrc
 .workrc
 .ssh/
@@ -14,8 +15,17 @@ Workspace/*
 {{- end -}}
 
 {{- if .is_headless }}
+.npmrc
+.workrc
 .ssh/*
 !.ssh/authorized_keys
+!.ssh/config
+Backup/
+Backup/*
+Library/
+Library/*
+Workspace/
+Workspace/*
 {{- end -}}
 
 {{- if ne .chezmoi.os "darwin" }}
