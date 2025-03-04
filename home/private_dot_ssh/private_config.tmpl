@@ -16,7 +16,6 @@ Host rpi
   IdentityFile ~/.ssh/mbp_ed25519.pub
   IdentitiesOnly yes
   ForwardAgent yes
-  PermitRemoteOpenSSH no
 
 Host nas
   HostName 10.0.0.12
@@ -24,7 +23,6 @@ Host nas
   IdentityFile ~/.ssh/mbp_ed25519.pub
   IdentitiesOnly yes
   ForwardAgent yes
-  PermitRemoteOpenSSH no
 
 {{ if .is_work -}}
 Include /Users/thomas/.colima/ssh_config
