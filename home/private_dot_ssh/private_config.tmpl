@@ -10,12 +10,14 @@ Host github.com
   IdentityFile ~/.ssh/mbp_ed25519.pub
   IdentitiesOnly yes
 
+{{ if not .is_headless -}}
 Host raspberrypi
   HostName 10.0.0.10
   User thomas
   IdentityFile ~/.ssh/mbp_ed25519.pub
   IdentitiesOnly yes
   ForwardAgent yes
+{{- end }}
 
 {{ if .is_work -}}
 Include /Users/thomas/.colima/ssh_config
