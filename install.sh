@@ -121,10 +121,10 @@ fi
 # update the remote URL to SSH
 git remote set-url origin $DOTFILES_SSH_URL
 
-if [ ! $(command -v chezmoi) ]; then
+if [ ! $(command -v "${chezmoi}") ]; then
   error "chezmoi is not installed."
 else
-  chezmoi=chezmoi
+  chezmoi=$chezmoi
 fi
 
 log_task "Running 'chezmoi init --source $DOTFILES_DIR'"
