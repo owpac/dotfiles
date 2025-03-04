@@ -10,8 +10,16 @@ Host github.com
   IdentityFile ~/.ssh/mbp_ed25519.pub
   IdentitiesOnly yes
 
-Host raspberrypi
+Host rpi
   HostName 10.0.0.10
+  User thomas
+  IdentityFile ~/.ssh/mbp_ed25519.pub
+  IdentitiesOnly yes
+  ForwardAgent yes
+  PermitRemoteOpenSSH no
+
+Host nas
+  HostName 10.0.0.12
   User thomas
   IdentityFile ~/.ssh/mbp_ed25519.pub
   IdentitiesOnly yes
