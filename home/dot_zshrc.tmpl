@@ -39,6 +39,45 @@ alias terractx='terraform workspace select $1'
 alias ghpr='gh pr create -df -t $(git_current_branch) && gh pr view -w && bin/dev ci:build'
 alias gbrm="git for-each-ref --format='%(refname:short)' refs/heads | grep -v \"master\|main\" | xargs git branch -D"
 
+function kompose() {
+  local action=$1
+  local base_dir=$2
+  local sub_dir=$3
+  local compose_action=$action
+
+  if [[ "$action" == "up" ]]; then
+    compose_action="$action -d"
+  fi
+
+  if [[ -z "$sub_dir" ]]; then
+    # If sub_dir is not provided, iterate over directories in base_dir
+    for dir in $base_dir/*; do
+      if [[ -d "$dir" && -f "$dir/compose.yml" ]]; then
+        if [[ -f "base/$(basename $dir)/compose.yml" ]]; then
+          local cmd="docker compose -f base/$(basename $dir)/compose.yml -f $dir/compose.yml $compose_action"
+          # echo $cmd
+          eval $cmd
+        else
+          local cmd="docker compose -f $dir/compose.yml $compose_action"
+          # echo $cmd
+          eval $cmd
+        fi
+      fi
+    done
+  else
+    # If sub_dir is provided, use the specific compose files
+    if [[ -f "base/$sub_dir/compose.yml" ]]; then
+      local cmd="docker compose -f base/$sub_dir/compose.yml -f $base_dir/$sub_dir/compose.yml $compose_action"
+      # echo $cmd
+      eval $cmd
+    else
+      local cmd="docker compose -f $base_dir/$sub_dir/compose.yml $compose_action"
+      # echo $cmd
+      eval $cmd
+    fi
+  fi
+}
+
 {{ if .is_work -}}
 ### Work
 
