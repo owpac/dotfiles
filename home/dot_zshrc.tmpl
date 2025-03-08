@@ -41,37 +41,51 @@ alias gbrm="git for-each-ref --format='%(refname:short)' refs/heads | grep -v \"
 
 function kompose() {
   local action=$1
-  local base_dir=$2
-  local sub_dir=$3
+  local host=$2
+  local service=$3
   local compose_action=$action
+
+  # Load .env file if it exists
+  if [[ -f .env ]]; then
+    export $(grep -v '^#' .env | xargs)
+  fi
+
+  # Use CURRENT_HOST to set host if it is set
+  if [[ -n "$CURRENT_HOST" && -z "$service" ]]; then
+    host=$CURRENT_HOST
+    service=$2
+  elif [[ -z "$CURRENT_HOST" && -z "$service" ]]; then
+    echo "Error: host is not set and CURRENT_HOST is not set."
+    return 1
+  fi
 
   if [[ "$action" == "up" ]]; then
     compose_action="$action -d"
   fi
 
-  if [[ -z "$sub_dir" ]]; then
-    # If sub_dir is not provided, iterate over directories in base_dir
-    for dir in $base_dir/*; do
-      if [[ -d "$dir" && -f "$dir/compose.yml" ]]; then
-        if [[ -f "base/$(basename $dir)/compose.yml" ]]; then
-          local cmd="docker compose -f base/$(basename $dir)/compose.yml -f $dir/compose.yml $compose_action"
+  if [[ -z "$service" ]]; then
+    # If service is not provided, iterate over service directories in host
+    for service in $host/*; do
+      if [[ -d "$service" && -f "$service/compose.yml" ]]; then
+        if [[ -f "base/$(basename $service)/compose.yml" ]]; then
+          local cmd="docker compose -f base/$(basename $service)/compose.yml -f $service/compose.yml $compose_action"
           # echo $cmd
           eval $cmd
         else
-          local cmd="docker compose -f $dir/compose.yml $compose_action"
+          local cmd="docker compose -f $service/compose.yml $compose_action"
           # echo $cmd
           eval $cmd
         fi
       fi
     done
   else
-    # If sub_dir is provided, use the specific compose files
-    if [[ -f "base/$sub_dir/compose.yml" ]]; then
-      local cmd="docker compose -f base/$sub_dir/compose.yml -f $base_dir/$sub_dir/compose.yml $compose_action"
+    # If service is provided, use the specific compose files
+    if [[ -f "base/$service/compose.yml" ]]; then
+      local cmd="docker compose -f base/$service/compose.yml -f $host/$service/compose.yml $compose_action"
       # echo $cmd
       eval $cmd
     else
-      local cmd="docker compose -f $base_dir/$sub_dir/compose.yml $compose_action"
+      local cmd="docker compose -f $host/$service/compose.yml $compose_action"
       # echo $cmd
       eval $cmd
     fi
