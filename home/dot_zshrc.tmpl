@@ -80,14 +80,21 @@ function kompose() {
     done
   else
     # If service is provided, use the specific compose files
-    if [[ -f "base/$service/compose.yml" ]]; then
+    if [[ -f "base/$service/compose.yml" && -f "$host/$service/compose.yml" ]]; then
       local cmd="docker compose -f base/$service/compose.yml -f $host/$service/compose.yml $compose_action"
       # echo $cmd
       eval $cmd
-    else
+    elif [[ -f "base/$service/compose.yml" ]]; then
+      local cmd="docker compose -f base/$service/compose.yml $compose_action"
+      # echo $cmd
+      eval $cmd
+    elif [[ -f "$host/$service/compose.yml" ]]; then
       local cmd="docker compose -f $host/$service/compose.yml $compose_action"
       # echo $cmd
       eval $cmd
+    else
+      echo "Error: No compose.yml found for service '$service'."
+      return 1
     fi
   fi
 }
