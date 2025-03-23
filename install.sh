@@ -123,13 +123,14 @@ else
   git clone $DOTFILES_HTTPS_URL $DOTFILES_DIR
   cd "$DOTFILES_DIR"
 fi
-# update the remote URL to SSH
-git remote set-url origin $DOTFILES_SSH_URL
 
 log_task "Running 'chezmoi init --source $DOTFILES_DIR'"
 "${chezmoi}" init --source $DOTFILES_DIR
 
 log_task "Running 'chezmoi apply --force'"
 "${chezmoi}" apply --force
+
+# update the remote URL to SSH
+git remote set-url origin $DOTFILES_SSH_URL
 
 log_done "Configuration successfully applied! 🎉"
