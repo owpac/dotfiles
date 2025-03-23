@@ -65,9 +65,12 @@ install_based_on_os() {
   if [ "$(uname)" = "Darwin" ]; then
 
     if [ ! "$(command -v brew)" ]; then
+      log_task "Installing 'Homebrew'..."
       install_hombrew
+      brew_prefix="$(brew --prefix)"
     fi
 
+    log_task "Installing '$package_name'..."
     brew install "$package_name"
 
   elif [ "$(uname)" = "Linux" ]; then
@@ -77,11 +80,14 @@ install_based_on_os() {
     fi
 
     if [ "$package_name" = "chezmoi" ]; then
+      log_task "Installing '$package_name'..."
       install_chezmoi
       return # exit from the function because we just installed chezmoi
     fi
 
+    log_task "Upgrading packages..."
     sudo apt update
+    log_task "Installing '$package_name'..."
     sudo apt install -y "$package_name"
   else
     error "Unsupported operating system."
@@ -92,7 +98,6 @@ install() {
   package_name="$1"
 
   if [ ! "$(command -v $package_name)" ]; then
-    log_task "Installing '$package_name'..."
     install_based_on_os "$package_name"
   else
     log_done "'$package_name' already installed! 📦"
@@ -120,12 +125,6 @@ else
 fi
 # update the remote URL to SSH
 git remote set-url origin $DOTFILES_SSH_URL
-
-if [ ! $(command -v "${chezmoi}") ]; then
-  error "chezmoi is not installed."
-else
-  chezmoi=$chezmoi
-fi
 
 log_task "Running 'chezmoi init --source $DOTFILES_DIR'"
 "${chezmoi}" init --source $DOTFILES_DIR
