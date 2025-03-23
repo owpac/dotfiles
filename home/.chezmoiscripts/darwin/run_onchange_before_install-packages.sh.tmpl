@@ -50,7 +50,7 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
 -}}
 
 log_task "Installing Homebrew taps, brews, and casks..."
-brew bundle --no-lock --file=/dev/stdin <<EOF || true
+brew bundle --file=/dev/stdin <<EOF || true
 {{ range ($taps | sortAlpha | uniq) -}}
 tap "{{ . }}"
 {{ end -}}
