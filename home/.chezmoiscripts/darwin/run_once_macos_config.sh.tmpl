@@ -267,6 +267,27 @@ defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 98 "<dic
 log_done 'Shortcuts configured! 🎉'
 log_blue '⚠️ Please note that you should either restart or disconnet from you session for the changes to take effect!'
 
+
+################################################################################
+# Finder                                                                      #
+################################################################################
+
+log_task 'Configuring Finder...'
+
+# Disable Tags
+defaults write com.apple.finder ShowRecentTags -bool false
+
+# Disable the automatic opening of a new tab in Finder when opening a folder
+defaults write com.apple.finder FinderSpawnTab -bool false
+
+# Change the default folder when opening a new Finder window
+# PfHm = Home
+# PfDe = Desktop
+# PfLo = Last opened location
+# PfCm = Computer
+# PfVo = Volume
+defaults write com.apple.finder NewWindowTarget -string "PfHm"
+
 ###############################################################################
 # Dock                                                                        #
 ###############################################################################
