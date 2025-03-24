@@ -6,8 +6,6 @@ set -eufo pipefail
 source {{ .chezmoi.workingTree }}/lib/logs.sh
 
 {{ $taps := list
-      "homebrew/bundle"
-      "homebrew/services"
 -}}
 {{ $brews := list
       "age"
