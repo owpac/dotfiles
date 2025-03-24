@@ -47,7 +47,9 @@ defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 118 "$DI
 # Passer au Bureau n°2 - DISABLED
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 119 "$DISABLED_SHORTCUT"
 # Note rapide - ENABLED (ALT + CMD + N)
-defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 190 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>110</integer><integer>45</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
+# defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 190 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>110</integer><integer>45</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Note rapide - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 190 "$DISABLED_SHORTCUT"
 
 ### Keyboard
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 10 "$DISABLED_SHORTCUT"
@@ -78,12 +80,159 @@ defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 30 "<dic
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 31 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>115</integer><integer>1</integer><integer>1179648</integer></array><key>type</key><string>standard</string></dict></dict>"
 # Options de capture d'écran et d'enregistrement - ENABLED (ALT + CMD + S)
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 184 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>115</integer><integer>1</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Enregistrer l'image de la Touch Bar dans un fichier - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 181 "$DISABLED_SHORTCUT"
+# Copier l'image de la Touch Bar dans le presse-papier - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 182 "$DISABLED_SHORTCUT"
 
 ### Speaker overlay
 # Activer ou désactiver l'incrustation de l'intervenant (petite) - DISABLED
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 224 "$DISABLED_SHORTCUT"
 # Activer ou désactiver l'incrustation de l'intervenant (grande) - DISABLED
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 223 "$DISABLED_SHORTCUT"
+
+### Services
+defaults write pbs NSServicesStatus '
+{
+    "com.apple.BluetoothFileExchange - Send File To Bluetooth Device - sendFileUsingBluetoothOBEXService" =     {
+        "key_equivalent" = "";
+    };
+    "com.apple.ChineseTextConverterService - Convert Text from Simplified to Traditional Chinese - convertTextToTraditionalChinese" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "key_equivalent" = "";
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.ChineseTextConverterService - Convert Text from Traditional to Simplified Chinese - convertTextToSimplifiedChinese" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "key_equivalent" = "";
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.ChineseTextConverterService - Convert Text to Full Width - convertTextToFullWidth" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.ChineseTextConverterService - Convert Text to Half Width - convertTextToHalfWidth" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.Dictionary - Look Up in Dictionary - doLookupService" =     {
+        "enabled_services_menu" = 0;
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.FolderActionsSetup - Folder Actions Setup - openFilesFromPasteboard" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.QuickTime.service.encodeSelectedAudioFiles - Encode Selected Audio Files - runWorkflowAsService" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.Safari - Add to Reading List - addToReadingList" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.Safari - Search With %WebSearchProvider@ - searchWithWebSearchProvider" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "key_equivalent" = "";
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.SpotlightService - SEARCH_WITH_SPOTLIGHT - doSearchWithSpotlight" =     {
+        "key_equivalent" = "";
+    };
+    "com.apple.Stickies - Make Sticky - makeStickyFromTextService" =     {
+        "enabled_services_menu" = 0;
+        "key_equivalent" = "";
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.Terminal - New Terminal Tab at Folder - newTerminalAtFolder" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.Terminal - New Terminal at Folder - newTerminalAtFolder" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.Terminal - Open man Page in Terminal - openManPage" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "key_equivalent" = "";
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.Terminal - Search man Page Index in Terminal - searchManPages" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "key_equivalent" = "";
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.services.addToiTunesAsSpokenTrack - Add to Music as a Spoken Track - runWorkflowAsService" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+    "com.apple.services.encodeSelectedVideoFiles - Encode Selected Video Files - runWorkflowAsService" =     {
+        "enabled_context_menu" = 0;
+        "enabled_services_menu" = 0;
+        "presentation_modes" =         {
+            ContextMenu = 0;
+            ServicesMenu = 0;
+        };
+    };
+}'
 
 ### Spotlight
 # Afficher la recherche Spotlight - DISABLED (CMD + SPACE)
@@ -122,16 +271,151 @@ log_blue '⚠️ Please note that you should either restart or disconnet from yo
 # Dock                                                                        #
 ###############################################################################
 
-# defaults write com.apple.dock "show-recents" -bool "false" && killall Dock
+log_task 'Configuring Dock...'
 
-# printf "%s\n" "Dock - Remove all default app icons."
-# defaults write com.apple.dock persistent-apps -array
+# Remove the "recent applications" section
+defaults write com.apple.dock "show-recents" -bool "false"
 
-# printf "%s\n" "Dock - Automatically hide and show."
-# defaults write com.apple.dock autohide -bool true
+# Remove all default app icons
+defaults write com.apple.dock persistent-apps -array
 
-# printf "%s\n" "Dock - Remove the auto-hiding delay."
-# defaults write com.apple.Dock autohide-delay -float 0
+# Add custom app icons
+defaults write com.apple.dock persistent-apps -array-add '<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/Applications/Arc.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>'
+defaults write com.apple.dock persistent-apps -array-add '<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/System/Applications/Messages.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>'
+defaults write com.apple.dock persistent-apps -array-add '<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/Applications/Discord.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>'
+defaults write com.apple.dock persistent-apps -array-add '<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/Applications/Spark Desktop.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>'
+defaults write com.apple.dock persistent-apps -array-add '<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/Applications/1Password.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>'
+defaults write com.apple.dock persistent-apps -array-add '<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/Applications/Visual Studio Code.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>'
+defaults write com.apple.dock persistent-apps -array-add '<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/Applications/iTerm.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>'
+defaults write com.apple.dock persistent-apps -array-add '<dict><key>tile-data</key><dict><key>file-data</key><dict><key>_CFURLString</key><string>/System/Applications/System Settings.app</string><key>_CFURLStringType</key><integer>0</integer></dict></dict></dict>'
 
-# defaults write com.apple.dock "tilesize" -int "26"
+# Remove all default persistent others
+defaults write com.apple.dock persistent-others -array
+
+# Add custom persistent others
+# displayas:
+# 0 = pile
+# 1 = dossier
+# arrangement:
+# 1 = tri par nom
+# 2 = date d’ajout
+# 3 = date de modification
+# 4 = date de création
+# 5 = type
+# showas:
+# 0 = auto
+# 1 = éventail (fan)
+# 2 = grille
+# 3 = liste
+
+# Add home directory folder to Dock
+defaults write com.apple.dock persistent-others -array-add '
+<dict>
+  <key>tile-data</key>
+  <dict>
+    <key>file-data</key>
+    <dict>
+      <key>_CFURLString</key>
+      <string>file:///Users/thomas/</string>
+      <key>_CFURLStringType</key>
+      <integer>15</integer>
+    </dict>
+    <key>arrangement</key>
+    <integer>1</integer> <!-- tri par nom -->
+    <key>displayas</key>
+    <integer>1</integer> <!-- afficher comme dossier -->
+    <key>showas</key>
+    <integer>2</integer> <!-- affichage grille -->
+  </dict>
+  <key>tile-type</key>
+  <string>directory-tile</string>
+</dict>'
+
+# Add Downloads folder to Dock
+defaults write com.apple.dock persistent-others -array-add '
+<dict>
+  <key>tile-data</key>
+  <dict>
+    <key>file-data</key>
+    <dict>
+      <key>_CFURLString</key>
+      <string>file:///Users/thomas/Downloads/</string>
+      <key>_CFURLStringType</key>
+      <integer>15</integer>
+    </dict>
+    <key>arrangement</key>
+    <integer>2</integer> <!-- tri par date dajout -->
+    <key>displayas</key>
+    <integer>0</integer> <!-- afficher comme pile -->
+    <key>showas</key>
+    <integer>1</integer> <!-- affichage éventail -->
+  </dict>
+  <key>tile-type</key>
+  <string>directory-tile</string>
+</dict>'
+
+# Automatically hide and show
+defaults write com.apple.dock autohide -bool true
+
+# Remove the auto-hiding delay
+defaults write com.apple.Dock autohide-delay -float 0
+
+defaults write com.apple.dock "tilesize" -int "48"
+
+killall Dock
+
+log_done 'Dock configured! 🎉'
+
+###############################################################################
+# Login items                                                                #
+###############################################################################
+
+log_task 'Configuring login items...'
+
+# Remove all default login items
+osascript -e 'tell application "System Events" to delete every login item' >/dev/null 2>&1
+
+# Add custom login items
+osascript -e 'tell application "System Events" to make login item at end with properties {name:"Raycast", path:"/Applications/Raycast.app", hidden:false}' >/dev/null 2>&1
+osascript -e 'tell application "System Events" to make login item at end with properties {name:"1Password", path:"/Applications/1Password.app", hidden:false}' >/dev/null 2>&1
+osascript -e 'tell application "System Events" to make login item at end with properties {name:"iTerm", path:"/Applications/iTerm.app", hidden:false}' >/dev/null 2>&1
+osascript -e 'tell application "System Events" to make login item at end with properties {name:"Rectangle", path:"/Applications/Rectangle.app", hidden:false}' >/dev/null 2>&1
+
+log_done 'Login items configured! 🎉'
+
+###############################################################################
+# Screen                                                                      #
+###############################################################################
+
+log_task 'Detecting main screen...'
+
+# Fetch the main screen ID with displayplacer
+OUTPUT=$(displayplacer list)
+SCREEN_ID=""
+CURRENT_ID=""
+DESIRED_RES="1680x1050"
+
+# Loop through the output to find the main screen ID
+while IFS= read -r line; do
+  if [[ "$line" =~ Persistent\ screen\ id:\ (.*) ]]; then
+    CURRENT_ID="${BASH_REMATCH[1]}"
+  fi
+
+  if [[ "$line" =~ main\ display ]]; then
+    SCREEN_ID="$CURRENT_ID"
+  fi
+done <<<"$OUTPUT"
+
+
+if [ -z "$SCREEN_ID" ]; then
+  log_error "No main screen found. Please check your displayplacer installation."
+  exit 1
+fi
+
+# Set the desired resolution
+log_task "Updating main screen resolution to $DESIRED_RES..."
+displayplacer "id:$SCREEN_ID res:$DESIRED_RES scaling:on"
+
+log_done "Main screen resolution updated to $DESIRED_RES! 🎉"
+
 {{- end -}}
