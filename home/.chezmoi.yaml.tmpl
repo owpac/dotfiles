@@ -31,25 +31,25 @@
 {{- end -}}
 
 {{/* full name configuration */}}
-{{- $name := "" -}}
-{{- if hasKey . "name" -}}
-{{-   $name = .name -}}
+{{- $full_name := "" -}}
+{{- if hasKey . "full_name" -}}
+{{-   $full_name = .full_name -}}
 {{- end -}}
 {{- if and $interactive (not $minimum) -}}
 {{-   range $i := until 10 -}}
 {{-     $question := "🙋 What is your full name" -}}
 {{-     $answer := "" -}}
-{{-     if $name -}}
-{{-       $answer = promptString $question $name -}}
+{{-     if $full_name -}}
+{{-       $answer = promptString $question $full_name -}}
 {{-     else -}}
 {{-       $answer = promptString $question -}}
 {{-     end -}}
 {{-     if regexMatch "^[A-Z][-' a-zA-Z]+$" $answer -}}
-{{-       $name = $answer -}}
-{{-       writeToStdout (printf "✅ Name set as '%s'\n" $name) -}}
+{{-       $full_name = $answer -}}
+{{-       writeToStdout (printf "✅ Full name set as '%s'\n" $full_name) -}}
 {{-       break -}}
 {{-     end -}}
-{{-     writeToStdout (printf "❌ '%s' is an invalid name\n" $answer) -}}
+{{-     writeToStdout (printf "❌ '%s' is an invalid full name\n" $answer) -}}
 {{-     if eq $i 9 -}}
 {{-       writeToStdout "❌ ERROR: maximum tries exceeded\n" -}}
 {{-       exit 1 -}}
@@ -144,7 +144,7 @@ age:
   symmetric: true
 
 git:
-  autoCommit: true
+  autoCommit: false
   commitMessageTemplate: "💾 Automatic backup"
 
 {{ if stat "/opt/homebrew/bin/code" -}}
@@ -161,6 +161,16 @@ diff:
     - "{{ `{{ .Destination }}` }}"
     - "{{ `{{ .Target }}` }}"
 
+textconv:
+  - pattern: "**/*.plist"
+    command: "plutil"
+    args:
+      - "-convert"
+      - "xml1"
+      - "-o"
+      - "-"
+      - "-"
+
 merge:
   command: "bash"
   args:
@@ -169,7 +179,7 @@ merge:
 {{- end}}
 
 data:
-  name: {{ $name | quote }}
+  full_name: {{ $full_name | quote }}
   email: {{ $email | quote }}
   email_work: {{ $email_work | quote }}
 
