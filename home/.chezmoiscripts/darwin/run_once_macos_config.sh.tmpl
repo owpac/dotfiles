@@ -288,6 +288,10 @@ defaults write com.apple.finder FinderSpawnTab -bool false
 # PfVo = Volume
 defaults write com.apple.finder NewWindowTarget -string "PfHm"
 
+killall Finder
+
+log_done 'Finder configured! 🎉'
+
 ###############################################################################
 # Dock                                                                        #
 ###############################################################################
@@ -381,7 +385,12 @@ defaults write com.apple.dock autohide -bool true
 # Remove the auto-hiding delay
 defaults write com.apple.Dock autohide-delay -float 0
 
+# Set size of Dock icons
 defaults write com.apple.dock "tilesize" -int "48"
+
+# Set size of Dock icons when magnified
+defaults write com.apple.dock largesize -int 54
+defaults write com.apple.dock magnification -bool true
 
 killall Dock
 
