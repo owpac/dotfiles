@@ -15,15 +15,15 @@ if [ "$(command -v mise)" ]; then
   mise plugins update
 fi
 
-if [ "$(command -v softwareupdate)" ]; then
-  log_task "Upgrading macOS..."
-  softwareupdate -ia
-fi
-
-# if [ "$(command -v mas)" ]; then
-#   log_task "Upgrading mas..."
-#   mas upgrade
+# if [ "$(command -v softwareupdate)" ]; then
+#   log_task "Upgrading macOS..."
+#   softwareupdate -ia
 # fi
+
+if [ "$(command -v mas)" ]; then
+  log_task "Upgrading mas..."
+  mas upgrade
+fi
 
 log_done "Everything is up-to-date!"
 
