@@ -49,7 +49,9 @@ There are 3 possible modes, listed be order of priority:
 > [!TIP]
 > There is an automatic **Headless mode**: if `SSH_CLIENT` env var is detected during init, the headless mode installs .ssh/authorized_keys files.
 
-> [!NOTE] > **Minimum mode**
+> [!NOTE]
+>
+> **Minimum mode**
 > The first step of installation will ask if you want a **Minimum** mode installation. The minimum mode only installs the needed dotfiles for the command prompt and is compatible with more distributions. It's also suitable for ephemeral environment.
 > It will be enabled by default when running in a Dev Container.
 
