@@ -403,7 +403,7 @@ log_done 'Dock configured! 🎉'
 log_task 'Configuring login items...'
 
 # Remove all default login items
-osascript -e 'tell application "System Events" to delete every login item' >/dev/null 2>&1
+# osascript -e 'tell application "System Events" to delete every login item' >/dev/null 2>&1
 
 # Add custom login items
 osascript -e 'tell application "System Events" to make login item at end with properties {name:"Raycast", path:"/Applications/Raycast.app", hidden:false}' >/dev/null 2>&1
@@ -423,7 +423,6 @@ log_task 'Detecting main screen...'
 OUTPUT=$(displayplacer list)
 SCREEN_ID=""
 CURRENT_ID=""
-DESIRED_RES="1680x1050"
 
 # Loop through the output to find the main screen ID
 while IFS= read -r line; do
@@ -438,14 +437,42 @@ done <<<"$OUTPUT"
 
 
 if [ -z "$SCREEN_ID" ]; then
-  log_error "No main screen found. Please check your displayplacer installation."
-  exit 1
+  error "No main screen found. Please check your displayplacer installation."
 fi
 
-# Set the desired resolution
-log_task "Updating main screen resolution to $DESIRED_RES..."
-displayplacer "id:$SCREEN_ID res:$DESIRED_RES scaling:on"
+BEST_RES=""
+BEST_WIDTH=0
+BEST_HEIGHT=0
+BEST_HZ=0
 
-log_done "Main screen resolution updated to $DESIRED_RES! 🎉"
+inside_block=0
+while IFS= read -r line; do
+  if [[ "$line" =~ Persistent\ screen\ id:\ $SCREEN_ID ]]; then
+    inside_block=1
+  elif [[ "$inside_block" -eq 1 && "$line" =~ ^$ ]]; then
+    inside_block=0
+  elif [[ "$inside_block" -eq 1 && "$line" =~ res:([0-9]+)x([0-9]+)\ hz:([0-9]+).*scaling:on ]]; then
+    width=${BASH_REMATCH[1]}
+    height=${BASH_REMATCH[2]}
+    hz=${BASH_REMATCH[3]}
+    # Comparaison pour trouver la plus grande résolution et fréquence
+    if ((width > BEST_WIDTH || (width == BEST_WIDTH && height > BEST_HEIGHT) || (width == BEST_WIDTH && height == BEST_HEIGHT && hz > BEST_HZ))); then
+      BEST_WIDTH=$width
+      BEST_HEIGHT=$height
+      BEST_HZ=$hz
+      BEST_RES="${width}x${height}"
+    fi
+  fi
+done <<<"$OUTPUT"
+
+if [ -z "$BEST_RES" ]; then
+    error "No resolution with scaling:on found."
+fi
+
+# Set the best resolution
+log_task "Updating main screen resolution to $BEST_RES at ${BEST_HZ}Hz..."
+displayplacer "id:$SCREEN_ID res:$BEST_RES hz:$BEST_HZ scaling:on"
+
+log_done "Main screen resolution updated to $BEST_RES at ${BEST_HZ}Hz! 🎉"
 
 {{- end -}}
