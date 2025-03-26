@@ -20,10 +20,10 @@ if [ "$(command -v softwareupdate)" ]; then
   softwareupdate -ia
 fi
 
-if [ "$(command -v mas)" ]; then
-  log_task "Upgrading mas..."
-  mas upgrade
-fi
+# if [ "$(command -v mas)" ]; then
+#   log_task "Upgrading mas..."
+#   mas upgrade
+# fi
 
 log_done "Everything is up-to-date!"
 
