@@ -40,30 +40,18 @@ sh -c "$(wget -qO- https://raw.githubusercontent.com/owpac/dotfiles/main/install
 
 The below information is more for reference purposes.
 
-_**TL;DR**:_
-
 There are 3 possible modes, listed be order of priority:
 
-1.  [**Minimum mode**](#minimum-mode): it contains command prompt configuration.
-2.  [**Personal mode**](#personal-mode): it is the base configuration for any other Profiles.
-3.  [**Work mode**](#work-mode): it is a derived Profile from the base, adding work email & other work related configurations.
+1. **Minimum mode**: it contains command prompt configuration.
+2. **Personal mode**: it is the base configuration for any other Profiles.
+3. **Work mode**: it is a derived Profile from the base, adding work email & other work related configurations.
 
 > [!TIP]
 > There is an automatic **Headless mode**: if `SSH_CLIENT` env var is detected during init, the headless mode installs .ssh/authorized_keys files.
 
-### Minimum mode
-
-The first step of installation will ask if you want a **Minimum** mode installation. The minimum mode only installs the needed dotfiles for the command prompt and is compatible with more distributions. It's also suit for ephemeral environment.
-
-It will be enabled by default when running in a Dev Container.
-
-### Personal mode
-
-The installation will ask if the machine is a **Personal** profile type. The personal profile is the base of every dotfiles configuration. All other profiles inherits from it.
-
-### Work mode
-
-The installation will ask if the machine is a **Work** profile type. The work profile is derived from the base and add some work related configurations.
+> [!INFO] Minimum mode
+> The first step of installation will ask if you want a **Minimum** mode installation. The minimum mode only installs the needed dotfiles for the command prompt and is compatible with more distributions. It's also suitable for ephemeral environment.
+> It will be enabled by default when running in a Dev Container.
 
 ### Convenience script
 
