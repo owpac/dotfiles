@@ -6,6 +6,19 @@ set -eufo pipefail
 source {{ .chezmoi.workingTree }}/lib/logs.sh
 
 ###############################################################################
+# Keyboard                                                                   #
+###############################################################################
+
+log_task 'Configuring keyboard...'
+
+# Set the delay until repeat to fast
+defaults write -g InitialKeyRepeat -int 15
+# Set the keyboard repeat rate to fast
+defaults write -g KeyRepeat -int 2
+
+log_done 'Keyboard configured! 🎉'
+
+###############################################################################
 # Shortcuts                                                                   #
 ###############################################################################
 
@@ -408,8 +421,14 @@ log_task 'Configuring login items...'
 # Add custom login items
 osascript -e 'tell application "System Events" to make login item at end with properties {name:"Raycast", path:"/Applications/Raycast.app", hidden:false}' >/dev/null 2>&1
 osascript -e 'tell application "System Events" to make login item at end with properties {name:"1Password", path:"/Applications/1Password.app", hidden:false}' >/dev/null 2>&1
-osascript -e 'tell application "System Events" to make login item at end with properties {name:"iTerm", path:"/Applications/iTerm.app", hidden:false}' >/dev/null 2>&1
+osascript -e 'tell application "System Events" to make login item at end with properties {name:"iTerm", path:"/Applications/iTerm.app", hidden:true}' >/dev/null 2>&1
 osascript -e 'tell application "System Events" to make login item at end with properties {name:"Rectangle", path:"/Applications/Rectangle.app", hidden:false}' >/dev/null 2>&1
+osascript -e 'tell application "System Events" to make login item at end with properties {name:"Elgato Wave Link", path:"/Applications/Elgato Wave Link.app", hidden:true}' >/dev/null 2>&1
+osascript -e 'tell application "System Events" to make login item at end with properties {name:"Elgato Stream Deck", path:"/Applications/Elgato Wave Link.app", hidden:true}' >/dev/null 2>&1
+{{ if (.is_work) -}}
+osascript -e 'tell application "System Events" to make login item at end with properties {name:"MuteDeck", path:"/Applications/MuteDeck/MuteDeck.app", hidden:true}' >/dev/null 2>&1
+{{- end }}
+
 
 log_done 'Login items configured! 🎉'
 
