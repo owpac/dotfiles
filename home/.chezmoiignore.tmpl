@@ -40,3 +40,8 @@ Library/*
 Workspace/
 Workspace/*
 {{- end -}}
+
+{{- if not .is_headless }}
+bin/
+bin/*
+{{- end -}}

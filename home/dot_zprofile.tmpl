@@ -7,3 +7,7 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 {{- if eq .chezmoi.os "linux" }}
 export PATH="${HOME}/.local/bin:${PATH}"
 {{- end -}}
+
+{{- if .is_headless }}
+export PATH="${HOME}/bin:${PATH}"
+{{- end -}}
