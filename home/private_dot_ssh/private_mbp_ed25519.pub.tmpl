@@ -1,1 +1,5 @@
+{{- if .is_headless -}}
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDiSTJlYGdxl8weXWkGZupNEsHeSthnh63m2DeBXXcm8
+{{- else -}}
 {{- onepasswordRead "op://Personal/mbp_ed25519/public key" -}}
+{{- end -}}
