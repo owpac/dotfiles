@@ -1,0 +1,23 @@
+services:
+  app:
+    container_name: myapp
+    env_file: .env
+    environment:
+      - TZ=Europe/Paris
+    image: myapp:latest
+    labels:
+      traefik.enable: true
+      traefik.http.routers.myapp-private.rule: "Host(`app.owpac.net`)"
+      traefik.http.routers.myapp-private.middlewares: "lan@file"
+    logging:
+      driver: local
+      options:
+        max-size: "100m"
+        max-file: "3"
+    networks:
+      - reverse-proxy
+    restart: unless-stopped
+
+networks:
+  reverse-proxy:
+    external: true
