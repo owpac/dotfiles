@@ -39,66 +39,6 @@ alias terractx='terraform workspace select $1'
 alias ghpr='gh pr create -df -t $(git_current_branch) && gh pr view -w && bin/dev ci:build'
 alias gbrm="git for-each-ref --format='%(refname:short)' refs/heads | grep -v \"master\|main\" | xargs git branch -D"
 
-function kompose() {
-  local action=$1
-  local host=$2
-  local service=$3
-  local compose_action=$action
-
-  # Load .env file if it exists
-  if [[ -f .env ]]; then
-    export $(grep -v '^#' .env | xargs)
-  fi
-
-  # Use CURRENT_HOST to set host if it is set
-  if [[ -n "$CURRENT_HOST" && -z "$service" ]]; then
-    host=$CURRENT_HOST
-    service=$2
-  elif [[ -z "$CURRENT_HOST" && -z "$service" ]]; then
-    echo "Error: host is not set and CURRENT_HOST is not set."
-    return 1
-  fi
-
-  if [[ "$action" == "up" ]]; then
-    compose_action="$action -d"
-  fi
-
-  if [[ -z "$service" ]]; then
-    # If service is not provided, iterate over service directories in host
-    for service in $host/*; do
-      if [[ -d "$service" && -f "$service/compose.yml" ]]; then
-        if [[ -f "base/$(basename $service)/compose.yml" ]]; then
-          local cmd="docker compose -f base/$(basename $service)/compose.yml -f $service/compose.yml $compose_action"
-          # echo $cmd
-          eval $cmd
-        else
-          local cmd="docker compose -f $service/compose.yml $compose_action"
-          # echo $cmd
-          eval $cmd
-        fi
-      fi
-    done
-  else
-    # If service is provided, use the specific compose files
-    if [[ -f "base/$service/compose.yml" && -f "$host/$service/compose.yml" ]]; then
-      local cmd="docker compose -f base/$service/compose.yml -f $host/$service/compose.yml $compose_action"
-      # echo $cmd
-      eval $cmd
-    elif [[ -f "base/$service/compose.yml" ]]; then
-      local cmd="docker compose -f base/$service/compose.yml $compose_action"
-      # echo $cmd
-      eval $cmd
-    elif [[ -f "$host/$service/compose.yml" ]]; then
-      local cmd="docker compose -f $host/$service/compose.yml $compose_action"
-      # echo $cmd
-      eval $cmd
-    else
-      echo "Error: No compose.yml found for service '$service'."
-      return 1
-    fi
-  fi
-}
-
 {{ if .is_work -}}
 ### Work
 

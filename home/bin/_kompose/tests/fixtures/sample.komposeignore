@@ -1,0 +1,15 @@
+# Test ignore file
+
+exclude:
+  routers:
+    - excluded-router
+    - another-router
+
+  middlewares:
+    - excluded-middleware
+
+  logging:
+    - network
+    - special-service
+
+  network: []

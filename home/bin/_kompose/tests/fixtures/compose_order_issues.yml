@@ -1,0 +1,19 @@
+services:
+  app:
+    image: myapp:latest
+    container_name: myapp
+    environment:
+      - TZ=Europe/Paris
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    user: "1000:1000"
+    logging:
+      driver: local
+    networks:
+      - reverse-proxy
+
+networks:
+  reverse-proxy:
+    external: true

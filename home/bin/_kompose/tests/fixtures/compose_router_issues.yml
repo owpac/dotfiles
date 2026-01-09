@@ -1,0 +1,32 @@
+services:
+  # Public service without suffixes - should fail
+  public-app:
+    container_name: public-app
+    image: app:latest
+    labels:
+      traefik.enable: true
+      traefik.http.routers.public-app.rule: "Host(`app.owpac.com`)"
+      traefik.http.routers.public-app.middlewares: "wan@file"
+    logging:
+      driver: local
+    networks:
+      - reverse-proxy
+    restart: unless-stopped
+
+  # Private-only with -public suffix - should fail
+  private-wrong:
+    container_name: private-wrong
+    image: app:latest
+    labels:
+      traefik.enable: true
+      traefik.http.routers.private-wrong-public.rule: "Host(`wrong.owpac.net`)"
+      traefik.http.routers.private-wrong-public.middlewares: "lan@file"
+    logging:
+      driver: local
+    networks:
+      - reverse-proxy
+    restart: unless-stopped
+
+networks:
+  reverse-proxy:
+    external: true

@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+"""
+Kompose - CLI for managing Docker Compose services.
+
+Usage:
+    kompose <command> [options]
+
+Commands:
+    up           Start services
+    down         Stop services
+    restart      Restart services
+    logs         View service logs
+    ps           List running services
+    lint         Check compose.yml files
+    env sync     Sync .env files
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+# Add the directory containing this script to sys.path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from _kompose import __version__
+from _kompose.compose import cmd_down, cmd_logs, cmd_ps, cmd_restart, cmd_up
+from _kompose.config import DEFAULT_HOST
+from _kompose.env import cmd_env_sync
+from _kompose.lint import cmd_lint
+from _kompose.utils import init_colors
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        prog="kompose",
+        description="CLI for managing Docker Compose services",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+Examples:
+  kompose up                    Start all services (host: {DEFAULT_HOST})
+  kompose up paperless          Start specific service
+  kompose down                  Stop all services
+  kompose restart immich        Restart specific service
+  kompose logs paperless        View logs (follow mode)
+  kompose logs paperless -n 50  View last 50 lines
+  kompose ps                    List running containers
+  kompose lint                  Lint all compose.yml files
+  kompose env sync              Sync all .env files
+  kompose env sync -f           Sync without confirmation
+
+Host override:
+  kompose --host other up       Use different host directory
+""",
+    )
+    parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+    parser.add_argument("--host", metavar="HOST", default=None, help=f"Host directory (default: {DEFAULT_HOST})")
+
+    subparsers = parser.add_subparsers(dest="command", metavar="<command>")
+
+    # up
+    up_parser = subparsers.add_parser("up", help="Start services")
+    up_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to start (default: all)")
+    up_parser.set_defaults(func=cmd_up)
+
+    # down
+    down_parser = subparsers.add_parser("down", help="Stop services")
+    down_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to stop (default: all)")
+    down_parser.set_defaults(func=cmd_down)
+
+    # restart
+    restart_parser = subparsers.add_parser("restart", help="Restart services")
+    restart_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to restart (default: all)")
+    restart_parser.set_defaults(func=cmd_restart)
+
+    # logs
+    logs_parser = subparsers.add_parser("logs", help="View service logs")
+    logs_parser.add_argument("service", metavar="<service>", help="Service to view logs")
+    logs_parser.add_argument("-f", "--follow", action="store_true", default=True, help="Follow log output (default)")
+    logs_parser.add_argument("--no-follow", action="store_false", dest="follow", help="Don't follow log output")
+    logs_parser.add_argument("-n", "--tail", default="100", metavar="N", help="Number of lines to show (default: 100)")
+    logs_parser.set_defaults(func=cmd_logs)
+
+    # ps
+    ps_parser = subparsers.add_parser("ps", help="List running services")
+    ps_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to list (default: all)")
+    ps_parser.set_defaults(func=cmd_ps)
+
+    # lint
+    lint_parser = subparsers.add_parser("lint", aliases=["check"], help="Check compose.yml files")
+    lint_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to lint (default: all)")
+    lint_parser.set_defaults(func=cmd_lint)
+
+    # env
+    env_parser = subparsers.add_parser("env", help="Environment file operations")
+    env_subparsers = env_parser.add_subparsers(dest="env_command", metavar="<subcommand>")
+
+    sync_parser = env_subparsers.add_parser("sync", aliases=["s"], help="Sync .env with .env.example")
+    sync_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to sync (default: all)")
+    sync_parser.add_argument("-f", "--force", action="store_true", help="No confirmation")
+    sync_parser.set_defaults(func=cmd_env_sync)
+
+    args = parser.parse_args()
+
+    init_colors(args.no_color)
+
+    if args.command is None:
+        parser.print_help()
+        return 0
+
+    if args.command == "env" and getattr(args, "env_command", None) is None:
+        env_parser.print_help()
+        return 0
+
+    if hasattr(args, "func"):
+        return args.func(args)
+
+    parser.print_help()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

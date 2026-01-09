@@ -1,0 +1,32 @@
+services:
+  # Public route with lan@file - should fail
+  app-public:
+    container_name: app-public
+    image: app:latest
+    labels:
+      traefik.enable: true
+      traefik.http.routers.app-public.rule: "Host(`app.owpac.com`)"
+      traefik.http.routers.app-public.middlewares: "lan@file"
+    logging:
+      driver: local
+    networks:
+      - reverse-proxy
+    restart: unless-stopped
+
+  # Private route with wan@file - should fail
+  app-private:
+    container_name: app-private
+    image: app:latest
+    labels:
+      traefik.enable: true
+      traefik.http.routers.app-private.rule: "Host(`app.owpac.net`)"
+      traefik.http.routers.app-private.middlewares: "wan@file"
+    logging:
+      driver: local
+    networks:
+      - reverse-proxy
+    restart: unless-stopped
+
+networks:
+  reverse-proxy:
+    external: true
