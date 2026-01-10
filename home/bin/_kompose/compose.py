@@ -169,54 +169,164 @@ def cmd_logs(args) -> int:
     return run_compose(service, "logs", host, extra_args)
 
 
-def cmd_ps(args) -> int:
-    """List running services."""
+def get_network_containers(network: str = "reverse-proxy") -> dict[str, dict]:
+    """Get containers and their IPs from a docker network."""
+    import json
+
+    cmd = ["docker", "network", "inspect", network, "--format", "{{ json .Containers }}"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            return {}
+
+        containers_data = json.loads(result.stdout.strip())
+        containers = {}
+        for container_id, info in containers_data.items():
+            name = info.get("Name", "")
+            ipv4 = info.get("IPv4Address", "").split("/")[0]
+            ipv6 = info.get("IPv6Address", "").split("/")[0]
+            containers[name] = {
+                "ipv4": ipv4,
+                "ipv6": ipv6,
+            }
+        return containers
+    except Exception:
+        return {}
+
+
+def get_all_containers_info() -> list[dict]:
+    """Get info about all running containers using docker ps."""
+    import json
+
+    cmd = ["docker", "ps", "--format", "json"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            return []
+
+        containers = []
+        for line in result.stdout.strip().split("\n"):
+            if line:
+                try:
+                    containers.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+        return containers
+    except Exception:
+        return []
+
+
+def parse_ip_for_sort(ip: str) -> tuple:
+    """Parse IP address for sorting."""
+    if not ip:
+        return (999, 999, 999, 999)
+    try:
+        parts = ip.split(".")
+        return tuple(int(p) for p in parts)
+    except (ValueError, AttributeError):
+        return (999, 999, 999, 999)
+
+
+def cmd_status(args) -> int:
+    """Show status of all services with IPs."""
     host = getattr(args, "host", None)
-    service = getattr(args, "service", None)
+    services = get_services(host)
 
-    if service:
-        return run_compose(service, "ps", host)
-    else:
-        # Show ps for all services
-        services = get_services(host)
-        if not services:
-            print(f"{Colors.YELLOW}No services found{Colors.RESET}")
-            return 0
+    if not services:
+        print(f"{Colors.YELLOW}No services found{Colors.RESET}")
+        return 0
 
-        # Collect all running containers
-        all_containers = []
-        for service_dir in services:
-            compose_files = get_compose_files(service_dir.name, host)
-            if not compose_files:
-                continue
+    # Get network info (IPs)
+    network_containers = get_network_containers("reverse-proxy")
 
-            cmd = build_compose_command(compose_files, "ps", ["--format", "json"])
-            try:
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=WORKSPACE_DIR)
-                if result.returncode == 0 and result.stdout.strip():
-                    import json
-                    for line in result.stdout.strip().split("\n"):
-                        if line:
-                            try:
-                                container = json.loads(line)
-                                container["_service_dir"] = service_dir.name
-                                all_containers.append(container)
-                            except json.JSONDecodeError:
-                                pass
-            except Exception:
-                pass
+    # Match containers to services, grouped by service_dir
+    service_groups: dict[str, list[dict]] = {}
+    for service_dir in services:
+        compose_files = get_compose_files(service_dir.name, host)
+        if not compose_files:
+            continue
 
-        if not all_containers:
-            print(f"{Colors.YELLOW}No running containers{Colors.RESET}")
-            return 0
+        cmd = build_compose_command(compose_files, "ps", ["--format", "json", "-a"])
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=WORKSPACE_DIR)
+            if result.returncode == 0 and result.stdout.strip():
+                import json
+                for line in result.stdout.strip().split("\n"):
+                    if line:
+                        try:
+                            container = json.loads(line)
+                            container["_service_dir"] = service_dir.name
+                            # Get IP for this container
+                            name = container.get("Name", "")
+                            container["_ip"] = network_containers.get(name, {}).get("ipv4", "")
+                            if service_dir.name not in service_groups:
+                                service_groups[service_dir.name] = []
+                            service_groups[service_dir.name].append(container)
+                        except json.JSONDecodeError:
+                            pass
+        except Exception:
+            pass
 
-        # Build table
-        table = Table(["Service", "Container", "Status", "Ports"])
-        for c in sorted(all_containers, key=lambda x: (x.get("_service_dir", ""), x.get("Name", ""))):
-            service_name = c.get("_service_dir", "")
+    if not service_groups:
+        print(f"{Colors.YELLOW}No containers found{Colors.RESET}")
+        return 0
+
+    # For each service group, identify main container (has IP) and dependencies
+    def get_main_ip(containers: list[dict]) -> str:
+        """Get the IP of the main container in a group."""
+        for c in containers:
+            if c.get("_ip"):
+                return c["_ip"]
+        return ""
+
+    # Sort service groups by main container IP
+    sorted_services = sorted(
+        service_groups.items(),
+        key=lambda x: parse_ip_for_sort(get_main_ip(x[1]))
+    )
+
+    # Build table
+    table = Table(["Service", "Container", "Status", "IP", "Ports"])
+    total_containers = 0
+    running_containers = 0
+
+    # Calculate max service name length for tree lines
+    max_svc_len = max(len(svc) for svc, _ in sorted_services) if sorted_services else 0
+
+    for service_name, containers in sorted_services:
+        # Sort containers: those with IP first (by IP), then those without (alphabetically)
+        containers.sort(key=lambda c: (
+            not c.get("_ip"),  # IP first
+            parse_ip_for_sort(c.get("_ip", "")),  # Then by IP order
+            c.get("Name", "")  # Then alphabetically
+        ))
+
+        # Check if group has any container with IP
+        has_main_with_ip = any(c.get("_ip") for c in containers)
+
+        first_in_group = True
+        for c in containers:
+            total_containers += 1
             container_name = c.get("Name", "")
             state = c.get("State", "")
             status = c.get("Status", "")
+            ip = c.get("_ip", "")
+
+            if state == "running":
+                running_containers += 1
+
+            # A container is a dependency only if it has no IP AND group has containers with IP
+            is_dependency = not ip and has_main_with_ip
+
+            # Format service column
+            if first_in_group:
+                svc_str = service_name
+                first_in_group = False
+            elif is_dependency:
+                # Extend └─ to fill column (max service name length)
+                svc_str = f"{Colors.GRAY}└{'─' * (max_svc_len - 1)}{Colors.RESET}"
+            else:
+                svc_str = ""  # Additional main containers in same service
 
             # Color based on state
             if state == "running":
@@ -226,6 +336,9 @@ def cmd_ps(args) -> int:
             else:
                 state_str = f"{Colors.YELLOW}{status}{Colors.RESET}"
 
+            # Format IP
+            ip_str = ip if ip else f"{Colors.GRAY}-{Colors.RESET}"
+
             # Format ports
             ports = c.get("Publishers", []) or []
             port_strs = []
@@ -234,9 +347,16 @@ def cmd_ps(args) -> int:
                     port_strs.append(f"{p.get('PublishedPort')}:{p.get('TargetPort')}")
             ports_str = ", ".join(port_strs) if port_strs else f"{Colors.GRAY}-{Colors.RESET}"
 
-            table.add_row([service_name, container_name, state_str, ports_str])
+            # Gray out dependency container names
+            if is_dependency:
+                container_name = f"{Colors.GRAY}{container_name}{Colors.RESET}"
 
-        print()
-        print(table.render())
-        print(f"\n{Colors.GRAY}{len(all_containers)} container(s){Colors.RESET}")
-        return 0
+            table.add_row([svc_str, container_name, state_str, ip_str, ports_str])
+
+    print()
+    print(table.render())
+
+    # Summary
+    print(f"\n{Colors.GREEN}{running_containers}{Colors.RESET}/{total_containers} container(s) running")
+
+    return 0

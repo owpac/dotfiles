@@ -13,6 +13,7 @@ from _kompose.env import (
     read_env_lines,
     find_insert_position,
     add_vars_to_env_file,
+    remove_vars_from_env_file,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -159,6 +160,57 @@ class TestAddVarsToEnvFile(unittest.TestCase):
         content = env_path.read_text()
         self.assertIn("EXISTING=value", content)
         self.assertIn("NEW=data", content)
+
+
+class TestRemoveVarsFromEnvFile(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_remove_single_var(self):
+        env_path = Path(self.temp_dir) / ".env"
+        env_path.write_text("PUID=1000\nPGID=1000\nTZ=Europe/Paris\n")
+
+        remove_vars_from_env_file(env_path, {"PGID"})
+
+        content = env_path.read_text()
+        self.assertIn("PUID=1000", content)
+        self.assertNotIn("PGID", content)
+        self.assertIn("TZ=Europe/Paris", content)
+
+    def test_remove_multiple_vars(self):
+        env_path = Path(self.temp_dir) / ".env"
+        env_path.write_text("A=1\nB=2\nC=3\nD=4\n")
+
+        remove_vars_from_env_file(env_path, {"B", "D"})
+
+        content = env_path.read_text()
+        self.assertIn("A=1", content)
+        self.assertNotIn("B=", content)
+        self.assertIn("C=3", content)
+        self.assertNotIn("D=", content)
+
+    def test_remove_nonexistent_var(self):
+        env_path = Path(self.temp_dir) / ".env"
+        env_path.write_text("PUID=1000\n")
+
+        remove_vars_from_env_file(env_path, {"NONEXISTENT"})
+
+        content = env_path.read_text()
+        self.assertIn("PUID=1000", content)
+
+    def test_remove_preserves_comments(self):
+        env_path = Path(self.temp_dir) / ".env"
+        env_path.write_text("# Comment\nPUID=1000\nPGID=1000\n")
+
+        remove_vars_from_env_file(env_path, {"PGID"})
+
+        content = env_path.read_text()
+        self.assertIn("# Comment", content)
+        self.assertIn("PUID=1000", content)
+        self.assertNotIn("PGID", content)
 
 
 if __name__ == "__main__":
