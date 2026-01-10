@@ -20,7 +20,7 @@ kompose <command> [options]
 | `down [service]` | Stop services |
 | `restart [service]` | Restart services |
 | `logs <service>` | View service logs |
-| `ps [service]` | List running containers |
+| `status` | Show services status with IPs |
 | `lint [service]` | Check compose.yml files |
 | `env sync [service]` | Sync .env files |
 
@@ -42,7 +42,7 @@ kompose down                  # Stop all services
 kompose restart immich        # Restart specific service
 kompose logs paperless        # View logs (follow mode)
 kompose logs paperless -n 50  # View last 50 lines
-kompose ps                    # List running containers
+kompose status                # Show services with IPs
 kompose lint                  # Lint all compose.yml
 kompose env sync              # Sync all .env files
 kompose env sync -f           # Sync without confirmation

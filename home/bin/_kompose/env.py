@@ -83,6 +83,43 @@ def add_vars_to_env_file(path: Path, vars_to_add: dict[str, str], source_keys_or
     path.write_text("\n".join(lines) + "\n")
 
 
+def remove_vars_from_env_file(path: Path, vars_to_remove: set[str]) -> None:
+    """Remove variables from env file."""
+    lines = read_env_lines(path)
+    new_lines = []
+
+    for line in lines:
+        match = re.match(r"^([A-Z_][A-Z0-9_]*)=", line, re.IGNORECASE)
+        if match and match.group(1) in vars_to_remove:
+            continue
+        new_lines.append(line)
+
+    path.write_text("\n".join(new_lines) + "\n")
+
+
+def ask_action(prompt: str, options: list[tuple[str, str]]) -> str | None:
+    """Ask user to choose an action. Returns the key of the chosen option or None."""
+    print(prompt)
+    for i, (key, label) in enumerate(options, 1):
+        print(f"  {Colors.CYAN}{i}{Colors.RESET}) {label}")
+    print(f"  {Colors.GRAY}s{Colors.RESET}) Skip")
+
+    try:
+        response = input(f"{Colors.GRAY}>{Colors.RESET} ").strip().lower()
+        if response == "s" or response == "":
+            return None
+        try:
+            idx = int(response) - 1
+            if 0 <= idx < len(options):
+                return options[idx][0]
+        except ValueError:
+            pass
+        return None
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return None
+
+
 def cmd_env_sync(args) -> int:
     """Execute the env sync command."""
     service_name = args.service
@@ -129,33 +166,67 @@ def cmd_env_sync(args) -> int:
 
         changes = []
 
-        # Always add missing vars from .env to .env.example (no confirmation needed)
+        # Variables in .env but not in .env.example
         if only_in_env:
-            vars_to_add = {k: "''" for k in only_in_env}
-            env_keys_order = list(env_vars.keys())
-            add_vars_to_env_file(env_example, vars_to_add, env_keys_order)
-            changes.append(f"+{len(only_in_env)} example")
-            sync_results.append(EnvSyncResult(service, "to_example", ".env.example", sorted(only_in_env)))
+            print(f"\n{Colors.BOLD}{service}{Colors.RESET}: variables in .env but not in .env.example:")
+            for key in sorted(only_in_env):
+                print(f"  {Colors.YELLOW}{key}{Colors.RESET}")
 
-        # Add missing vars from .env.example to .env (with confirmation)
-        if only_in_example:
             if force:
-                do_sync = True
+                action = "add_to_example"
             else:
-                print(f"\n{Colors.BOLD}{service}{Colors.RESET}: .env.example has variables not in .env:")
-                for key in sorted(only_in_example):
-                    print(f"  {Colors.BLUE}+ {key}{Colors.RESET}")
-                do_sync = confirm(f"Add {len(only_in_example)} variable(s) to .env?")
+                action = ask_action(
+                    f"What to do with {len(only_in_env)} variable(s)?",
+                    [
+                        ("add_to_example", f"Add to .env.example"),
+                        ("remove_from_env", f"Remove from .env"),
+                    ]
+                )
 
-            if do_sync:
+            if action == "add_to_example":
+                vars_to_add = {k: "''" for k in only_in_env}
+                env_keys_order = list(env_vars.keys())
+                add_vars_to_env_file(env_example, vars_to_add, env_keys_order)
+                changes.append(f"+{len(only_in_env)} example")
+                sync_results.append(EnvSyncResult(service, "to_example", ".env.example", sorted(only_in_env)))
+            elif action == "remove_from_env":
+                remove_vars_from_env_file(env_file, only_in_env)
+                changes.append(f"-{len(only_in_env)} env")
+                sync_results.append(EnvSyncResult(service, "removed_from_env", ".env", sorted(only_in_env)))
+            else:
+                changes.append(f"{len(only_in_env)} skipped")
+                sync_results.append(EnvSyncResult(service, "skipped", ".env", sorted(only_in_env)))
+
+        # Variables in .env.example but not in .env
+        if only_in_example:
+            print(f"\n{Colors.BOLD}{service}{Colors.RESET}: variables in .env.example but not in .env:")
+            for key in sorted(only_in_example):
+                print(f"  {Colors.BLUE}{key}{Colors.RESET}")
+
+            if force:
+                action = "add_to_env"
+            else:
+                action = ask_action(
+                    f"What to do with {len(only_in_example)} variable(s)?",
+                    [
+                        ("add_to_env", f"Add to .env"),
+                        ("remove_from_example", f"Remove from .env.example"),
+                    ]
+                )
+
+            if action == "add_to_env":
                 vars_to_add = {k: example_vars[k] for k in only_in_example}
                 example_keys_order = list(example_vars.keys())
                 add_vars_to_env_file(env_file, vars_to_add, example_keys_order)
                 changes.append(f"+{len(only_in_example)} env")
                 sync_results.append(EnvSyncResult(service, "to_env", ".env", sorted(only_in_example)))
+            elif action == "remove_from_example":
+                remove_vars_from_env_file(env_example, only_in_example)
+                changes.append(f"-{len(only_in_example)} example")
+                sync_results.append(EnvSyncResult(service, "removed_from_example", ".env.example", sorted(only_in_example)))
             else:
                 changes.append(f"{len(only_in_example)} skipped")
-                sync_results.append(EnvSyncResult(service, "skipped", ".env", sorted(only_in_example)))
+                sync_results.append(EnvSyncResult(service, "skipped", ".env.example", sorted(only_in_example)))
 
         # Determine status
         if changes:
@@ -174,6 +245,8 @@ def cmd_env_sync(args) -> int:
     if sync_results:
         to_example = [r for r in sync_results if r.action == "to_example"]
         to_env = [r for r in sync_results if r.action == "to_env"]
+        removed_from_env = [r for r in sync_results if r.action == "removed_from_env"]
+        removed_from_example = [r for r in sync_results if r.action == "removed_from_example"]
         skipped = [r for r in sync_results if r.action == "skipped"]
         created = [r for r in sync_results if r.action == "created"]
 
@@ -200,10 +273,24 @@ def cmd_env_sync(args) -> int:
                 for var in r.variables:
                     print(f"    {Colors.GREEN}+{Colors.RESET} {var}")
 
-        if skipped:
-            print(f"\n{Colors.BOLD}Skipped{Colors.RESET} {Colors.GRAY}(run with -f to force){Colors.RESET}")
-            for r in skipped:
+        if removed_from_env:
+            print(f"\n{Colors.BOLD}Removed from .env{Colors.RESET}")
+            for r in removed_from_env:
                 print(f"  {Colors.CYAN}{r.service}/.env{Colors.RESET}")
+                for var in r.variables:
+                    print(f"    {Colors.RED}-{Colors.RESET} {var}")
+
+        if removed_from_example:
+            print(f"\n{Colors.BOLD}Removed from .env.example{Colors.RESET}")
+            for r in removed_from_example:
+                print(f"  {Colors.CYAN}{r.service}/.env.example{Colors.RESET}")
+                for var in r.variables:
+                    print(f"    {Colors.RED}-{Colors.RESET} {var}")
+
+        if skipped:
+            print(f"\n{Colors.BOLD}Skipped{Colors.RESET}")
+            for r in skipped:
+                print(f"  {Colors.CYAN}{r.service}/{r.target}{Colors.RESET}")
                 for var in r.variables:
                     print(f"    {Colors.GRAY}?{Colors.RESET} {var}")
 

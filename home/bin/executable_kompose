@@ -10,7 +10,7 @@ Commands:
     down         Stop services
     restart      Restart services
     logs         View service logs
-    ps           List running services
+    status       Show services status with IPs
     lint         Check compose.yml files
     env sync     Sync .env files
 """
@@ -23,7 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from _kompose import __version__
-from _kompose.compose import cmd_down, cmd_logs, cmd_ps, cmd_restart, cmd_up
+from _kompose.compose import cmd_down, cmd_logs, cmd_restart, cmd_status, cmd_up
 from _kompose.config import DEFAULT_HOST
 from _kompose.env import cmd_env_sync
 from _kompose.lint import cmd_lint
@@ -43,7 +43,7 @@ Examples:
   kompose restart immich        Restart specific service
   kompose logs paperless        View logs (follow mode)
   kompose logs paperless -n 50  View last 50 lines
-  kompose ps                    List running containers
+  kompose status                Show all services with IPs
   kompose lint                  Lint all compose.yml files
   kompose env sync              Sync all .env files
   kompose env sync -f           Sync without confirmation
@@ -81,10 +81,9 @@ Host override:
     logs_parser.add_argument("-n", "--tail", default="100", metavar="N", help="Number of lines to show (default: 100)")
     logs_parser.set_defaults(func=cmd_logs)
 
-    # ps
-    ps_parser = subparsers.add_parser("ps", help="List running services")
-    ps_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to list (default: all)")
-    ps_parser.set_defaults(func=cmd_ps)
+    # status
+    status_parser = subparsers.add_parser("status", aliases=["st"], help="Show services status with IPs")
+    status_parser.set_defaults(func=cmd_status)
 
     # lint
     lint_parser = subparsers.add_parser("lint", aliases=["check"], help="Check compose.yml files")
