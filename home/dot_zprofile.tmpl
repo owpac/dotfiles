@@ -10,4 +10,5 @@ export PATH="${HOME}/.local/bin:${PATH}"
 
 {{- if .is_headless }}
 export PATH="${HOME}/bin:${PATH}"
+fpath=("${HOME}/bin/completions" $fpath)
 {{- end -}}
