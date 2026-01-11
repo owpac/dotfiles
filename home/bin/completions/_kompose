@@ -1,0 +1,71 @@
+#compdef kompose
+
+_kompose() {
+    local context state state_descr line
+    typeset -A opt_args
+
+    local -a opts cmds env_cmds
+
+    opts=(
+        '-h:Show help'
+        '--help:Show help'
+        '-v:Show version'
+        '--version:Show version'
+        '--no-color:Disable colored output'
+        '--host:Host directory'
+    )
+
+    cmds=(
+        'up:Start services'
+        'down:Stop services'
+        'restart:Restart services'
+        'logs:View service logs'
+        'status:Show services status with IPs'
+        'st:Show services status with IPs'
+        'lint:Check compose.yml files'
+        'env:Environment file operations'
+    )
+
+    env_cmds=(
+        'sync:Sync .env files'
+    )
+
+    # Options
+    if [[ ${words[CURRENT]} == -* ]]; then
+        _describe 'option' opts
+        return
+    fi
+
+    # First argument: command
+    if (( CURRENT == 2 )); then
+        _describe 'command' cmds
+        return
+    fi
+
+    # Subcommands and services
+    case ${words[2]} in
+        env)
+            if (( CURRENT == 3 )); then
+                _describe 'subcommand' env_cmds
+            else
+                _kompose_services
+            fi
+            ;;
+        up|down|restart|logs|lint)
+            _kompose_services
+            ;;
+    esac
+}
+
+_kompose_services() {
+    local -a services
+    local workspace="${WORKSPACE_DIR:-$HOME/workspace/homelab}"
+    local host="${CURRENT_HOST:-nas}"
+
+    if [[ -d "$workspace/$host" ]]; then
+        services=(${(f)"$(ls -1 "$workspace/$host" 2>/dev/null | grep -v '^\.')"})
+        _describe 'service' services
+    fi
+}
+
+_kompose "$@"
