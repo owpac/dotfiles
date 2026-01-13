@@ -10,6 +10,7 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
 {{ $brews := list
       "age"
       "chezmoi"
+      "colima"
       "displayplacer"
       "docker"
       "docker-compose"
@@ -29,14 +30,13 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
 {{ $casks := list
       "1password"
       "1password-cli"
+      "aerospace"
       "appcleaner"
-      "arc"
       "discord"
       "elgato-stream-deck"
       "elgato-wave-link"
       "firefox"
       "font-jetbrains-mono-nerd-font"
-      "google-drive"
       "iterm2"
       "obsidian"
       "raycast"
@@ -44,8 +44,8 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
       "rectangle"
       "signal"
       "spotify"
-      "viscosity"
       "visual-studio-code"
+      "zen"
 -}}
 
 log_task "Installing Homebrew taps, brews, and casks..."
