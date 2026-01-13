@@ -41,4 +41,10 @@
 {{ if .is_work -}}
 [includeIf "gitdir:~/Workspace/doctolib/"]
   path = ~/Workspace/doctolib/.gitconfig
+
+[url "git@doctolib:doctolib/"]
+	insteadOf = git@github.com:doctolib/
+
+[url "git@doctolib:doctolib/"]
+	insteadOf = https://github.com/doctolib/
 {{- end -}}
