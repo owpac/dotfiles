@@ -278,7 +278,7 @@ defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 59 "$DIS
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 98 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>104</integer><integer>4</integer><integer>1179648</integer></array><key>type</key><string>standard</string></dict></dict>"
 
 log_done 'Shortcuts configured! 🎉'
-log_blue '⚠️ Please note that you should either restart or disconnet from you session for the changes to take effect!'
+log_blue '⚠️ Please note that you should either restart or disconnect from your session for the changes to take effect!'
 
 
 ################################################################################
@@ -354,7 +354,7 @@ defaults write com.apple.dock persistent-others -array-add '
     <key>file-data</key>
     <dict>
       <key>_CFURLString</key>
-      <string>file:///Users/thomas/</string>
+      <string>file://{{ .chezmoi.homeDir }}/</string>
       <key>_CFURLStringType</key>
       <integer>15</integer>
     </dict>
@@ -377,7 +377,7 @@ defaults write com.apple.dock persistent-others -array-add '
     <key>file-data</key>
     <dict>
       <key>_CFURLString</key>
-      <string>file:///Users/thomas/Downloads/</string>
+      <string>file://{{ .chezmoi.homeDir }}/Downloads/</string>
       <key>_CFURLStringType</key>
       <integer>15</integer>
     </dict>
@@ -424,7 +424,7 @@ osascript -e 'tell application "System Events" to make login item at end with pr
 osascript -e 'tell application "System Events" to make login item at end with properties {name:"iTerm", path:"/Applications/iTerm.app", hidden:true}' >/dev/null 2>&1
 osascript -e 'tell application "System Events" to make login item at end with properties {name:"Rectangle", path:"/Applications/Rectangle.app", hidden:false}' >/dev/null 2>&1
 osascript -e 'tell application "System Events" to make login item at end with properties {name:"Elgato Wave Link", path:"/Applications/Elgato Wave Link.app", hidden:true}' >/dev/null 2>&1
-osascript -e 'tell application "System Events" to make login item at end with properties {name:"Elgato Stream Deck", path:"/Applications/Elgato Wave Link.app", hidden:true}' >/dev/null 2>&1
+osascript -e 'tell application "System Events" to make login item at end with properties {name:"Elgato Stream Deck", path:"/Applications/Elgato Stream Deck.app", hidden:true}' >/dev/null 2>&1
 {{ if (.is_work) -}}
 osascript -e 'tell application "System Events" to make login item at end with properties {name:"MuteDeck", path:"/Applications/MuteDeck/MuteDeck.app", hidden:true}' >/dev/null 2>&1
 {{- end }}
