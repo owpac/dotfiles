@@ -1,5 +1,6 @@
 """Docker Compose commands (up, down, restart, logs, ps)."""
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -227,6 +228,121 @@ def parse_ip_for_sort(ip: str) -> tuple:
         return (999, 999, 999, 999)
 
 
+def _parse_mem_value(s: str) -> float:
+    """Parse memory value like '696.9MiB' to bytes."""
+    match = re.match(r"([\d.]+)\s*(\w+)", s)
+    if not match:
+        return 0
+    
+    value = float(match.group(1))
+    unit = match.group(2).lower()
+    
+    multipliers = {
+        "b": 1,
+        "kib": 1024,
+        "kb": 1000,
+        "mib": 1024 * 1024,
+        "mb": 1000 * 1000,
+        "gib": 1024 * 1024 * 1024,
+        "gb": 1000 * 1000 * 1000,
+    }
+    
+    return value * multipliers.get(unit, 1)
+
+
+def _compact_mem(bytes_val: float) -> str:
+    """Convert bytes to compact string like '697M' or '2.1G'."""
+    if bytes_val >= 1024 * 1024 * 1024:
+        val = bytes_val / (1024 * 1024 * 1024)
+        return f"{val:.0f} G" if val >= 10 else f"{val:.1f} G"
+    elif bytes_val >= 1024 * 1024:
+        val = bytes_val / (1024 * 1024)
+        return f"{val:.0f} M"
+    elif bytes_val >= 1024:
+        val = bytes_val / 1024
+        return f"{val:.0f} K"
+    else:
+        return f"{bytes_val:.0f} B"
+
+
+def _get_system_memory() -> float:
+    """Get total system memory in bytes."""
+    try:
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemTotal:"):
+                    # Format: "MemTotal:       32456789 kB"
+                    parts = line.split()
+                    return float(parts[1]) * 1024  # kB to bytes
+    except Exception:
+        pass
+    return 0
+
+
+def _format_memory(mem_str: str, system_mem: float) -> str:
+    """Format memory string with color based on usage percentage.
+    
+    Input: '696.9MiB / 31.12GiB'
+    Output: colored '697 MiB' or '697M/2G' if custom limit
+    """
+    try:
+        parts = mem_str.split(" / ")
+        if len(parts) != 2:
+            return mem_str
+        
+        usage_str = parts[0].strip()
+        limit_str = parts[1].strip()
+        
+        usage = _parse_mem_value(usage_str)
+        limit = _parse_mem_value(limit_str)
+        
+        # Check if this is a custom limit (significantly less than system memory)
+        has_custom_limit = limit < (system_mem * 0.9) if system_mem > 0 else False
+        
+        # Calculate percentage for color
+        if limit > 0:
+            pct = (usage / limit) * 100
+            if pct >= 80:
+                color = Colors.RED
+            elif pct >= 50:
+                color = Colors.YELLOW
+            else:
+                color = Colors.GREEN
+        else:
+            color = Colors.GREEN
+        
+        # Format output
+        if has_custom_limit:
+            # Show compact format with limit: "697M/2G"
+            usage_compact = _compact_mem(usage)
+            limit_compact = _compact_mem(limit)
+            return f"{color}{usage_compact}/{limit_compact}{Colors.RESET}"
+        else:
+            # Just show usage with space: "697 MiB"
+            formatted = re.sub(r"(\d)([A-Za-z])", r"\1 \2", usage_str)
+            return f"{color}{formatted}{Colors.RESET}"
+    except Exception:
+        return mem_str
+
+
+def get_container_memory_stats(system_mem: float) -> dict[str, str]:
+    """Get memory usage/limit for all running containers."""
+    cmd = ["docker", "stats", "--no-stream", "--format", "{{.Name}}\t{{.MemUsage}}"]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            return {}
+
+        stats = {}
+        for line in result.stdout.strip().split("\n"):
+            if line and "\t" in line:
+                name, mem_usage = line.split("\t", 1)
+                stats[name] = _format_memory(mem_usage, system_mem)
+        return stats
+    except Exception:
+        return {}
+
+
 def cmd_status(args) -> int:
     """Show status of all services with IPs."""
     host = getattr(args, "host", None)
@@ -236,8 +352,13 @@ def cmd_status(args) -> int:
         print(f"{Colors.YELLOW}No services found{Colors.RESET}")
         return 0
 
-    # Get network info (IPs)
+    # Get system memory for header and formatting
+    system_mem = _get_system_memory()
+    system_mem_str = _compact_mem(system_mem) if system_mem > 0 else "?"
+
+    # Get network info (IPs) and memory stats
     network_containers = get_network_containers("reverse-proxy")
+    memory_stats = get_container_memory_stats(system_mem)
 
     # Match containers to services, grouped by service_dir
     service_groups: dict[str, list[dict]] = {}
@@ -285,8 +406,9 @@ def cmd_status(args) -> int:
         key=lambda x: parse_ip_for_sort(get_main_ip(x[1]))
     )
 
-    # Build table
-    table = Table(["Service", "Container", "Status", "IP", "Ports"])
+    # Build table with dynamic Mem header
+    mem_header = f"Mem ({system_mem_str})"
+    table = Table(["Service", "Container", "Status", "IP", mem_header, "Ports"])
     total_containers = 0
     running_containers = 0
 
@@ -339,6 +461,9 @@ def cmd_status(args) -> int:
             # Format IP
             ip_str = ip if ip else f"{Colors.GRAY}-{Colors.RESET}"
 
+            # Format memory (already colored)
+            mem_str = memory_stats.get(container_name, f"{Colors.GRAY}-{Colors.RESET}")
+
             # Format ports
             ports = c.get("Publishers", []) or []
             port_strs = []
@@ -351,7 +476,7 @@ def cmd_status(args) -> int:
             if is_dependency:
                 container_name = f"{Colors.GRAY}{container_name}{Colors.RESET}"
 
-            table.add_row([svc_str, container_name, state_str, ip_str, ports_str])
+            table.add_row([svc_str, container_name, state_str, ip_str, mem_str, ports_str])
 
     print()
     print(table.render())
