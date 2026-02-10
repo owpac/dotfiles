@@ -3,6 +3,16 @@
 
 source {{ .chezmoi.workingTree }}/lib/logs.sh
 
+if [ "$(command -v softwareupdate)" ]; then
+  log_task "Upgrading macOS..."
+  softwareupdate -ia
+fi
+
+if [ "$(command -v mas)" ]; then
+  log_task "Upgrading mas..."
+  mas upgrade
+fi
+
 if [ "$(command -v brew)" ]; then
   log_task "Upgrading packages..."
   brew upgrade
@@ -13,16 +23,6 @@ fi
 if [ "$(command -v mise)" ]; then
   log_task "Updating mise plugins..."
   mise plugins update
-fi
-
-# if [ "$(command -v softwareupdate)" ]; then
-#   log_task "Upgrading macOS..."
-#   softwareupdate -ia
-# fi
-
-if [ "$(command -v mas)" ]; then
-  log_task "Upgrading mas..."
-  mas upgrade
 fi
 
 log_done "Everything is up-to-date!"
