@@ -1,0 +1,10 @@
+{
+  "model": "opus"{{ if .is_work }},
+  "enabledPlugins": {
+    "security@doctolib": true
+  }{{ end }},
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  }
+}
