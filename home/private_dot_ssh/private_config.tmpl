@@ -1,4 +1,6 @@
 {{- if eq .chezmoi.os "darwin" -}}
+Include {{ .chezmoi.homeDir }}/.colima/ssh_config
+
 # Use 1Password SSH agent
 Host *
   IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
@@ -14,14 +16,14 @@ Host github.com
   IdentityFile ~/.ssh/mbp_ed25519.pub
   IdentitiesOnly yes
 
-Host rpi
+Host nas
   HostName 10.0.0.10
   User thomas
   IdentityFile ~/.ssh/mbp_ed25519.pub
   IdentitiesOnly yes
   ForwardAgent yes
 
-Host nas
+Host rpi
   HostName 10.0.0.12
   User thomas
   IdentityFile ~/.ssh/mbp_ed25519.pub
@@ -29,8 +31,6 @@ Host nas
   ForwardAgent yes
 
 {{ if .is_work -}}
-Include /Users/thomas/.colima/ssh_config
-
 Host doctolib
   HostName github.com
   IdentityFile ~/.ssh/doctolib_ed25519.pub
