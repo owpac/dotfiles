@@ -195,11 +195,30 @@ def get_network_containers(network: str = "reverse-proxy") -> dict[str, dict]:
         return {}
 
 
-def get_all_containers_info() -> list[dict]:
-    """Get info about all running containers using docker ps."""
+def _parse_ports_string(ports_str: str) -> list[dict]:
+    """Parse docker ps Ports string into Publishers-compatible format.
+
+    Input: '0.0.0.0:8080->80/tcp, :::8080->80/tcp'
+    Output: [{'PublishedPort': 8080, 'TargetPort': 80}]
+    """
+    if not ports_str:
+        return []
+    publishers = []
+    seen = set()
+    for match in re.finditer(r"(?:\d+\.[\d.]+):(\d+)->(\d+)", ports_str):
+        published, target = match.groups()
+        key = (published, target)
+        if key not in seen:
+            seen.add(key)
+            publishers.append({"PublishedPort": int(published), "TargetPort": int(target)})
+    return publishers
+
+
+def _get_all_compose_containers() -> list[dict]:
+    """Get all compose-managed containers with a single docker ps call."""
     import json
 
-    cmd = ["docker", "ps", "--format", "json"]
+    cmd = ["docker", "ps", "-a", "--filter", "label=com.docker.compose.project", "--format", "json"]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
@@ -207,11 +226,25 @@ def get_all_containers_info() -> list[dict]:
 
         containers = []
         for line in result.stdout.strip().split("\n"):
-            if line:
-                try:
-                    containers.append(json.loads(line))
-                except json.JSONDecodeError:
-                    pass
+            if not line:
+                continue
+            try:
+                data = json.loads(line)
+                # Extract compose project from labels
+                project = ""
+                for part in data.get("Labels", "").split(","):
+                    if part.startswith("com.docker.compose.project="):
+                        project = part.split("=", 1)[1]
+                        break
+                containers.append({
+                    "Name": data.get("Names", ""),
+                    "State": data.get("State", ""),
+                    "Status": data.get("Status", ""),
+                    "Publishers": _parse_ports_string(data.get("Ports", "")),
+                    "_project": project,
+                })
+            except json.JSONDecodeError:
+                pass
         return containers
     except Exception:
         return []
@@ -345,6 +378,8 @@ def get_container_memory_stats(system_mem: float) -> dict[str, str]:
 
 def cmd_status(args) -> int:
     """Show status of all services with IPs."""
+    from concurrent.futures import ThreadPoolExecutor
+
     host = getattr(args, "host", None)
     services = get_services(host)
 
@@ -356,37 +391,29 @@ def cmd_status(args) -> int:
     system_mem = _get_system_memory()
     system_mem_str = _compact_mem(system_mem) if system_mem > 0 else "?"
 
-    # Get network info (IPs) and memory stats
-    network_containers = get_network_containers("reverse-proxy")
-    memory_stats = get_container_memory_stats(system_mem)
+    # Collect all data in parallel: 3 calls instead of N+2 sequential
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        future_containers = pool.submit(_get_all_compose_containers)
+        future_network = pool.submit(get_network_containers, "reverse-proxy")
+        future_memory = pool.submit(get_container_memory_stats, system_mem)
 
-    # Match containers to services, grouped by service_dir
+        all_containers = future_containers.result()
+        network_containers = future_network.result()
+        memory_stats = future_memory.result()
+
+    # Group containers by compose project, filtering to known services
+    service_names = {s.name for s in services}
     service_groups: dict[str, list[dict]] = {}
-    for service_dir in services:
-        compose_files = get_compose_files(service_dir.name, host)
-        if not compose_files:
+    for container in all_containers:
+        project = container.get("_project", "")
+        if project not in service_names:
             continue
-
-        cmd = build_compose_command(compose_files, "ps", ["--format", "json", "-a"])
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=WORKSPACE_DIR)
-            if result.returncode == 0 and result.stdout.strip():
-                import json
-                for line in result.stdout.strip().split("\n"):
-                    if line:
-                        try:
-                            container = json.loads(line)
-                            container["_service_dir"] = service_dir.name
-                            # Get IP for this container
-                            name = container.get("Name", "")
-                            container["_ip"] = network_containers.get(name, {}).get("ipv4", "")
-                            if service_dir.name not in service_groups:
-                                service_groups[service_dir.name] = []
-                            service_groups[service_dir.name].append(container)
-                        except json.JSONDecodeError:
-                            pass
-        except Exception:
-            pass
+        name = container.get("Name", "")
+        container["_ip"] = network_containers.get(name, {}).get("ipv4", "")
+        container["_service_dir"] = project
+        if project not in service_groups:
+            service_groups[project] = []
+        service_groups[project].append(container)
 
     if not service_groups:
         print(f"{Colors.YELLOW}No containers found{Colors.RESET}")

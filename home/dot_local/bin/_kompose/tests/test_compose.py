@@ -10,6 +10,7 @@ from _kompose.compose import (
     parse_ip_for_sort,
     get_compose_files,
     build_compose_command,
+    _parse_ports_string,
 )
 
 
@@ -62,6 +63,34 @@ class TestBuildComposeCommand(unittest.TestCase):
         files = [Path("/path/compose.yml")]
         cmd = build_compose_command(files, "down", None)
         self.assertEqual(cmd, ["docker", "compose", "-f", "/path/compose.yml", "down"])
+
+
+class TestParsePortsString(unittest.TestCase):
+    def test_empty_string(self):
+        self.assertEqual(_parse_ports_string(""), [])
+
+    def test_single_port(self):
+        result = _parse_ports_string("0.0.0.0:8080->80/tcp")
+        self.assertEqual(result, [{"PublishedPort": 8080, "TargetPort": 80}])
+
+    def test_dual_stack_deduplication(self):
+        result = _parse_ports_string("0.0.0.0:8080->80/tcp, :::8080->80/tcp")
+        self.assertEqual(result, [{"PublishedPort": 8080, "TargetPort": 80}])
+
+    def test_multiple_ports(self):
+        result = _parse_ports_string("0.0.0.0:8080->80/tcp, 0.0.0.0:8443->443/tcp")
+        self.assertEqual(result, [
+            {"PublishedPort": 8080, "TargetPort": 80},
+            {"PublishedPort": 8443, "TargetPort": 443},
+        ])
+
+    def test_exposed_only_ignored(self):
+        result = _parse_ports_string("80/tcp, 443/tcp")
+        self.assertEqual(result, [])
+
+    def test_mixed_published_and_exposed(self):
+        result = _parse_ports_string("80/tcp, 0.0.0.0:8080->80/tcp, 443/tcp")
+        self.assertEqual(result, [{"PublishedPort": 8080, "TargetPort": 80}])
 
 
 if __name__ == "__main__":
