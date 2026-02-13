@@ -38,6 +38,7 @@ fi
 alias terractx='terraform workspace select $1'
 alias ghpr='gh pr create -df -t $(git_current_branch) && gh pr view -w && bin/dev ci:build'
 alias gbrm="git for-each-ref --format='%(refname:short)' refs/heads | grep -v \"master\|main\" | xargs git branch -D"
+alias yolo='claude --dangerously-skip-permissions'
 
 {{ if .is_work -}}
 ### Work
