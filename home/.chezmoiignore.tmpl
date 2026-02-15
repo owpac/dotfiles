@@ -2,7 +2,8 @@
 
 {{- if .is_minimum }}
 .gitconfig
-.npmrc
+.local/bin/pac
+.local/bin/completions/_pac
 .workrc
 .ssh/
 .ssh/*
@@ -15,6 +16,8 @@ Workspace/*
 {{- end -}}
 
 {{- if .is_headless }}
+.local/bin/pac
+.local/bin/completions/_pac
 .npmrc
 .workrc
 .ssh/*
@@ -30,18 +33,19 @@ Workspace/*
 {{- end -}}
 
 {{- if ne .chezmoi.os "darwin" }}
+.local/bin/pac
+.local/bin/completions/_pac
 Library/
 Library/*
 {{- end -}}
 
 {{- if not .is_work }}
-.npmrc
 .workrc
 Workspace/
 Workspace/*
 {{- end -}}
 
 {{- if not .is_headless }}
-.local/bin/
-.local/bin/*
+.local/bin/_kompose
+.local/bin/kompose
 {{- end -}}

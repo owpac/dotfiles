@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+_blue='\033[0;34m'
+_green='\033[0;32m'
+_red='\033[0;31m'
+_reset='\033[0m'
+
+log_task() { printf "${_blue}👉 %s${_reset}\n" "$*" >&2; }
+log_done() { printf "${_green}✅ %s${_reset}\n" "$*" >&2; }
+log_error() { printf "${_red}❌ %s${_reset}\n" "$*" >&2; }
+
+update_macos() {
+    log_task "Upgrading macOS..."
+    softwareupdate -ia
+    log_done "macOS updated!"
+}
+
+update_apps() {
+    log_task "Upgrading App Store apps..."
+    mas upgrade
+    log_done "App Store apps updated!"
+}
+
+update_brew() {
+    log_task "Updating Homebrew..."
+    brew update
+    log_task "Upgrading packages..."
+    brew upgrade
+    log_task "Cleaning up..."
+    brew cleanup
+    log_done "Homebrew updated!"
+}
+
+update_mise() {
+    log_task "Updating mise plugins..."
+    mise plugins update
+    log_done "Mise plugins updated!"
+}
+
+update_all() {
+    local failed=0
+    update_macos || { log_error "macOS update failed!"; failed=1; }
+    update_apps  || { log_error "App Store update failed!"; failed=1; }
+    update_brew  || { log_error "Homebrew update failed!"; failed=1; }
+    update_mise  || { log_error "Mise update failed!"; failed=1; }
+    return $failed
+}
+
+usage() {
+    cat >&2 <<EOF
+Usage: pac <command> [subcommand]
+
+Commands:
+    update            Update everything (macOS, apps, brew, mise)
+    update macos      Run macOS software updates
+    update apps       Update App Store apps via mas
+    update brew       Update and upgrade Homebrew packages
+    update mise       Update mise plugins
+EOF
+}
+
+case "${1:-}" in
+    update)
+        case "${2:-}" in
+            "")    update_all ;;
+            macos) update_macos ;;
+            apps)  update_apps ;;
+            brew)  update_brew ;;
+            mise)  update_mise ;;
+            *)     usage; exit 1 ;;
+        esac
+        ;;
+    *)  usage ;;
+esac
