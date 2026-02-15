@@ -1,0 +1,19 @@
+#compdef pac
+
+_pac() {
+  local -a subcmds
+  if (( CURRENT == 2 )); then
+    subcmds=('update:Update everything')
+    _describe 'command' subcmds
+  elif (( CURRENT == 3 )) && [[ "${words[2]}" == "update" ]]; then
+    subcmds=(
+      'macos:Run macOS software updates'
+      'apps:Update App Store apps via mas'
+      'brew:Update and upgrade Homebrew packages'
+      'mise:Update mise plugins'
+    )
+    _describe 'subcommand' subcmds
+  fi
+}
+
+_pac "$@"
