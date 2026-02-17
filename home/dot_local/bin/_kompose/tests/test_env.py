@@ -16,6 +16,7 @@ from _kompose.env import (
     remove_vars_from_env_file,
     _parse_commented_vars,
     build_example_content,
+    fix_trailing_newline,
     rebuild_example,
 )
 
@@ -70,6 +71,24 @@ class TestParseEnvFile(unittest.TestCase):
 
         self.assertEqual(len(env), 2)
 
+    def test_parse_empty_file(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("")
+            f.flush()
+
+            env = parse_env_file(Path(f.name))
+
+        self.assertEqual(env, {})
+
+    def test_parse_lowercase_keys(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("my_key=value\n")
+            f.flush()
+
+            env = parse_env_file(Path(f.name))
+
+        self.assertEqual(env["my_key"], "value")
+
     def test_parse_handles_values_with_equals(self):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
             f.write("CONNECTION_STRING=host=localhost;port=5432\n")
@@ -96,6 +115,15 @@ class TestReadEnvLines(unittest.TestCase):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
             f.write("KEY=value   \n")
             f.write("OTHER=data\t\n")
+            f.flush()
+
+            lines = read_env_lines(Path(f.name))
+
+        self.assertEqual(lines, ["KEY=value", "OTHER=data"])
+
+    def test_reads_file_without_trailing_newline(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("KEY=value\nOTHER=data")
             f.flush()
 
             lines = read_env_lines(Path(f.name))
@@ -139,6 +167,17 @@ class TestFindInsertPosition(unittest.TestCase):
         pos = find_insert_position(lines, "NEW_VAR", ["PUID", "PGID"])
         self.assertEqual(pos, 2)
 
+    def test_find_position_skips_comments_and_blanks(self):
+        lines = [
+            "# Section",
+            "DB_HOST=localhost",
+            "",
+            "DB_USER=admin",
+        ]
+
+        pos = find_insert_position(lines, "DB_PASS", ["DB_HOST", "DB_USER"])
+        self.assertEqual(pos, 4)
+
     def test_find_position_empty_lines(self):
         lines = []
 
@@ -175,6 +214,14 @@ class TestAddVarsToEnvFile(unittest.TestCase):
         content = env_path.read_text()
         self.assertIn("PGID=1000", content)
         self.assertIn("TZ=Europe/Paris", content)
+
+    def test_add_vars_ensures_trailing_newline(self):
+        env_path = Path(self.temp_dir) / ".env"
+        env_path.write_text("PUID=1000\n")
+
+        add_vars_to_env_file(env_path, {"TZ": "Europe/Paris"}, ["TZ"])
+
+        self.assertTrue(env_path.read_text().endswith("\n"))
 
     def test_add_vars_preserves_existing(self):
         env_path = Path(self.temp_dir) / ".env"
@@ -226,6 +273,22 @@ class TestRemoveVarsFromEnvFile(unittest.TestCase):
         content = env_path.read_text()
         self.assertIn("PUID=1000", content)
 
+    def test_remove_all_vars_leaves_trailing_newline(self):
+        env_path = Path(self.temp_dir) / ".env"
+        env_path.write_text("A=1\nB=2\n")
+
+        remove_vars_from_env_file(env_path, {"A", "B"})
+
+        self.assertTrue(env_path.read_text().endswith("\n"))
+
+    def test_remove_ensures_trailing_newline(self):
+        env_path = Path(self.temp_dir) / ".env"
+        env_path.write_text("A=1\nB=2\n")
+
+        remove_vars_from_env_file(env_path, {"B"})
+
+        self.assertTrue(env_path.read_text().endswith("\n"))
+
     def test_remove_preserves_comments(self):
         env_path = Path(self.temp_dir) / ".env"
         env_path.write_text("# Comment\nPUID=1000\nPGID=1000\n")
@@ -269,10 +332,68 @@ class TestParseCommentedVars(unittest.TestCase):
 
         self.assertEqual(result, {})
 
+    def test_multiple_spaces_after_hash(self):
+        path = Path(self.temp_dir) / ".env"
+        path.write_text("#   API_KEY=secret\n")
+
+        result = _parse_commented_vars(path)
+
+        self.assertEqual(result, {"API_KEY": "secret"})
+
     def test_nonexistent_file(self):
         result = _parse_commented_vars(Path("/nonexistent/.env"))
 
         self.assertEqual(result, {})
+
+
+class TestFixTrailingNewline(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_adds_newline_when_missing(self):
+        path = Path(self.temp_dir) / ".env"
+        path.write_text("KEY=value")
+
+        changed = fix_trailing_newline(path)
+
+        self.assertTrue(changed)
+        self.assertEqual(path.read_text(), "KEY=value\n")
+
+    def test_no_change_when_present(self):
+        path = Path(self.temp_dir) / ".env"
+        path.write_text("KEY=value\n")
+
+        changed = fix_trailing_newline(path)
+
+        self.assertFalse(changed)
+
+    def test_no_change_on_empty_file(self):
+        path = Path(self.temp_dir) / ".env"
+        path.write_text("")
+
+        changed = fix_trailing_newline(path)
+
+        self.assertFalse(changed)
+
+    def test_multiline_without_newline(self):
+        path = Path(self.temp_dir) / ".env"
+        path.write_text("KEY=value\nOTHER=data")
+
+        changed = fix_trailing_newline(path)
+
+        self.assertTrue(changed)
+        self.assertEqual(path.read_text(), "KEY=value\nOTHER=data\n")
+
+    def test_does_not_double_newline(self):
+        path = Path(self.temp_dir) / ".env"
+        path.write_text("KEY=value\n\n")
+
+        changed = fix_trailing_newline(path)
+
+        self.assertFalse(changed)
 
 
 class TestBuildExampleContent(unittest.TestCase):
@@ -311,6 +432,28 @@ class TestBuildExampleContent(unittest.TestCase):
         content = build_example_content(env_path, example_path)
 
         self.assertEqual(content, "DB_HOST=localhost\n")
+
+    def test_empty_env_with_nonempty_example(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("")
+        example_path.write_text("KEY=''\nOTHER=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        # .env is structural reference: empty .env = empty output
+        self.assertEqual(content, "")
+
+    def test_env_without_trailing_newline(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("KEY=value\nOTHER=data")
+        example_path.write_text("KEY=''\nOTHER=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        # Output always has trailing newline
+        self.assertEqual(content, "KEY=''\nOTHER=''\n")
 
     def test_empty_env_produces_empty_content(self):
         env_path = Path(self.temp_dir) / ".env"
@@ -534,6 +677,27 @@ class TestRebuildExample(unittest.TestCase):
 
         self.assertTrue(changed)
         self.assertEqual(example_path.read_text(), "# API_KEY=''\nKEY=''\n")
+
+    def test_no_rebuild_when_both_empty(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("")
+        example_path.write_text("")
+
+        changed = rebuild_example(env_path, example_path)
+
+        self.assertFalse(changed)
+
+    def test_rebuild_fixes_missing_trailing_newline_in_example(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("KEY=value\n")
+        example_path.write_text("KEY=''")  # no trailing newline
+
+        changed = rebuild_example(env_path, example_path)
+
+        self.assertTrue(changed)
+        self.assertEqual(example_path.read_text(), "KEY=''\n")
 
     def test_rebuild_preserves_existing_commented_out_vars(self):
         env_path = Path(self.temp_dir) / ".env"
