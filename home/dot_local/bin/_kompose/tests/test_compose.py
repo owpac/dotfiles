@@ -64,6 +64,16 @@ class TestBuildComposeCommand(unittest.TestCase):
         cmd = build_compose_command(files, "down", None)
         self.assertEqual(cmd, ["docker", "compose", "-f", "/path/compose.yml", "down"])
 
+    def test_build_command_with_containers(self):
+        files = [Path("/path/compose.yml")]
+        cmd = build_compose_command(files, "up", ["-d"], ["plex", "sonarr"])
+        self.assertEqual(cmd, ["docker", "compose", "-f", "/path/compose.yml", "up", "-d", "plex", "sonarr"])
+
+    def test_build_command_with_containers_no_extra_args(self):
+        files = [Path("/path/compose.yml")]
+        cmd = build_compose_command(files, "down", None, ["plex"])
+        self.assertEqual(cmd, ["docker", "compose", "-f", "/path/compose.yml", "down", "plex"])
+
 
 class TestParsePortsString(unittest.TestCase):
     def test_empty_string(self):
