@@ -14,6 +14,9 @@ from _kompose.env import (
     find_insert_position,
     add_vars_to_env_file,
     remove_vars_from_env_file,
+    _parse_commented_vars,
+    build_example_content,
+    rebuild_example,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -88,6 +91,28 @@ class TestReadEnvLines(unittest.TestCase):
         lines = read_env_lines(Path("/nonexistent/.env"))
 
         self.assertEqual(lines, [])
+
+    def test_strips_trailing_whitespace(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("KEY=value   \n")
+            f.write("OTHER=data\t\n")
+            f.flush()
+
+            lines = read_env_lines(Path(f.name))
+
+        self.assertEqual(lines, ["KEY=value", "OTHER=data"])
+
+    def test_preserves_comments_and_blank_lines(self):
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
+            f.write("# Section\n")
+            f.write("KEY=value\n")
+            f.write("\n")
+            f.write("OTHER=data\n")
+            f.flush()
+
+            lines = read_env_lines(Path(f.name))
+
+        self.assertEqual(lines, ["# Section", "KEY=value", "", "OTHER=data"])
 
 
 class TestFindInsertPosition(unittest.TestCase):
@@ -211,6 +236,315 @@ class TestRemoveVarsFromEnvFile(unittest.TestCase):
         self.assertIn("# Comment", content)
         self.assertIn("PUID=1000", content)
         self.assertNotIn("PGID", content)
+
+
+class TestParseCommentedVars(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_parses_commented_vars(self):
+        path = Path(self.temp_dir) / ".env"
+        path.write_text("# API_KEY=secret\n# OTHER=value\nKEY=active\n")
+
+        result = _parse_commented_vars(path)
+
+        self.assertEqual(result, {"API_KEY": "secret", "OTHER": "value"})
+
+    def test_ignores_plain_comments(self):
+        path = Path(self.temp_dir) / ".env"
+        path.write_text("# This is a header\nKEY=value\n")
+
+        result = _parse_commented_vars(path)
+
+        self.assertEqual(result, {})
+
+    def test_ignores_empty_value_comments(self):
+        path = Path(self.temp_dir) / ".env"
+        path.write_text("# KEY=\nOTHER=value\n")
+
+        result = _parse_commented_vars(path)
+
+        self.assertEqual(result, {})
+
+    def test_nonexistent_file(self):
+        result = _parse_commented_vars(Path("/nonexistent/.env"))
+
+        self.assertEqual(result, {})
+
+
+class TestBuildExampleContent(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_copies_comments_and_blank_lines(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("# General\nPUID=1000\nPGID=1000\n\n# Database\nDB_HOST=localhost\n")
+        example_path.write_text("PUID=''\nPGID=''\nDB_HOST=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(content, "# General\nPUID=''\nPGID=''\n\n# Database\nDB_HOST=''\n")
+
+    def test_new_vars_get_empty_value(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("EXISTING=value\nNEW_VAR=secret\n")
+        example_path.write_text("EXISTING=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(content, "EXISTING=''\nNEW_VAR=''\n")
+
+    def test_preserves_existing_example_values(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("DB_HOST=prod.db.com\n")
+        example_path.write_text("DB_HOST=localhost\n")
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(content, "DB_HOST=localhost\n")
+
+    def test_empty_env_produces_empty_content(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("")
+        example_path.write_text("")
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(content, "")
+
+    def test_multiple_comment_sections(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text(
+            "# General\nPUID=1000\nPGID=1000\n\n"
+            "# App\nAPP_KEY=secret\nAPP_DEBUG=true\n\n"
+            "# DB\nDB_HOST=prod\n"
+        )
+        example_path.write_text("PUID=''\nPGID=''\nAPP_KEY=''\nAPP_DEBUG=''\nDB_HOST=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(
+            content,
+            "# General\nPUID=''\nPGID=''\n\n"
+            "# App\nAPP_KEY=''\nAPP_DEBUG=''\n\n"
+            "# DB\nDB_HOST=''\n"
+        )
+
+    def test_ignores_trailing_whitespace_in_env(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("KEY=value   \nOTHER=data\t\n")
+        example_path.write_text("KEY=''\nOTHER=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(content, "KEY=''\nOTHER=''\n")
+
+    def test_nonexistent_example_uses_empty_values(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("KEY=value\nOTHER=data\n")
+        # example_path does not exist
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(content, "KEY=''\nOTHER=''\n")
+
+    def test_sanitizes_commented_out_env_vars(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("# SECRET_KEY=my_actual_secret_123\nKEY=value\n")
+        example_path.write_text("KEY=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(content, "# SECRET_KEY=''\nKEY=''\n")
+
+    def test_sanitizes_commented_out_vars_no_space_after_hash(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("#API_KEY=secret_token\nKEY=value\n")
+        example_path.write_text("KEY=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(content, "#API_KEY=''\nKEY=''\n")
+
+    def test_preserves_commented_out_vars_with_empty_value(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("# OPTIONAL_KEY=\nKEY=value\n")
+        example_path.write_text("KEY=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        # Empty value (# KEY=) is not sensitive, kept as-is
+        self.assertEqual(content, "# OPTIONAL_KEY=\nKEY=''\n")
+
+    def test_preserves_plain_comments(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("# This is a section header\n# Another description line\nKEY=value\n")
+        example_path.write_text("KEY=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(content, "# This is a section header\n# Another description line\nKEY=''\n")
+
+    def test_sanitizes_new_commented_out_vars(self):
+        """Commented vars not in .env.example are sanitized to ''."""
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text(
+            "# Homepage widgets\n"
+            "# HOMEPAGE_VAR_SONARR_KEY=abc123secret\n"
+            "# HOMEPAGE_VAR_RADARR_KEY=def456secret\n"
+            "HOMEPAGE_PORT=3000\n"
+        )
+        example_path.write_text("HOMEPAGE_PORT=''\n")
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(
+            content,
+            "# Homepage widgets\n"
+            "# HOMEPAGE_VAR_SONARR_KEY=''\n"
+            "# HOMEPAGE_VAR_RADARR_KEY=''\n"
+            "HOMEPAGE_PORT=''\n"
+        )
+
+    def test_preserves_existing_commented_out_vars(self):
+        """Commented vars already in .env.example keep their value."""
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text(
+            "# HOMEPAGE_VAR_SONARR_KEY=abc123secret\n"
+            "# HOMEPAGE_VAR_RADARR_KEY=def456secret\n"
+            "HOMEPAGE_PORT=3000\n"
+        )
+        example_path.write_text(
+            "# HOMEPAGE_VAR_SONARR_KEY=<sonarr_api_key>\n"
+            "# HOMEPAGE_VAR_RADARR_KEY=<radarr_api_key>\n"
+            "HOMEPAGE_PORT=''\n"
+        )
+
+        content = build_example_content(env_path, example_path)
+
+        self.assertEqual(
+            content,
+            "# HOMEPAGE_VAR_SONARR_KEY=<sonarr_api_key>\n"
+            "# HOMEPAGE_VAR_RADARR_KEY=<radarr_api_key>\n"
+            "HOMEPAGE_PORT=''\n"
+        )
+
+
+class TestRebuildExample(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_rebuild_when_structure_differs(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("# Section\nKEY=value\n\nOTHER=data\n")
+        example_path.write_text("KEY=''\nOTHER=''\n")
+
+        changed = rebuild_example(env_path, example_path)
+
+        self.assertTrue(changed)
+        self.assertEqual(example_path.read_text(), "# Section\nKEY=''\n\nOTHER=''\n")
+
+    def test_no_rebuild_when_identical(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("# Section\nKEY=value\n")
+        example_path.write_text("# Section\nKEY=''\n")
+
+        changed = rebuild_example(env_path, example_path)
+
+        self.assertFalse(changed)
+
+    def test_rebuild_reorders_to_match_env(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("B=2\nA=1\n")
+        example_path.write_text("A=''\nB=''\n")
+
+        changed = rebuild_example(env_path, example_path)
+
+        self.assertTrue(changed)
+        self.assertEqual(example_path.read_text(), "B=''\nA=''\n")
+
+    def test_rebuild_adds_missing_comments(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("# Server\nHOST=0.0.0.0\nPORT=8080\n\n# Auth\nSECRET=abc\n")
+        example_path.write_text("HOST=''\nPORT=''\nSECRET=''\n")
+
+        changed = rebuild_example(env_path, example_path)
+
+        self.assertTrue(changed)
+        self.assertEqual(
+            example_path.read_text(),
+            "# Server\nHOST=''\nPORT=''\n\n# Auth\nSECRET=''\n"
+        )
+
+    def test_rebuild_strips_trailing_whitespace(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("KEY=value\n")
+        example_path.write_text("KEY=''   \n")
+
+        changed = rebuild_example(env_path, example_path)
+
+        self.assertTrue(changed)
+        self.assertEqual(example_path.read_text(), "KEY=''\n")
+
+    def test_rebuild_creates_example_if_missing(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("KEY=value\n")
+        # example_path does not exist
+
+        changed = rebuild_example(env_path, example_path)
+
+        self.assertTrue(changed)
+        self.assertEqual(example_path.read_text(), "KEY=''\n")
+
+    def test_rebuild_sanitizes_new_commented_out_vars(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("# API_KEY=real_secret\nKEY=value\n")
+        example_path.write_text("KEY=''\n")  # no commented API_KEY in example
+
+        changed = rebuild_example(env_path, example_path)
+
+        self.assertTrue(changed)
+        self.assertEqual(example_path.read_text(), "# API_KEY=''\nKEY=''\n")
+
+    def test_rebuild_preserves_existing_commented_out_vars(self):
+        env_path = Path(self.temp_dir) / ".env"
+        example_path = Path(self.temp_dir) / ".env.example"
+        env_path.write_text("# API_KEY=real_secret\nKEY=value\n")
+        example_path.write_text("# API_KEY=<your_api_key>\nKEY=''\n")
+
+        changed = rebuild_example(env_path, example_path)
+
+        self.assertFalse(changed)
+        self.assertEqual(example_path.read_text(), "# API_KEY=<your_api_key>\nKEY=''\n")
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ Commands:
     logs         View service logs
     status       Show services status with IPs
     lint         Check compose.yml files
+    env check    Check .env drift (read-only)
     env sync     Sync .env files
 """
 
@@ -25,7 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from _kompose import __version__
 from _kompose.compose import cmd_down, cmd_logs, cmd_restart, cmd_status, cmd_up
 from _kompose.config import DEFAULT_HOST
-from _kompose.env import cmd_env_sync
+from _kompose.env import cmd_env_check, cmd_env_sync
 from _kompose.lint import cmd_lint
 from _kompose.utils import init_colors
 
@@ -40,11 +41,14 @@ Examples:
   kompose up                    Start all services (host: {DEFAULT_HOST})
   kompose up paperless          Start specific service
   kompose down                  Stop all services
+  kompose down servarr plex     Stop specific container in a service
   kompose restart immich        Restart specific service
   kompose logs paperless        View logs (follow mode)
   kompose logs paperless -n 50  View last 50 lines
   kompose status                Show all services with IPs
+  kompose status --stats        Show services with memory usage
   kompose lint                  Lint all compose.yml files
+  kompose env check             Check .env drift (read-only)
   kompose env sync              Sync all .env files
   kompose env sync -f           Sync without confirmation
 
@@ -61,21 +65,25 @@ Host override:
     # up
     up_parser = subparsers.add_parser("up", help="Start services")
     up_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to start (default: all)")
+    up_parser.add_argument("containers", nargs="*", metavar="<container>", help="Specific containers within the service")
     up_parser.set_defaults(func=cmd_up)
 
     # down
     down_parser = subparsers.add_parser("down", help="Stop services")
     down_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to stop (default: all)")
+    down_parser.add_argument("containers", nargs="*", metavar="<container>", help="Specific containers within the service")
     down_parser.set_defaults(func=cmd_down)
 
     # restart
     restart_parser = subparsers.add_parser("restart", help="Restart services")
     restart_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to restart (default: all)")
+    restart_parser.add_argument("containers", nargs="*", metavar="<container>", help="Specific containers within the service")
     restart_parser.set_defaults(func=cmd_restart)
 
     # logs
     logs_parser = subparsers.add_parser("logs", help="View service logs")
     logs_parser.add_argument("service", metavar="<service>", help="Service to view logs")
+    logs_parser.add_argument("containers", nargs="*", metavar="<container>", help="Specific containers within the service")
     logs_parser.add_argument("-f", "--follow", action="store_true", default=True, help="Follow log output (default)")
     logs_parser.add_argument("--no-follow", action="store_false", dest="follow", help="Don't follow log output")
     logs_parser.add_argument("-n", "--tail", default="100", metavar="N", help="Number of lines to show (default: 100)")
@@ -83,6 +91,7 @@ Host override:
 
     # status
     status_parser = subparsers.add_parser("status", aliases=["st"], help="Show services status with IPs")
+    status_parser.add_argument("-s", "--stats", action="store_true", help="Show memory usage stats")
     status_parser.set_defaults(func=cmd_status)
 
     # lint
@@ -93,6 +102,10 @@ Host override:
     # env
     env_parser = subparsers.add_parser("env", help="Environment file operations")
     env_subparsers = env_parser.add_subparsers(dest="env_command", metavar="<subcommand>")
+
+    check_parser = env_subparsers.add_parser("check", aliases=["c"], help="Check .env vs .env.example (read-only)")
+    check_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to check (default: all)")
+    check_parser.set_defaults(func=cmd_env_check)
 
     sync_parser = env_subparsers.add_parser("sync", aliases=["s"], help="Sync .env with .env.example")
     sync_parser.add_argument("service", nargs="?", metavar="<service>", help="Service to sync (default: all)")

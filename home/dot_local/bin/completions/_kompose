@@ -4,7 +4,7 @@ _kompose() {
     local context state state_descr line
     typeset -A opt_args
 
-    local -a opts cmds env_cmds
+    local -a opts cmds env_cmds status_opts
 
     opts=(
         '-h:Show help'
@@ -27,12 +27,25 @@ _kompose() {
     )
 
     env_cmds=(
+        'check:Check .env drift (read-only)'
         'sync:Sync .env files'
+    )
+
+    status_opts=(
+        '-s:Show memory usage stats'
+        '--stats:Show memory usage stats'
     )
 
     # Options
     if [[ ${words[CURRENT]} == -* ]]; then
-        _describe 'option' opts
+        case ${words[2]} in
+            status|st)
+                _describe 'option' status_opts
+                ;;
+            *)
+                _describe 'option' opts
+                ;;
+        esac
         return
     fi
 

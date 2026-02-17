@@ -26,7 +26,12 @@ def get_compose_files(service: str, host: str | None = None) -> list[Path]:
     return files
 
 
-def build_compose_command(compose_files: list[Path], action: str, extra_args: list[str] | None = None) -> list[str]:
+def build_compose_command(
+    compose_files: list[Path],
+    action: str,
+    extra_args: list[str] | None = None,
+    containers: list[str] | None = None,
+) -> list[str]:
     """Build the docker compose command."""
     cmd = ["docker", "compose"]
     for f in compose_files:
@@ -34,10 +39,18 @@ def build_compose_command(compose_files: list[Path], action: str, extra_args: li
     cmd.append(action)
     if extra_args:
         cmd.extend(extra_args)
+    if containers:
+        cmd.extend(containers)
     return cmd
 
 
-def run_compose(service: str, action: str, host: str | None = None, extra_args: list[str] | None = None) -> int:
+def run_compose(
+    service: str,
+    action: str,
+    host: str | None = None,
+    extra_args: list[str] | None = None,
+    containers: list[str] | None = None,
+) -> int:
     """Run docker compose command for a service."""
     compose_files = get_compose_files(service, host)
 
@@ -45,7 +58,7 @@ def run_compose(service: str, action: str, host: str | None = None, extra_args: 
         print(f"{Colors.RED}Error: No compose.yml found for service '{service}'{Colors.RESET}")
         return 1
 
-    cmd = build_compose_command(compose_files, action, extra_args)
+    cmd = build_compose_command(compose_files, action, extra_args, containers)
 
     # Show which files we're using
     files_str = " + ".join(str(f.relative_to(WORKSPACE_DIR)) for f in compose_files)
@@ -63,9 +76,10 @@ def cmd_up(args) -> int:
     """Start services."""
     host = getattr(args, "host", None)
     service = getattr(args, "service", None)
+    containers = getattr(args, "containers", None) or None
 
     if service:
-        return run_compose(service, "up", host, ["-d"])
+        return run_compose(service, "up", host, ["-d"], containers)
     else:
         # Start all services
         services = get_services(host)
@@ -91,9 +105,10 @@ def cmd_down(args) -> int:
     """Stop services."""
     host = getattr(args, "host", None)
     service = getattr(args, "service", None)
+    containers = getattr(args, "containers", None) or None
 
     if service:
-        return run_compose(service, "down", host)
+        return run_compose(service, "down", host, containers=containers)
     else:
         # Stop all services
         services = get_services(host)
@@ -119,14 +134,15 @@ def cmd_restart(args) -> int:
     """Restart services (down + up)."""
     host = getattr(args, "host", None)
     service = getattr(args, "service", None)
+    containers = getattr(args, "containers", None) or None
 
     if service:
         print(f"{Colors.BOLD}Stopping {service}...{Colors.RESET}")
-        result = run_compose(service, "down", host)
+        result = run_compose(service, "down", host, containers=containers)
         if result != 0:
             return result
         print(f"\n{Colors.BOLD}Starting {service}...{Colors.RESET}")
-        return run_compose(service, "up", host, ["-d"])
+        return run_compose(service, "up", host, ["-d"], containers)
     else:
         # Restart all services
         services = get_services(host)
@@ -156,6 +172,7 @@ def cmd_logs(args) -> int:
     """View service logs."""
     host = getattr(args, "host", None)
     service = getattr(args, "service", None)
+    containers = getattr(args, "containers", None) or None
     follow = getattr(args, "follow", True)
     tail = getattr(args, "tail", "100")
 
@@ -167,7 +184,7 @@ def cmd_logs(args) -> int:
     if follow:
         extra_args.append("-f")
 
-    return run_compose(service, "logs", host, extra_args)
+    return run_compose(service, "logs", host, extra_args, containers)
 
 
 def get_network_containers(network: str = "reverse-proxy") -> dict[str, dict]:
@@ -313,25 +330,25 @@ def _get_system_memory() -> float:
 
 
 def _format_memory(mem_str: str, system_mem: float) -> str:
-    """Format memory string with color based on usage percentage.
-    
+    """Format memory string as colored percentage.
+
     Input: '696.9MiB / 31.12GiB'
-    Output: colored '697 MiB' or '697M/2G' if custom limit
+    Output: colored '2.2%' or '34.8%/2G' if custom limit
     """
     try:
         parts = mem_str.split(" / ")
         if len(parts) != 2:
             return mem_str
-        
+
         usage_str = parts[0].strip()
         limit_str = parts[1].strip()
-        
+
         usage = _parse_mem_value(usage_str)
         limit = _parse_mem_value(limit_str)
-        
+
         # Check if this is a custom limit (significantly less than system memory)
         has_custom_limit = limit < (system_mem * 0.9) if system_mem > 0 else False
-        
+
         # Calculate percentage for color
         if limit > 0:
             pct = (usage / limit) * 100
@@ -343,17 +360,15 @@ def _format_memory(mem_str: str, system_mem: float) -> str:
                 color = Colors.GREEN
         else:
             color = Colors.GREEN
-        
-        # Format output
+            pct = 0
+
+        # Format output as percentage
+        pct_str = f"{pct:.1f}%" if pct < 10 else f"{pct:.0f}%"
         if has_custom_limit:
-            # Show compact format with limit: "697M/2G"
-            usage_compact = _compact_mem(usage)
             limit_compact = _compact_mem(limit)
-            return f"{color}{usage_compact}/{limit_compact}{Colors.RESET}"
+            return f"{color}{pct_str}/{limit_compact}{Colors.RESET}"
         else:
-            # Just show usage with space: "697 MiB"
-            formatted = re.sub(r"(\d)([A-Za-z])", r"\1 \2", usage_str)
-            return f"{color}{formatted}{Colors.RESET}"
+            return f"{color}{pct_str}{Colors.RESET}"
     except Exception:
         return mem_str
 
@@ -381,6 +396,7 @@ def cmd_status(args) -> int:
     from concurrent.futures import ThreadPoolExecutor
 
     host = getattr(args, "host", None)
+    show_stats = getattr(args, "stats", False)
     services = get_services(host)
 
     if not services:
@@ -388,18 +404,18 @@ def cmd_status(args) -> int:
         return 0
 
     # Get system memory for header and formatting
-    system_mem = _get_system_memory()
+    system_mem = _get_system_memory() if show_stats else 0
     system_mem_str = _compact_mem(system_mem) if system_mem > 0 else "?"
 
-    # Collect all data in parallel: 3 calls instead of N+2 sequential
+    # Collect all data in parallel
     with ThreadPoolExecutor(max_workers=3) as pool:
         future_containers = pool.submit(_get_all_compose_containers)
         future_network = pool.submit(get_network_containers, "reverse-proxy")
-        future_memory = pool.submit(get_container_memory_stats, system_mem)
+        future_memory = pool.submit(get_container_memory_stats, system_mem) if show_stats else None
 
         all_containers = future_containers.result()
         network_containers = future_network.result()
-        memory_stats = future_memory.result()
+        memory_stats = future_memory.result() if future_memory else {}
 
     # Group containers by compose project, filtering to known services
     service_names = {s.name for s in services}
@@ -433,9 +449,12 @@ def cmd_status(args) -> int:
         key=lambda x: parse_ip_for_sort(get_main_ip(x[1]))
     )
 
-    # Build table with dynamic Mem header
-    mem_header = f"Mem ({system_mem_str})"
-    table = Table(["Service", "Container", "Status", "IP", mem_header, "Ports"])
+    # Build table headers
+    headers = ["Service", "Container", "Status", "IP"]
+    if show_stats:
+        headers.append(f"Mem ({system_mem_str})")
+    headers.append("Ports")
+    table = Table(headers)
     total_containers = 0
     running_containers = 0
 
@@ -488,9 +507,6 @@ def cmd_status(args) -> int:
             # Format IP
             ip_str = ip if ip else f"{Colors.GRAY}-{Colors.RESET}"
 
-            # Format memory (already colored)
-            mem_str = memory_stats.get(container_name, f"{Colors.GRAY}-{Colors.RESET}")
-
             # Format ports
             ports = c.get("Publishers", []) or []
             port_strs = []
@@ -503,7 +519,12 @@ def cmd_status(args) -> int:
             if is_dependency:
                 container_name = f"{Colors.GRAY}{container_name}{Colors.RESET}"
 
-            table.add_row([svc_str, container_name, state_str, ip_str, mem_str, ports_str])
+            row = [svc_str, container_name, state_str, ip_str]
+            if show_stats:
+                mem_str = memory_stats.get(c.get("Name", ""), f"{Colors.GRAY}-{Colors.RESET}")
+                row.append(mem_str)
+            row.append(ports_str)
+            table.add_row(row)
 
     print()
     print(table.render())
