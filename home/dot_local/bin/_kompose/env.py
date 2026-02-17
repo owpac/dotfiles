@@ -140,6 +140,15 @@ def build_example_content(env_path: Path, example_path: Path) -> str:
     return "\n".join(new_lines) + "\n" if new_lines else ""
 
 
+def fix_trailing_newline(path: Path) -> bool:
+    """Ensure file ends with a newline. Returns True if changed."""
+    content = path.read_text()
+    if content and not content.endswith("\n"):
+        path.write_text(content + "\n")
+        return True
+    return False
+
+
 def rebuild_example(env_path: Path, example_path: Path) -> bool:
     """Rebuild .env.example to match .env's structure. Returns True if changed."""
     new_content = build_example_content(env_path, example_path)
@@ -210,11 +219,12 @@ def cmd_env_check(args) -> int:
         only_in_env = set(env_vars.keys()) - set(example_vars.keys())
         only_in_example = set(example_vars.keys()) - set(env_vars.keys())
 
-        # Check structural drift (comments, blank lines, order)
+        # Check structural drift (comments, blank lines, order, trailing newline)
         expected = build_example_content(env_file, env_example)
-        actual_lines = [l.rstrip() for l in env_example.read_text().splitlines()]
-        actual = "\n".join(actual_lines) + "\n" if actual_lines else ""
-        structure_drift = expected != actual
+        actual = env_example.read_text()
+        env_content = env_file.read_text()
+        env_missing_newline = bool(env_content) and not env_content.endswith("\n")
+        structure_drift = expected != actual or env_missing_newline
 
         if not only_in_env and not only_in_example and not structure_drift:
             table.add_row([service, f"{Colors.GREEN}ok{Colors.RESET}", f"{Colors.GRAY}-{Colors.RESET}"])
@@ -307,8 +317,10 @@ def cmd_env_sync(args) -> int:
 
         if not only_in_env and not only_in_example:
             # Variables match, but check structure
-            if rebuild_example(env_file, env_example):
-                table.add_row([service, f"{Colors.YELLOW}~ structure{Colors.RESET}", "synced .env.example"])
+            env_fixed = fix_trailing_newline(env_file)
+            example_fixed = rebuild_example(env_file, env_example)
+            if env_fixed or example_fixed:
+                table.add_row([service, f"{Colors.YELLOW}~ structure{Colors.RESET}", "synced"])
                 sync_results.append(EnvSyncResult(service, "structure", ".env.example"))
             else:
                 table.add_row([service, f"{Colors.GREEN}\u2713 synced{Colors.RESET}", f"{Colors.GRAY}-{Colors.RESET}"])
@@ -378,8 +390,9 @@ def cmd_env_sync(args) -> int:
                 changes.append(f"{len(only_in_example)} skipped")
                 sync_results.append(EnvSyncResult(service, "skipped", ".env.example", sorted(only_in_example)))
 
-        # Rebuild .env.example structure from .env
+        # Fix trailing newline and rebuild .env.example structure from .env
         if env_file.exists() and env_example.exists():
+            fix_trailing_newline(env_file)
             if rebuild_example(env_file, env_example):
                 changes.append("structure")
                 sync_results.append(EnvSyncResult(service, "structure", ".env.example"))
