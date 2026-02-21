@@ -4,7 +4,5 @@ fpath+=("{{ output "/opt/homebrew/bin/brew" "--prefix" | trim }}/share/zsh/site-
 eval "$(/opt/homebrew/bin/brew shellenv)"
 {{ end -}}
 
-export PATH="${HOME}/.local/bin:${PATH}"
-
 fpath=("${HOME}/.local/bin/completions" $fpath)
 
