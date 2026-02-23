@@ -1,0 +1,17 @@
+#!/bin/bash
+# Merge required settings into existing settings.json without overwriting
+# locally-added keys (e.g. enabledPlugins added per-device).
+
+current=$(cat)
+
+if [ -z "$current" ] || [ "$current" = "{}" ]; then
+  current='{}'
+fi
+
+echo "$current" | jq '
+  .model = "opus" |
+  .statusLine = {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  }
+'
