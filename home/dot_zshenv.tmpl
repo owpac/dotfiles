@@ -1,2 +1,5 @@
 export PATH="${HOME}/.local/bin:${PATH}"
 
+{{- if .is_work -}}
+export HOMEBREW_GITHUB_API_TOKEN='{{-   onepasswordRead "op://Doctolib/Doctolib Github API/identifiant" -}}'
+{{- end -}}
