@@ -4,5 +4,9 @@ fpath+=("{{ output "/opt/homebrew/bin/brew" "--prefix" | trim }}/share/zsh/site-
 eval "$(/opt/homebrew/bin/brew shellenv)"
 {{ end -}}
 
+{{ if stat "zoxide" -}}
+eval "$(zoxide init zsh)"
+{{ end -}}
+
 fpath=("${HOME}/.local/bin/completions" $fpath)
 
