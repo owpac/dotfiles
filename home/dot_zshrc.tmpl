@@ -30,16 +30,6 @@ plugins=(
   zsh-autosuggestions
 )
 
-# # Daily compinit cache: run compinit -C (skip checks) if zcompdump was rebuilt today
-# autoload -Uz compinit
-# _zcompdump="${ZDOTDIR:-$HOME}/.zcompdump-$(scutil --get LocalHostName 2>/dev/null)-${ZSH_VERSION}"
-# if [[ -s "$_zcompdump" ]] && [[ "$(date +%j)" == "$(/usr/bin/stat -f '%Sm' -t '%j' "$_zcompdump" 2>/dev/null)" ]]; then
-#   compinit -C -d "$_zcompdump"
-#   function compinit { : }
-#   function compaudit { : }
-# fi
-# unset _zcompdump
-
 source $ZSH/oh-my-zsh.sh
 
 ### Editor
