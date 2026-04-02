@@ -138,13 +138,10 @@
 {{/* this retains the value passed with --source on chezmoi init, which is used in the install.sh script */}}
 sourceDir: "{{ .chezmoi.workingTree }}"
 
-{{- $encryptionKey := joinPath .chezmoi.homeDir ".ssh" "encryption_ed25519" -}}
-{{- if stat $encryptionKey }}
 encryption: "age"
 age:
-  identity: {{ $encryptionKey | quote }}
+  identity: "~/.ssh/encryption_ed25519"
   symmetric: true
-{{- end }}
 
 git:
   autoCommit: false
