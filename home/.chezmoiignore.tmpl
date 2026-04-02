@@ -1,6 +1,11 @@
 **/__pycache__
 .asdfrc
 
+{{- if not (stat (joinPath .chezmoi.homeDir ".ssh" "encryption_ed25519")) }}
+.npmrc
+.workrc
+{{- end -}}
+
 {{- if .is_minimum }}
 .gitconfig
 .local/bin/pac
@@ -43,6 +48,7 @@ Library/*
 {{- end -}}
 
 {{- if not .is_work }}
+.npmrc
 .workrc
 Workspace/
 Workspace/*

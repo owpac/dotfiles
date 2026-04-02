@@ -130,6 +130,13 @@ chezmoi init --source $DOTFILES_DIR
 log_task "Running 'chezmoi apply --force'"
 chezmoi apply --force
 
+# re-init to pick up encryption config now that the key is in place, then apply secrets
+log_task "Re-running 'chezmoi init' to enable encryption config..."
+chezmoi init --source $DOTFILES_DIR --force
+
+log_task "Running 'chezmoi apply --force' to decrypt secrets..."
+chezmoi apply --force
+
 # update the remote URL to SSH
 git remote set-url origin $DOTFILES_SSH_URL
 
