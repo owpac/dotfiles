@@ -112,11 +112,12 @@ the rules that were previously hardcoded.
 Output:
 
 ```
-Service   Structure  Traefik  Logging  Network
-─────────────────────────────────────────────────
-appA      -          -        -        -
-appB      2          -        1        -
-appC      -          1        -        1
+Service   Structure  Traefik  Logging  Network  Compose
+─────────────────────────────────────────────────────────
+appA      -          -        -        -        -
+appB      2          -        1        -        -
+appC      -          1        -        -        -
+appD      -          -        -        -        1
 
 appB
   property-order: radarr:42 move `image` before `container_name`
@@ -124,11 +125,17 @@ appB
 
 appC
   traefik-router-naming: my-router (missing -private/-public)
+
+appD
+  compose-includes-sync: not in root compose include (compose.yml)
+
+Notices — compose-includes-sync
+  ● compose.yml include path missing on disk: ghost/compose.yml
 ```
 
 Columns are derived from each rule's `category:`. Counts show error /
 warning issues per category. Exit code is `1` when any `error`-severity issue
-is reported.
+is reported (including notices).
 
 ### Rule schema
 
@@ -191,6 +198,7 @@ Built-in handlers live in `src/kompose/rules/`:
 | `traefik_router_naming` | Public routers must use `-private`/`-public` suffix | router names |
 | `traefik_middleware_correlation` | Public→wan@file, private→lan@file | router names |
 | `reverse_proxy_network` | Service must use proxy network or `network_mode` | service names |
+| `compose_includes_sync` | Service dirs ↔ `<host>/compose.yml` `include:` stay in sync | service / dir names |
 
 Adding a new handler:
 
@@ -220,6 +228,23 @@ The handler signature is invoked once per service. `LintContext` exposes:
 | `content` | `str` | Raw text of `compose.yml` |
 | `parsed` | `dict` | Parsed YAML (via PyYAML) — `{}` if parsing failed |
 | `globals` | `dict` | Globals from the YAML config |
+
+#### Host-wide checks via the `notices()` hook
+
+Most rules are per-service, but some checks examine the host as a whole
+(e.g. consistency between the root `compose.yml` includes and the service
+dirs on disk). A handler may export an optional `notices()` function which
+the engine invokes once per lint run:
+
+```python
+def notices(host_dir: Path, services: list[Path], params: dict, exclude: set[str]) -> list[Issue]:
+    # one-shot, host-wide check
+    return [Issue(message="...", location="compose.yml")]
+```
+
+Notices appear in a separate **Notices** section after the per-service
+details. They contribute to the global error/warning counts and to the
+final exit code.
 
 ## Environment files
 

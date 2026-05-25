@@ -7,9 +7,12 @@ from pathlib import Path
 from ._engine import (
     SEVERITY_ERROR,
     SEVERITY_WARNING,
+    Issue,
+    RuleSpec,
     ServiceLintResult,
     lint_service,
     load_rules,
+    run_notices,
 )
 from .config import get_host_dir, get_services
 from .utils import Colors, Table
@@ -40,6 +43,22 @@ def _service_color(result: ServiceLintResult) -> str:
     if result.warning_count:
         return Colors.YELLOW
     return Colors.GREEN
+
+
+def _render_notices(notices_by_rule: list[tuple[RuleSpec, list[Issue]]]) -> str:
+    """Render host-wide notices (one entry per rule that produced them)."""
+    blocks: list[str] = []
+    for spec, issues in notices_by_rule:
+        if not issues:
+            continue
+        sev_color = Colors.RED if spec.severity == SEVERITY_ERROR else Colors.YELLOW
+        header = f"\n{Colors.BOLD}Notices — {Colors.CYAN}{spec.name}{Colors.RESET}"
+        lines = [header]
+        for issue in issues:
+            location = f" {Colors.GRAY}{issue.location}{Colors.RESET}" if issue.location else ""
+            lines.append(f"  {sev_color}●{Colors.RESET}{location} {issue.message}")
+        blocks.append("\n".join(lines))
+    return "\n".join(blocks)
 
 
 def _render_details(results: list[ServiceLintResult]) -> str:
@@ -109,9 +128,28 @@ def cmd_lint(args) -> int:
     if detail_block:
         print(detail_block)
 
-    total_errors = sum(r.error_count for r in results)
-    total_warnings = sum(r.warning_count for r in results)
-    failed = sum(1 for r in results if r.has_errors)
+    # Collect host-wide notices from every rule that defines a notices() hook.
+    # Only invoked once per host (not per-service).
+    notice_services = get_services(host) if not service_name else services
+    notices_by_rule: list[tuple[RuleSpec, list[Issue]]] = []
+    notice_errors = 0
+    notice_warnings = 0
+    for spec in rules:
+        issues = run_notices(spec, host_dir, notice_services)
+        if issues:
+            notices_by_rule.append((spec, issues))
+            if spec.severity == SEVERITY_ERROR:
+                notice_errors += len(issues)
+            else:
+                notice_warnings += len(issues)
+
+    notices_block = _render_notices(notices_by_rule)
+    if notices_block:
+        print(notices_block)
+
+    total_errors = sum(r.error_count for r in results) + notice_errors
+    total_warnings = sum(r.warning_count for r in results) + notice_warnings
+    failed_services = sum(1 for r in results if r.has_errors)
 
     print()
     if total_errors == 0 and total_warnings == 0:
@@ -120,7 +158,12 @@ def cmd_lint(args) -> int:
     if total_errors == 0:
         print(f"{Colors.YELLOW}{total_warnings} warning(s){Colors.RESET}")
         return 0
-    summary = f"{Colors.RED}{total_errors} error(s) in {failed} service(s){Colors.RESET}"
+    parts = [f"{Colors.RED}{total_errors} error(s){Colors.RESET}"]
+    if failed_services:
+        parts.append(f"in {failed_services} service(s)")
+    if notice_errors:
+        parts.append(f"({notice_errors} host-wide)")
+    summary = " ".join(parts)
     if total_warnings:
         summary += f" {Colors.YELLOW}+ {total_warnings} warning(s){Colors.RESET}"
     print(summary)

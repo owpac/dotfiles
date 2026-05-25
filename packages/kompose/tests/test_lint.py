@@ -1,5 +1,6 @@
 """Tests for built-in rule types and Python handlers."""
 
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from kompose.rules._builtin import (
     substring_required,
 )
 from kompose.rules import (
+    compose_includes_sync,
     reverse_proxy_network,
     traefik_middleware_correlation,
     traefik_router_naming,
@@ -213,6 +215,90 @@ class TestReverseProxyNetwork(unittest.TestCase):
             globals_dict={"proxy_network": "my-proxy"},
         )
         issues = reverse_proxy_network.check(ctx, {}, set())
+        self.assertEqual(issues, [])
+
+
+class TestComposeIncludesSync(unittest.TestCase):
+    """Tests for the compose_includes_sync handler (check + notices)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.host_dir = Path(self.tmp.name)
+        # Create two service dirs
+        (self.host_dir / "paperless").mkdir()
+        (self.host_dir / "paperless" / "compose.yml").write_text(
+            "services:\n  paperless:\n    image: x\n"
+        )
+        (self.host_dir / "minecraft").mkdir()
+        (self.host_dir / "minecraft" / "compose.yml").write_text(
+            "services:\n  minecraft:\n    image: y\n"
+        )
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _ctx(self, service_name: str) -> LintContext:
+        return LintContext(
+            service_name=service_name,
+            compose_path=self.host_dir / service_name / "compose.yml",
+            content="",
+            parsed={},
+            globals={},
+        )
+
+    def _write_root(self, body: str) -> None:
+        (self.host_dir / "compose.yml").write_text(body)
+
+    def test_check_passes_when_service_in_includes(self):
+        self._write_root("include:\n  - path: paperless/compose.yml\n  - path: minecraft/compose.yml\n")
+        issues = compose_includes_sync.check(self._ctx("paperless"), {}, set())
+        self.assertEqual(issues, [])
+
+    def test_check_flags_service_missing_from_includes(self):
+        self._write_root("include:\n  - path: paperless/compose.yml\n")
+        issues = compose_includes_sync.check(self._ctx("minecraft"), {}, set())
+        self.assertEqual(len(issues), 1)
+        self.assertIn("not in root compose include", issues[0].message)
+
+    def test_check_respects_exclude(self):
+        self._write_root("include:\n  - path: paperless/compose.yml\n")
+        issues = compose_includes_sync.check(self._ctx("minecraft"), {}, {"minecraft"})
+        self.assertEqual(issues, [])
+
+    def test_check_skips_when_root_absent(self):
+        # No root compose written
+        issues = compose_includes_sync.check(self._ctx("paperless"), {}, set())
+        self.assertEqual(issues, [])
+
+    def test_notices_flags_orphan_include(self):
+        self._write_root(
+            "include:\n"
+            "  - path: paperless/compose.yml\n"
+            "  - path: ghost/compose.yml\n"   # dir doesn't exist
+        )
+        issues = compose_includes_sync.notices(self.host_dir, [], {}, set())
+        self.assertEqual(len(issues), 1)
+        self.assertIn("ghost/compose.yml", issues[0].message)
+
+    def test_notices_respects_exclude(self):
+        self._write_root("include:\n  - path: ghost/compose.yml\n")
+        issues = compose_includes_sync.notices(self.host_dir, [], {}, {"ghost"})
+        self.assertEqual(issues, [])
+
+    def test_notices_handles_short_form_include(self):
+        self._write_root("include:\n  - ghost/compose.yml\n")
+        issues = compose_includes_sync.notices(self.host_dir, [], {}, set())
+        self.assertEqual(len(issues), 1)
+
+    def test_notices_skips_when_root_absent(self):
+        self.assertEqual(compose_includes_sync.notices(self.host_dir, [], {}, set()), [])
+
+    def test_custom_root_param(self):
+        # Use a non-default root path
+        (self.host_dir / "main.yml").write_text("include:\n  - path: paperless/compose.yml\n")
+        issues = compose_includes_sync.check(
+            self._ctx("paperless"), {"root": "main.yml"}, set()
+        )
         self.assertEqual(issues, [])
 
 

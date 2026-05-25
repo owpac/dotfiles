@@ -14,6 +14,8 @@ from kompose._engine import (
     lint_service,
     load_rules,
     resolve_handler,
+    resolve_notices,
+    run_notices,
     run_rule,
 )
 
@@ -211,6 +213,37 @@ class TestLintService(unittest.TestCase):
         rules = [RuleSpec(name="r", category="c", type="substring_required")]
         result = lint_service(self.service_dir, rules, {})
         self.assertEqual(result.rule_results, [])
+
+
+class TestNoticesHook(unittest.TestCase):
+    """Tests for the optional `notices()` hook on handlers."""
+
+    def test_resolve_notices_returns_none_for_handler_without_notices(self):
+        # reverse_proxy_network has no notices() function
+        spec = RuleSpec(name="r", category="c", handler="reverse_proxy_network")
+        self.assertIsNone(resolve_notices(spec))
+
+    def test_resolve_notices_returns_callable_for_compose_includes_sync(self):
+        spec = RuleSpec(name="r", category="c", handler="compose_includes_sync")
+        fn = resolve_notices(spec)
+        self.assertTrue(callable(fn))
+
+    def test_resolve_notices_returns_none_for_builtin_type_without_hook(self):
+        # substring_required has no `substring_required_notices` companion
+        spec = RuleSpec(name="r", category="c", type="substring_required")
+        self.assertIsNone(resolve_notices(spec))
+
+    def test_run_notices_returns_empty_when_handler_has_none(self):
+        spec = RuleSpec(name="r", category="c", handler="reverse_proxy_network")
+        self.assertEqual(run_notices(spec, Path("/tmp"), []), [])
+
+    def test_run_notices_invokes_when_handler_defines_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            host = Path(tmp)
+            (host / "compose.yml").write_text("include:\n  - path: ghost/compose.yml\n")
+            spec = RuleSpec(name="r", category="c", handler="compose_includes_sync")
+            issues = run_notices(spec, host, [])
+            self.assertEqual(len(issues), 1)
 
 
 if __name__ == "__main__":

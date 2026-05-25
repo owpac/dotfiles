@@ -189,35 +189,68 @@ def load_rules(host: str | None = None) -> tuple[dict, list[RuleSpec]]:
 
 
 HandlerFn = Callable[[LintContext, dict, set], list[Issue]]
+NoticesFn = Callable[[Path, list, dict, set], list[Issue]]
 
 
-def resolve_handler(spec: RuleSpec) -> HandlerFn:
-    """Return the callable that implements a rule."""
+def _handler_module(spec: RuleSpec):
+    """Import and return the module that backs the rule's handler/type."""
     if spec.type:
-        module = importlib.import_module(_BUILTIN_TYPE_PREFIX)
-        fn = getattr(module, spec.type, None)
-        if fn is None:
-            raise ValueError(f"Rule '{spec.name}': unknown built-in type '{spec.type}'")
-        return fn
+        return importlib.import_module(_BUILTIN_TYPE_PREFIX)
     module_path = f"{_HANDLER_PACKAGE}.{spec.handler}"
     try:
-        module = importlib.import_module(module_path)
+        return importlib.import_module(module_path)
     except ImportError as e:
         raise ValueError(
             f"Rule '{spec.name}': handler '{spec.handler}' not found ({e})"
         ) from e
+
+
+def resolve_handler(spec: RuleSpec) -> HandlerFn:
+    """Return the per-service callable that implements a rule."""
+    module = _handler_module(spec)
+    if spec.type:
+        fn = getattr(module, spec.type, None)
+        if fn is None:
+            raise ValueError(f"Rule '{spec.name}': unknown built-in type '{spec.type}'")
+        return fn
     fn = getattr(module, "check", None)
     if fn is None:
+        module_path = f"{_HANDLER_PACKAGE}.{spec.handler}"
         raise ValueError(
             f"Rule '{spec.name}': handler module '{module_path}' must define `check(ctx, params, exclude)`"
         )
     return fn
 
 
+def resolve_notices(spec: RuleSpec) -> NoticesFn | None:
+    """Return the rule's optional `notices()` callable, or None.
+
+    For Python handlers, looks for a `notices` function in the handler module.
+    For built-in types, looks for `<type>_notices` in the built-in module.
+    """
+    module = _handler_module(spec)
+    if spec.type:
+        return getattr(module, f"{spec.type}_notices", None)
+    return getattr(module, "notices", None)
+
+
 def run_rule(spec: RuleSpec, ctx: LintContext) -> list[Issue]:
     handler = resolve_handler(spec)
     exclude = set(spec.exclude or [])
     return handler(ctx, dict(spec.params), exclude) or []
+
+
+def run_notices(
+    spec: RuleSpec,
+    host_dir: Path,
+    services: list[Path],
+) -> list[Issue]:
+    """Invoke a rule's `notices()` hook if defined, else return []."""
+    fn = resolve_notices(spec)
+    if fn is None:
+        return []
+    exclude = set(spec.exclude or [])
+    return fn(host_dir, services, dict(spec.params), exclude) or []
 
 
 def lint_service(

@@ -64,3 +64,16 @@ rules:
   - name: reverse-proxy-network
     category: network
     handler: reverse_proxy_network
+
+  # Verifies <host>/compose.yml include: stays in sync with service dirs.
+  # - per-service issue: dir exists but not in includes (e.g. forgot to add)
+  # - host-wide notice: include path points to a missing file
+  - name: compose-includes-sync
+    category: compose
+    handler: compose_includes_sync
+    exclude:
+      - network        # infra service, intentionally outside the root project
+      - minecraft      # temporary service
+      - sure           # WIP scratch dir
+    params:
+      root: compose.yml
