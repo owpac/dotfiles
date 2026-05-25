@@ -143,6 +143,12 @@ age:
   identity: "~/.ssh/encryption_ed25519"
   symmetric: true
 
+# Required when /tmp is mounted noexec (e.g. TrueNAS) — invoke .sh scripts
+# via `bash <path>` instead of executing them directly.
+interpreters:
+  sh:
+    command: bash
+
 git:
   autoCommit: false
   commitMessageTemplate: "💾 Automatic backup"
