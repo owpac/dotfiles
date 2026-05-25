@@ -52,9 +52,11 @@ kompose <command> [options]
 
 ```bash
 kompose up                    # Start all services
-kompose up paperless          # Start specific service
-kompose down servarr plex     # Stop specific container in a service
-kompose restart servarr sonarr radarr
+kompose up paperless          # Start a single service
+kompose up servarr            # Start a group (= all services in servarr/compose.yml)
+kompose up servarr plex       # Start specific container(s) inside a group
+kompose restart sonarr radarr # Restart by service name(s)
+kompose down                  # Stop all services
 kompose logs paperless -n 50
 kompose status                # Compact view
 kompose status --stats        # With memory usage
@@ -63,6 +65,23 @@ kompose env check             # Check all .env drift (read-only)
 kompose env sync -f           # Sync without confirmation
 kompose --host other up       # Use different host directory
 ```
+
+## Execution modes
+
+Kompose auto-detects how to invoke `docker compose`:
+
+- **Root mode** — used when `<host>/compose.yml` exists. All services are unified
+  under a single Docker Compose project via `include:` directives. Commands target
+  the root file; positional args expand to docker compose service names. If an arg
+  matches a directory containing a `compose.yml` (a "group"), it expands to all
+  services declared in that file. Otherwise it is passed through as-is.
+
+- **Legacy mode** — when no root compose.yml exists. Falls back to the per-service
+  iteration model with optional layering of `base/<service>/compose.yml` +
+  `<host>/<service>/compose.yml`. Preserved for hosts that haven't adopted the
+  include model.
+
+The mode is selected per command at runtime; no configuration needed.
 
 ## Lint
 
