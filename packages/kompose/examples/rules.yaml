@@ -1,0 +1,66 @@
+# Example kompose lint configuration.
+# Reproduces the rules that were previously hardcoded in lint.py
+# (with exclusions migrated from .komposeignore).
+#
+# Copy this file to: <host>/.kompose/rules.yaml
+# (e.g. /mnt/home/thomas/workspace/homelab/nas/.kompose/rules.yaml)
+#
+# See the README for the full schema reference.
+
+globals:
+  public_domain: owpac.com
+  private_domain: owpac.net
+  proxy_network: reverse-proxy
+  public_middleware: wan@file
+  private_middleware: lan@file
+
+rules:
+  # Property order — alphabetical convention enforced on common compose keys.
+  - name: property-order
+    category: structure
+    type: property_order
+    params:
+      order:
+        - container_name
+        - depends_on
+        - env_file
+        - environment
+        - healthcheck
+        - image
+        - labels
+        - logging
+        - networks
+        - ports
+        - restart
+        - user
+        - volumes
+
+  # Traefik router naming: public hosts must use -private/-public suffix.
+  - name: traefik-router-naming
+    category: traefik
+    handler: traefik_router_naming
+    exclude:
+      - opencloud-webdav
+
+  # Public routers must use wan@file; private routers must use lan@file.
+  - name: traefik-middleware-correlation
+    category: traefik
+    handler: traefik_middleware_correlation
+    exclude:
+      - opencloud-webdav
+
+  # Each compose file must declare local logging.
+  - name: logging-driver
+    category: logging
+    type: substring_required
+    exclude:
+      - network
+    params:
+      required:
+        - "logging:"
+        - "driver: local"
+
+  # Each service must join the reverse-proxy network or use network_mode.
+  - name: reverse-proxy-network
+    category: network
+    handler: reverse_proxy_network

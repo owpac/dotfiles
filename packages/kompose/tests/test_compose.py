@@ -3,10 +3,7 @@
 import unittest
 from pathlib import Path
 
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from _kompose.compose import (
+from kompose.compose import (
     parse_ip_for_sort,
     get_compose_files,
     build_compose_command,

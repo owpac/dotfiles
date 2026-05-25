@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Kompose - CLI for managing Docker Compose services.
 
@@ -18,17 +17,13 @@ Commands:
 
 import argparse
 import sys
-from pathlib import Path
 
-# Add the directory containing this script to sys.path for imports
-sys.path.insert(0, str(Path(__file__).parent))
-
-from _kompose import __version__
-from _kompose.compose import cmd_down, cmd_logs, cmd_restart, cmd_status, cmd_up
-from _kompose.config import DEFAULT_HOST
-from _kompose.env import cmd_env_check, cmd_env_sync
-from _kompose.lint import cmd_lint
-from _kompose.utils import init_colors
+from kompose import __version__
+from kompose.compose import cmd_down, cmd_logs, cmd_restart, cmd_status, cmd_up
+from kompose.config import DEFAULT_HOST
+from kompose.env import cmd_env_check, cmd_env_sync
+from kompose.lint import cmd_lint
+from kompose.utils import init_colors
 
 
 def main() -> int:

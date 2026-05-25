@@ -5,10 +5,7 @@ import tempfile
 import shutil
 from pathlib import Path
 
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from _kompose.env import (
+from kompose.env import (
     parse_env_file,
     read_env_lines,
     find_insert_position,

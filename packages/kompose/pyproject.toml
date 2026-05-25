@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kompose"
+dynamic = ["version"]
+description = "CLI for managing Docker Compose services on the homelab"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "owpac" }]
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+kompose = "kompose.__main__:main"
+
+[tool.hatch.version]
+path = "src/kompose/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kompose"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/kompose",
+    "tests",
+    "README.md",
+]
