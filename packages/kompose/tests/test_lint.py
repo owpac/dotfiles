@@ -12,6 +12,7 @@ from kompose.rules._builtin import (
 )
 from kompose.rules import (
     compose_includes_sync,
+    env_check,
     reverse_proxy_network,
     traefik_middleware_correlation,
     traefik_router_naming,
@@ -299,6 +300,83 @@ class TestComposeIncludesSync(unittest.TestCase):
         issues = compose_includes_sync.check(
             self._ctx("paperless"), {"root": "main.yml"}, set()
         )
+        self.assertEqual(issues, [])
+
+
+class TestEnvCheck(unittest.TestCase):
+    """Tests for the env_check handler."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.service_dir = Path(self.tmp.name) / "paperless"
+        self.service_dir.mkdir()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _ctx(self, service_name: str | None = None) -> LintContext:
+        return LintContext(
+            service_name=service_name or self.service_dir.name,
+            compose_path=self.service_dir / "compose.yml",
+            content="",
+            parsed={},
+            globals={},
+        )
+
+    def _write(self, name: str, body: str) -> None:
+        (self.service_dir / name).write_text(body)
+
+    def test_no_example_skipped(self):
+        # No .env.example → silent skip
+        self.assertEqual(env_check.check(self._ctx(), {}, set()), [])
+
+    def test_in_sync_no_issues(self):
+        self._write(".env", "FOO=bar\nBAZ=qux\n")
+        self._write(".env.example", "FOO=''\nBAZ=''\n")
+        self.assertEqual(env_check.check(self._ctx(), {}, set()), [])
+
+    def test_missing_env_yields_one_issue_per_var(self):
+        self._write(".env.example", "FOO=''\nBAR=''\nBAZ=''\n")
+        # Note: no .env file
+        issues = env_check.check(self._ctx(), {}, set())
+        self.assertEqual(len(issues), 3)
+        for issue in issues:
+            self.assertIn(".env file not found", issue.message)
+        var_names = {i.message for i in issues}
+        # Each var named
+        self.assertTrue(any("FOO" in m for m in var_names))
+        self.assertTrue(any("BAR" in m for m in var_names))
+        self.assertTrue(any("BAZ" in m for m in var_names))
+
+    def test_drift_only_in_env(self):
+        self._write(".env", "FOO=bar\nEXTRA=value\n")
+        self._write(".env.example", "FOO=''\n")
+        issues = env_check.check(self._ctx(), {}, set())
+        # `EXTRA` is extra in .env, structure may also drift → at least 1 issue
+        msgs = " ".join(i.message for i in issues)
+        self.assertIn("EXTRA", msgs)
+        self.assertIn("extra", msgs.lower())
+
+    def test_drift_only_in_example(self):
+        self._write(".env", "FOO=bar\n")
+        self._write(".env.example", "FOO=''\nMISSING=''\n")
+        issues = env_check.check(self._ctx(), {}, set())
+        msgs = " ".join(i.message for i in issues)
+        self.assertIn("MISSING", msgs)
+        self.assertIn("missing", msgs.lower())
+
+    def test_structure_drift_only(self):
+        # Same vars, but .env has comments/blanks not reflected in .env.example
+        self._write(".env", "# Section\nFOO=bar\n\nBAZ=qux\n")
+        self._write(".env.example", "FOO=''\nBAZ=''\n")
+        issues = env_check.check(self._ctx(), {}, set())
+        self.assertEqual(len(issues), 1)
+        self.assertIn("structure drift", issues[0].message)
+
+    def test_service_excluded(self):
+        self._write(".env.example", "FOO=''\n")
+        # .env missing — would normally yield 1 issue, but excluded
+        issues = env_check.check(self._ctx(), {}, {self.service_dir.name})
         self.assertEqual(issues, [])
 
 

@@ -19,6 +19,7 @@ rules:
   - name: property-order
     category: structure
     type: property_order
+    severity: warning
     params:
       order:
         - container_name
@@ -53,6 +54,7 @@ rules:
   - name: logging-driver
     category: logging
     type: substring_required
+    severity: warning
     exclude:
       - network
     params:
@@ -77,3 +79,12 @@ rules:
       - sure           # WIP scratch dir
     params:
       root: compose.yml
+
+  # Per-service .env / .env.example drift (vars + structure).
+  # `kompose env check` standalone keeps working; this rule surfaces the same
+  # information in the lint table.
+  - name: env-check
+    category: env
+    handler: env_check
+    severity: warning
+    exclude: []

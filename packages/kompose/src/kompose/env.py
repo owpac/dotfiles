@@ -16,6 +16,62 @@ class EnvSyncResult:
     variables: list[str] = field(default_factory=list)
 
 
+# Status values returned by check_service_env.
+ENV_STATUS_OK = "ok"
+ENV_STATUS_DRIFT = "drift"
+ENV_STATUS_MISSING = "missing"     # .env.example exists, .env does not
+ENV_STATUS_NO_EXAMPLE = "no_example"  # .env.example missing — service has no env config
+
+
+@dataclass
+class EnvCheckResult:
+    service: str
+    status: str
+    only_in_env: list[str] = field(default_factory=list)       # in .env, not in .env.example
+    only_in_example: list[str] = field(default_factory=list)   # in .env.example, not in .env
+    structure_drift: bool = False
+
+
+def check_service_env(service_dir: Path) -> EnvCheckResult:
+    """Compute the env-drift status for a single service. Pure / no I/O side effects."""
+    env_example = service_dir / ".env.example"
+    env_file = service_dir / ".env"
+    service = service_dir.name
+
+    if not env_example.exists():
+        return EnvCheckResult(service=service, status=ENV_STATUS_NO_EXAMPLE)
+
+    example_vars = parse_env_file(env_example)
+
+    if not env_file.exists():
+        return EnvCheckResult(
+            service=service,
+            status=ENV_STATUS_MISSING,
+            only_in_example=sorted(example_vars.keys()),
+        )
+
+    env_vars = parse_env_file(env_file)
+    only_in_env = sorted(set(env_vars.keys()) - set(example_vars.keys()))
+    only_in_example = sorted(set(example_vars.keys()) - set(env_vars.keys()))
+
+    expected = build_example_content(env_file, env_example)
+    actual = env_example.read_text()
+    env_content = env_file.read_text()
+    env_missing_newline = bool(env_content) and not env_content.endswith("\n")
+    structure_drift = expected != actual or env_missing_newline
+
+    if not only_in_env and not only_in_example and not structure_drift:
+        return EnvCheckResult(service=service, status=ENV_STATUS_OK)
+
+    return EnvCheckResult(
+        service=service,
+        status=ENV_STATUS_DRIFT,
+        only_in_env=only_in_env,
+        only_in_example=only_in_example,
+        structure_drift=structure_drift,
+    )
+
+
 def parse_env_file(path: Path) -> dict[str, str]:
     """Parse .env file into dict, preserving order."""
     env = {}
@@ -201,45 +257,34 @@ def cmd_env_check(args) -> int:
     has_diff = False
 
     for service_dir in services:
-        env_example = service_dir / ".env.example"
-        env_file = service_dir / ".env"
-        service = service_dir.name
+        result = check_service_env(service_dir)
 
-        if not env_example.exists():
+        if result.status == ENV_STATUS_NO_EXAMPLE:
             continue
 
-        example_vars = parse_env_file(env_example)
-        env_vars = parse_env_file(env_file)
-
-        if not env_file.exists():
-            table.add_row([service, f"{Colors.RED}missing{Colors.RESET}", f".env not found ({len(example_vars)} vars in .env.example)"])
+        if result.status == ENV_STATUS_MISSING:
+            table.add_row([
+                result.service,
+                f"{Colors.RED}missing{Colors.RESET}",
+                f".env not found ({len(result.only_in_example)} vars in .env.example)",
+            ])
             has_diff = True
             continue
 
-        only_in_env = set(env_vars.keys()) - set(example_vars.keys())
-        only_in_example = set(example_vars.keys()) - set(env_vars.keys())
-
-        # Check structural drift (comments, blank lines, order, trailing newline)
-        expected = build_example_content(env_file, env_example)
-        actual = env_example.read_text()
-        env_content = env_file.read_text()
-        env_missing_newline = bool(env_content) and not env_content.endswith("\n")
-        structure_drift = expected != actual or env_missing_newline
-
-        if not only_in_env and not only_in_example and not structure_drift:
-            table.add_row([service, f"{Colors.GREEN}ok{Colors.RESET}", f"{Colors.GRAY}-{Colors.RESET}"])
+        if result.status == ENV_STATUS_OK:
+            table.add_row([result.service, f"{Colors.GREEN}ok{Colors.RESET}", f"{Colors.GRAY}-{Colors.RESET}"])
             continue
 
         has_diff = True
         diff_parts = []
-        if only_in_env:
-            diff_parts.append(f"{Colors.YELLOW}+{len(only_in_env)} .env only{Colors.RESET}")
-        if only_in_example:
-            diff_parts.append(f"{Colors.BLUE}+{len(only_in_example)} .env.example only{Colors.RESET}")
-        if structure_drift and not only_in_env and not only_in_example:
+        if result.only_in_env:
+            diff_parts.append(f"{Colors.YELLOW}+{len(result.only_in_env)} .env only{Colors.RESET}")
+        if result.only_in_example:
+            diff_parts.append(f"{Colors.BLUE}+{len(result.only_in_example)} .env.example only{Colors.RESET}")
+        if result.structure_drift and not result.only_in_env and not result.only_in_example:
             diff_parts.append(f"{Colors.GRAY}structure{Colors.RESET}")
 
-        table.add_row([service, f"{Colors.YELLOW}drift{Colors.RESET}", ", ".join(diff_parts)])
+        table.add_row([result.service, f"{Colors.YELLOW}drift{Colors.RESET}", ", ".join(diff_parts)])
 
     print()
     print(table.render())

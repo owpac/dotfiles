@@ -199,6 +199,7 @@ Built-in handlers live in `src/kompose/rules/`:
 | `traefik_middleware_correlation` | Public→wan@file, private→lan@file | router names |
 | `reverse_proxy_network` | Service must use proxy network or `network_mode` | service names |
 | `compose_includes_sync` | Service dirs ↔ `<host>/compose.yml` `include:` stay in sync | service / dir names |
+| `env_check` | `.env` ↔ `.env.example` parity (vars + structure). Shares logic with `kompose env check` standalone. | service names |
 
 Adding a new handler:
 

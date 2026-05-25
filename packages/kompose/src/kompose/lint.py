@@ -33,7 +33,7 @@ def _render_count(error_count: int, warning_count: int) -> str:
     if error_count:
         parts.append(f"{Colors.RED}{error_count}{Colors.RESET}")
     if warning_count:
-        parts.append(f"{Colors.YELLOW}{warning_count}!{Colors.RESET}")
+        parts.append(f"{Colors.YELLOW}{warning_count}{Colors.RESET}")
     return "/".join(parts)
 
 
