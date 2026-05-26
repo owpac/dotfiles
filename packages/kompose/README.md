@@ -182,7 +182,14 @@ rules:
 |------|--------|----------------------|
 | `substring_required` | `required: [str, ...]` | service names to skip |
 | `substring_forbidden` | `forbidden: [str, ...]` | service names to skip |
-| `property_order` | `order: [key, ...]` | container names (inside `services:`) to skip |
+| `property_order` | `order: [key, ...]`, `warn_on_unknown: bool` (default `true`) | container names (inside `services:`) to skip |
+
+`property_order.warn_on_unknown`: when true (the default), each YAML key
+that is NOT in `order:` is flagged with its own warning ("unknown property
+`build` (not in rule's `order` list)"). Auto-fix is **not** applied to
+unknowns — only known props are reordered in place, leaving unknowns where
+the user placed them. Set to `false` to silence the warnings if you want
+the order list to be advisory rather than exhaustive.
 
 Examples:
 
@@ -305,6 +312,18 @@ counting the issues that have a `fix()` available:
 ```
 → 4 auto-fixable. Run `kompose fix` to apply.
 ```
+
+**Invariant — `fix()` must align with `check()`**
+
+Every rule's `fix()` MUST use the same predicate as its `check()`:
+
+- If `check(ctx, …)` returns `[]` → `fix(ctx, …)` MUST return `[]`
+- If `check(…)` reports issues → `fix(…)` may attempt to correct them
+
+A fix that touches a file `check` considers clean is a bug — never reorder
+or mutate things that aren't explicitly flagged. Reuse the same predicate
+helpers in both functions, and add a regression test that creates a
+clean-by-check input and asserts `fix(…) == []`.
 
 ## Environment files
 

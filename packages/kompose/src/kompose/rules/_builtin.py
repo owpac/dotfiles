@@ -109,10 +109,16 @@ def property_order(ctx: LintContext, params: dict, exclude: set[str]) -> list[Is
 
     params:
       order: [container_name, depends_on, env_file, ...]
+      warn_on_unknown: bool (default True). When True, also reports each
+        property that is NOT in the `order` list. Lets the user decide whether
+        to add the key to `order:` (canonicalize) or accept it as a
+        free-position key (set `warn_on_unknown: false` to silence).
+
     exclude: list of container names to skip (note: matches the *container* key
              inside `services:`, not the service directory).
     """
     expected_order = params.get("order") or []
+    warn_on_unknown = params.get("warn_on_unknown", True)
     if not expected_order:
         return []
 
@@ -121,6 +127,13 @@ def property_order(ctx: LintContext, params: dict, exclude: set[str]) -> list[Is
         if container in exclude:
             continue
         issues.extend(_order_issues_for_container(container, props, expected_order))
+        if warn_on_unknown:
+            for prop_name, line in props:
+                if prop_name not in expected_order:
+                    issues.append(Issue(
+                        message=f"{container}: unknown property `{prop_name}` (not in rule's `order` list)",
+                        location=f"{container}:{line}",
+                    ))
     return issues
 
 
@@ -216,18 +229,29 @@ def _reorder_service_block(body: list[str], expected_order: list[str]) -> tuple[
         blocks.append((current_prop, current_lines))
     trailing = buffered  # blanks/comments after the last property stay at the end
 
-    def sort_key(prop: str) -> tuple[int, int]:
-        try:
-            return (0, expected_order.index(prop))
-        except ValueError:
-            return (1, 0)  # unknown props go after; stable sort keeps their order
+    # Only reorder KNOWN properties — leave unknown ones (e.g. `build:`,
+    # `secrets:`) in their original positions. This matches the check's
+    # definition of "wrong order" (`_order_issues_for_container` only compares
+    # the relative order of known props), so `kompose fix` never wants to
+    # change a file that `kompose check` says is fine.
+    known_indices = [i for i, (p, _) in enumerate(blocks) if p in expected_order]
+    known_blocks_in_order = [blocks[i] for i in known_indices]
+    expected_blocks = sorted(
+        known_blocks_in_order,
+        key=lambda b: expected_order.index(b[0]),
+    )
 
-    sorted_blocks = sorted(blocks, key=lambda b: sort_key(b[0]))
+    changed = [b[0] for b in known_blocks_in_order] != [b[0] for b in expected_blocks]
 
-    changed = [p for p, _ in blocks] != [p for p, _ in sorted_blocks]
+    if changed:
+        new_blocks = list(blocks)
+        for slot_idx, sorted_block in zip(known_indices, expected_blocks):
+            new_blocks[slot_idx] = sorted_block
+    else:
+        new_blocks = blocks
 
     new_body: list[str] = []
-    for _, lines_ in sorted_blocks:
+    for _, lines_ in new_blocks:
         new_body.extend(lines_)
     new_body.extend(trailing)
     return new_body, changed

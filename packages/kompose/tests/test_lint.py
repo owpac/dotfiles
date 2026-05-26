@@ -103,6 +103,53 @@ class TestPropertyOrder(unittest.TestCase):
         issues = property_order(ctx, {"order": COMPOSE_ORDER}, set())
         self.assertEqual(issues, [])
 
+    def test_warn_on_unknown_enabled_by_default(self):
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    build:\n"
+            "      context: .\n"
+            "    container_name: app\n"
+            "    image: x\n"
+        )
+        ctx = make_ctx(content)
+        issues = property_order(ctx, {"order": ["container_name", "image"]}, set())
+        # `build` is unknown → 1 warning. Known props are in correct order → no order issue.
+        self.assertEqual(len(issues), 1)
+        self.assertIn("unknown property `build`", issues[0].message)
+
+    def test_warn_on_unknown_disabled(self):
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    build:\n"
+            "      context: .\n"
+            "    container_name: app\n"
+            "    image: x\n"
+        )
+        ctx = make_ctx(content)
+        issues = property_order(
+            ctx, {"order": ["container_name", "image"], "warn_on_unknown": False}, set()
+        )
+        self.assertEqual(issues, [])
+
+    def test_warn_on_unknown_combines_with_order_issues(self):
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    image: x\n"           # known, out of order
+            "    build:\n"             # unknown
+            "      context: .\n"
+            "    container_name: app\n"  # known, out of order
+        )
+        ctx = make_ctx(content)
+        issues = property_order(ctx, {"order": ["container_name", "image"]}, set())
+        # 1 order issue (container_name should be before image) + 1 unknown warning (build)
+        self.assertEqual(len(issues), 2)
+        messages = " ".join(i.message for i in issues)
+        self.assertIn("move `container_name`", messages)
+        self.assertIn("unknown property `build`", messages)
+
 
 class TestTraefikRouterNaming(unittest.TestCase):
     def test_valid(self):
@@ -488,6 +535,46 @@ class TestPropertyOrderFix(unittest.TestCase):
         ctx = self._ctx(content)
         fixes = property_order_fix(ctx, {"order": ["container_name", "image"]}, {"app"})
         self.assertEqual(fixes, [])
+
+    def test_unknown_props_in_middle_are_not_touched(self):
+        # When `check` says OK (all known props in correct order, unknown props
+        # interleaved), `fix` must also say OK — same definition of "wrong order".
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    build:\n"
+            "      context: .\n"
+            "    container_name: app\n"
+            "    image: x\n"
+        )
+        ctx = self._ctx(content)
+        # `build` is NOT in expected_order; container_name and image ARE and are in correct order.
+        fixes = property_order_fix(ctx, {"order": ["container_name", "image"]}, set())
+        self.assertEqual(fixes, [])
+        self.assertEqual(self.compose.read_text(), content)  # untouched
+
+    def test_unknown_props_keep_their_position_when_known_reorder(self):
+        # If known props ARE out of order, only they swap — unknowns stay put.
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    image: x\n"
+            "    build:\n"
+            "      context: .\n"
+            "    container_name: app\n"
+        )
+        ctx = self._ctx(content)
+        fixes = property_order_fix(ctx, {"order": ["container_name", "image"]}, set())
+        self.assertEqual(len(fixes), 1)
+        new = self.compose.read_text()
+        # build: must remain between the two known props (position-wise)
+        # Expected layout: container_name (was image's slot), build (unchanged), image (was container_name's slot)
+        lines = new.split("\n")
+        cname_idx = next(i for i, l in enumerate(lines) if l.strip().startswith("container_name"))
+        build_idx = next(i for i, l in enumerate(lines) if l.strip().startswith("build:"))
+        image_idx = next(i for i, l in enumerate(lines) if l.strip().startswith("image:"))
+        self.assertLess(cname_idx, build_idx)
+        self.assertLess(build_idx, image_idx)
 
     def test_multi_container_only_changed_ones_reported(self):
         content = (
