@@ -525,11 +525,19 @@ def get_container_memory_stats(system_mem: float) -> dict[str, str]:
 
 
 def cmd_status(args) -> int:
-    """Show status of all services with IPs."""
+    """Show status of services with IPs.
+
+    Without `service` arg: rich table of every running service.
+    With `service` arg: filtered table for that service/group, then tails the
+    last N log lines (default 30). With `-f`, follows the logs after the tail.
+    `--no-logs` suppresses the log section.
+    """
     from concurrent.futures import ThreadPoolExecutor
 
     host = getattr(args, "host", None)
-    show_stats = getattr(args, "stats", False)
+    service_arg = getattr(args, "service", None)
+    # When a single service is targeted, show stats by default (we're zoomed in).
+    show_stats = getattr(args, "stats", False) or bool(service_arg)
     services = get_services(host)
 
     if not services:
@@ -565,6 +573,24 @@ def cmd_status(args) -> int:
         container["_ip"] = network_containers.get(name, {}).get("ipv4", "")
         container["_service_dir"] = group
         service_groups.setdefault(group, []).append(container)
+
+    # Drill-down: filter to the requested service/group or its single container.
+    if service_arg:
+        if service_arg in service_groups:
+            service_groups = {service_arg: service_groups[service_arg]}
+        else:
+            # Maybe service_arg is a docker compose service name (e.g. `plex`)
+            # rather than a group dir name (e.g. `servarr`).
+            filtered: dict[str, list[dict]] = {}
+            for group_name, conts in service_groups.items():
+                matching = [c for c in conts if c.get("_service") == service_arg]
+                if matching:
+                    filtered[group_name] = matching
+            if filtered:
+                service_groups = filtered
+            else:
+                print(f"{Colors.YELLOW}No containers found for '{service_arg}'{Colors.RESET}")
+                return 0
 
     if not service_groups:
         print(f"{Colors.YELLOW}No containers found{Colors.RESET}")
@@ -651,4 +677,24 @@ def cmd_status(args) -> int:
     print(table.render())
 
     print(f"\n{Colors.GREEN}{running_containers}{Colors.RESET}/{total_containers} container(s) running")
+
+    # Drill-down: tail logs of the targeted service.
+    if service_arg and not getattr(args, "no_logs", False):
+        tail = str(getattr(args, "tail", "30"))
+        follow = getattr(args, "follow", False)
+        # Reuse the same root/legacy resolution as cmd_logs.
+        if get_root_compose(host):
+            target_services = resolve_root_targets(host, service_arg, None)
+            extra = ["--tail", tail]
+            if follow:
+                extra.append("-f")
+            print(f"\n{Colors.BOLD}──── {service_arg} logs (last {tail}{' + follow' if follow else ''}) ────{Colors.RESET}")
+            run_root_compose(host, "logs", target_services, extra)
+        else:
+            extra = ["--tail", tail]
+            if follow:
+                extra.append("-f")
+            print(f"\n{Colors.BOLD}──── {service_arg} logs (last {tail}{' + follow' if follow else ''}) ────{Colors.RESET}")
+            run_compose(service_arg, "logs", host, extra)
+
     return 0

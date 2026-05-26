@@ -81,7 +81,7 @@ def _render_details(results: list[ServiceLintResult]) -> str:
     return "\n".join(lines)
 
 
-def cmd_lint(args) -> int:
+def cmd_check(args) -> int:
     service_name = getattr(args, "service", None)
     host = getattr(args, "host", None)
 

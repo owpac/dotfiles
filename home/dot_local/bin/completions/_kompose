@@ -4,7 +4,7 @@ _kompose() {
     local context state state_descr line
     typeset -A opt_args
 
-    local -a opts cmds env_cmds status_opts
+    local -a opts cmds service_cmds env_cmds status_opts fix_opts
 
     opts=(
         '-h:Show help'
@@ -21,26 +21,47 @@ _kompose() {
         'restart:Restart services'
         'logs:View service logs'
         'status:Show services status with IPs'
-        'st:Show services status with IPs'
-        'lint:Check compose.yml files'
+        'check:Lint compose files and env drift'
+        'fix:Auto-fix what can be fixed (today: env sync)'
+        'service:Service lifecycle (canonical)'
         'env:Environment file operations'
     )
 
+    service_cmds=(
+        'up:Start services'
+        'down:Stop services'
+        'restart:Restart services'
+        'logs:View service logs'
+        'status:Show services status with IPs'
+    )
+
     env_cmds=(
-        'check:Check .env drift (read-only)'
-        'sync:Sync .env files'
+        'fix:Interactive .env / .env.example sync'
     )
 
     status_opts=(
         '-s:Show memory usage stats'
         '--stats:Show memory usage stats'
+        '-n:Number of log lines when drilling into a service'
+        '-f:Follow logs continuously'
+        '--follow:Follow logs continuously'
+        '--no-logs:Suppress log tail'
+    )
+
+    fix_opts=(
+        '-f:Skip confirmation'
+        '--force:Skip confirmation'
+        '--dry-run:Preview without applying'
     )
 
     # Options
     if [[ ${words[CURRENT]} == -* ]]; then
         case ${words[2]} in
-            status|st)
+            status)
                 _describe 'option' status_opts
+                ;;
+            fix)
+                _describe 'option' fix_opts
                 ;;
             *)
                 _describe 'option' opts
@@ -57,14 +78,21 @@ _kompose() {
 
     # Subcommands and services
     case ${words[2]} in
-        env)
+        service)
             if (( CURRENT == 3 )); then
-                _describe 'subcommand' env_cmds
+                _describe 'verb' service_cmds
             else
                 _kompose_services
             fi
             ;;
-        up|down|restart|logs|lint)
+        env)
+            if (( CURRENT == 3 )); then
+                _describe 'verb' env_cmds
+            else
+                _kompose_services
+            fi
+            ;;
+        up|down|restart|logs|status|check|fix)
             _kompose_services
             ;;
     esac

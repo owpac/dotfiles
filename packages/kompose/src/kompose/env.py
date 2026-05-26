@@ -239,89 +239,8 @@ def ask_action(prompt: str, options: list[tuple[str, str]]) -> str | None:
         return None
 
 
-def cmd_env_check(args) -> int:
-    """Check .env files for differences with .env.example (read-only)."""
-    service_name = getattr(args, "service", None)
-    host = getattr(args, "host", None)
-    host_dir = get_host_dir(host)
-
-    if service_name:
-        services = [host_dir / service_name]
-        if not services[0].exists():
-            print(f"{Colors.RED}Error: Service not found: {service_name}{Colors.RESET}")
-            return 1
-    else:
-        services = get_services(host)
-
-    table = Table(["Service", "Status", "Diff"])
-    has_diff = False
-
-    for service_dir in services:
-        result = check_service_env(service_dir)
-
-        if result.status == ENV_STATUS_NO_EXAMPLE:
-            continue
-
-        if result.status == ENV_STATUS_MISSING:
-            table.add_row([
-                result.service,
-                f"{Colors.RED}missing{Colors.RESET}",
-                f".env not found ({len(result.only_in_example)} vars in .env.example)",
-            ])
-            has_diff = True
-            continue
-
-        if result.status == ENV_STATUS_OK:
-            table.add_row([result.service, f"{Colors.GREEN}ok{Colors.RESET}", f"{Colors.GRAY}-{Colors.RESET}"])
-            continue
-
-        has_diff = True
-        diff_parts = []
-        if result.only_in_env:
-            diff_parts.append(f"{Colors.YELLOW}+{len(result.only_in_env)} .env only{Colors.RESET}")
-        if result.only_in_example:
-            diff_parts.append(f"{Colors.BLUE}+{len(result.only_in_example)} .env.example only{Colors.RESET}")
-        if result.structure_drift and not result.only_in_env and not result.only_in_example:
-            diff_parts.append(f"{Colors.GRAY}structure{Colors.RESET}")
-
-        table.add_row([result.service, f"{Colors.YELLOW}drift{Colors.RESET}", ", ".join(diff_parts)])
-
-    print()
-    print(table.render())
-
-    # Show detailed diffs
-    for service_dir in services:
-        env_example = service_dir / ".env.example"
-        env_file = service_dir / ".env"
-        service = service_dir.name
-
-        if not env_example.exists() or not env_file.exists():
-            continue
-
-        example_vars = parse_env_file(env_example)
-        env_vars = parse_env_file(env_file)
-
-        only_in_env = sorted(set(env_vars.keys()) - set(example_vars.keys()))
-        only_in_example = sorted(set(example_vars.keys()) - set(env_vars.keys()))
-
-        if not only_in_env and not only_in_example:
-            continue
-
-        print(f"\n{Colors.BOLD}{service}{Colors.RESET}")
-        if only_in_env:
-            print(f"  In .env but not .env.example:")
-            for key in only_in_env:
-                print(f"    {Colors.YELLOW}{key}{Colors.RESET}")
-        if only_in_example:
-            print(f"  In .env.example but not .env:")
-            for key in only_in_example:
-                print(f"    {Colors.BLUE}{key}{Colors.RESET}")
-
-    return 1 if has_diff else 0
-
-
-def cmd_env_sync(args) -> int:
-    """Execute the env sync command."""
+def cmd_env_fix(args) -> int:
+    """Execute the env fix (formerly `env sync`) command."""
     service_name = args.service
     force = getattr(args, "force", False)
     host = getattr(args, "host", None)
@@ -515,3 +434,13 @@ def cmd_env_sync(args) -> int:
                     print(f"    {Colors.GRAY}?{Colors.RESET} {var}")
 
     return 0
+
+
+def cmd_fix(args) -> int:
+    """Global `kompose fix` — coordinates all auto-fixable rules.
+
+    Today this just delegates to `cmd_env_fix`. When the auto-fix engine API
+    lands (step 2 of the CLI refactor), this will also invoke each rule's
+    `fix()` hook for compose-level corrections (property-order, etc.).
+    """
+    return cmd_env_fix(args)
