@@ -16,23 +16,38 @@ globals:
 
 rules:
   # Property order — alphabetical convention enforced on common compose keys.
+  # warn_on_unknown defaults to true → any YAML key not in `order:` becomes a
+  # warning. Either add the key to `order:` to canonicalize it, or set
+  # `warn_on_unknown: false` to silence.
   - name: property-order
     category: structure
     type: property_order
     severity: warning
     params:
       order:
+        - cap_add
+        - command
         - container_name
         - depends_on
+        - deploy
+        - devices        # mount host device(s) into the container (e.g. /dev/dri for GPU passthrough)
+        - entrypoint
         - env_file
         - environment
+        - group_add      # add the container process to additional host GIDs (e.g. 107=render, 44=video for GPU device access)
         - healthcheck
+        - hostname       # internal hostname; affects inter-container DNS + 'hostname' command inside
         - image
         - labels
         - logging
+        - network_mode
         - networks
+        - pid
         - ports
+        - privileged
         - restart
+        - stdin_open     # keep STDIN open (= docker -i); needed by 'docker attach' for interactive input
+        - tty            # allocate pseudo-TTY (= docker -t); pair with stdin_open for full terminal behavior
         - user
         - volumes
 
