@@ -436,11 +436,3 @@ def cmd_env_fix(args) -> int:
     return 0
 
 
-def cmd_fix(args) -> int:
-    """Global `kompose fix` — coordinates all auto-fixable rules.
-
-    Today this just delegates to `cmd_env_fix`. When the auto-fix engine API
-    lands (step 2 of the CLI refactor), this will also invoke each rule's
-    `fix()` hook for compose-level corrections (property-order, etc.).
-    """
-    return cmd_env_fix(args)

@@ -24,7 +24,8 @@ import sys
 from kompose import __version__
 from kompose.compose import cmd_down, cmd_logs, cmd_restart, cmd_status, cmd_up
 from kompose.config import DEFAULT_HOST
-from kompose.env import cmd_env_fix, cmd_fix
+from kompose.env import cmd_env_fix
+from kompose.fix import cmd_fix
 from kompose.lint import cmd_check
 from kompose.utils import init_colors
 

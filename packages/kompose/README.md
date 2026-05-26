@@ -211,13 +211,15 @@ Examples:
 
 Built-in handlers live in `src/kompose/rules/`:
 
-| Handler | Purpose | `exclude:` semantics |
-|---------|---------|----------------------|
-| `traefik_router_naming` | Public routers must use `-private`/`-public` suffix | router names |
-| `traefik_middleware_correlation` | Public→wan@file, private→lan@file | router names |
-| `reverse_proxy_network` | Service must use proxy network or `network_mode` | service names |
-| `compose_includes_sync` | Service dirs ↔ `<host>/compose.yml` `include:` stay in sync | service / dir names |
-| `env_check` | `.env` ↔ `.env.example` parity (vars + structure). Shares its check logic with `kompose env fix`. | service names |
+| Handler | Purpose | `exclude:` semantics | Auto-fix |
+|---------|---------|----------------------|----------|
+| `traefik_router_naming` | Public routers must use `-private`/`-public` suffix | router names | — |
+| `traefik_middleware_correlation` | Public→wan@file, private→lan@file | router names | — |
+| `reverse_proxy_network` | Service must use proxy network or `network_mode` | service names | — |
+| `compose_includes_sync` | Service dirs ↔ `<host>/compose.yml` `include:` stay in sync | service / dir names | ✓ (direction A: adds missing dir to includes) |
+| `env_check` | `.env` ↔ `.env.example` parity (vars + structure). Shares its check logic with `kompose env fix`. | service names | via `kompose env fix` |
+
+Built-in YAML types with auto-fix: `property_order` (reorders keys preserving comments).
 
 Adding a new handler:
 
@@ -264,6 +266,45 @@ def notices(host_dir: Path, services: list[Path], params: dict, exclude: set[str
 Notices appear in a separate **Notices** section after the per-service
 details. They contribute to the global error/warning counts and to the
 final exit code.
+
+#### Auto-fix via the `fix()` hook
+
+A rule may also export an optional `fix()` function that auto-corrects the
+issues it detects. The convention mirrors `check()` and `notices()`:
+
+```python
+from kompose._engine import FixApplied, LintContext
+
+def fix(ctx: LintContext, params: dict, exclude: set[str],
+        *, force: bool = False, dry_run: bool = False) -> list[FixApplied]:
+    # mutate ctx.compose_path (unless dry_run) and return what changed
+    return [FixApplied(target="paperless/compose.yml", message="reordered properties in app")]
+```
+
+For built-in types, the companion function is `<type>_fix` (e.g.
+`property_order_fix` in `rules/_builtin.py`).
+
+`FixApplied` carries:
+
+| Field | Description |
+|-------|-------------|
+| `target` | Human path (e.g. `paperless/compose.yml`) shown in the summary |
+| `message` | Short description (e.g. `reordered 4 properties`) |
+| `before`, `after` | Optional snippets for `--dry-run` preview (unused so far) |
+
+The rule itself is responsible for honoring the keyword args:
+
+- `force=True` → skip confirmation prompts, apply defaults to ambiguous choices
+- `dry_run=True` → describe what *would* be done, but do not mutate disk
+
+`kompose fix` runs every rule's `fix()` hook across all services, then
+chains `cmd_env_fix` (interactive). In `--dry-run`, the env fix step is
+skipped (it's interactive by design). `kompose check` appends a footer
+counting the issues that have a `fix()` available:
+
+```
+→ 4 auto-fixable. Run `kompose fix` to apply.
+```
 
 ## Environment files
 
@@ -353,6 +394,7 @@ packages/kompose/
       config.py                # paths, host helpers
       env.py                   # kompose env fix (formerly env sync)
       lint.py                  # kompose check orchestrator (formerly lint)
+      fix.py                   # kompose fix orchestrator (rule fixes + env fix chain)
       utils.py                 # Colors, Table, confirm()
       rules/
         __init__.py

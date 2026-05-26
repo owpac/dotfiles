@@ -12,6 +12,7 @@ from ._engine import (
     ServiceLintResult,
     lint_service,
     load_rules,
+    resolve_fix,
     run_notices,
 )
 from .config import get_host_dir, get_services
@@ -151,20 +152,35 @@ def cmd_check(args) -> int:
     total_warnings = sum(r.warning_count for r in results) + notice_warnings
     failed_services = sum(1 for r in results if r.has_errors)
 
+    # Count issues whose rule advertises a fix() — surfaced as a footer hint.
+    fixable_rules = {spec.name for spec in rules if resolve_fix(spec) is not None}
+    fixable_count = 0
+    for r in results:
+        for rr in r.rule_results:
+            if rr.rule.name in fixable_rules:
+                fixable_count += len(rr.issues)
+    for spec, issues in notices_by_rule:
+        if spec.name in fixable_rules:
+            fixable_count += len(issues)
+
     print()
     if total_errors == 0 and total_warnings == 0:
         print(f"{Colors.GREEN}All {len(results)} services passed{Colors.RESET}")
         return 0
     if total_errors == 0:
         print(f"{Colors.YELLOW}{total_warnings} warning(s){Colors.RESET}")
-        return 0
-    parts = [f"{Colors.RED}{total_errors} error(s){Colors.RESET}"]
-    if failed_services:
-        parts.append(f"in {failed_services} service(s)")
-    if notice_errors:
-        parts.append(f"({notice_errors} host-wide)")
-    summary = " ".join(parts)
-    if total_warnings:
-        summary += f" {Colors.YELLOW}+ {total_warnings} warning(s){Colors.RESET}"
-    print(summary)
-    return 1
+    else:
+        parts = [f"{Colors.RED}{total_errors} error(s){Colors.RESET}"]
+        if failed_services:
+            parts.append(f"in {failed_services} service(s)")
+        if notice_errors:
+            parts.append(f"({notice_errors} host-wide)")
+        summary = " ".join(parts)
+        if total_warnings:
+            summary += f" {Colors.YELLOW}+ {total_warnings} warning(s){Colors.RESET}"
+        print(summary)
+
+    if fixable_count:
+        print(f"{Colors.GRAY}→ {fixable_count} auto-fixable. Run `kompose fix` to apply.{Colors.RESET}")
+
+    return 0 if total_errors == 0 else 1

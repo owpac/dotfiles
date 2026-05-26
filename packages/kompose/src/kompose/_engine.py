@@ -190,6 +190,16 @@ def load_rules(host: str | None = None) -> tuple[dict, list[RuleSpec]]:
 
 HandlerFn = Callable[[LintContext, dict, set], list[Issue]]
 NoticesFn = Callable[[Path, list, dict, set], list[Issue]]
+FixFn = Callable[..., list["FixApplied"]]
+
+
+@dataclass
+class FixApplied:
+    """Description of an auto-fix that was applied (or would be in dry-run)."""
+    target: str           # human path, e.g. 'paperless/compose.yml' or 'paperless/.env'
+    message: str          # short description, e.g. 'reordered 4 properties'
+    before: str = ""      # optional snippet, used by --dry-run renderers
+    after: str = ""       # optional snippet
 
 
 def _handler_module(spec: RuleSpec):
@@ -251,6 +261,37 @@ def run_notices(
         return []
     exclude = set(spec.exclude or [])
     return fn(host_dir, services, dict(spec.params), exclude) or []
+
+
+def resolve_fix(spec: RuleSpec) -> FixFn | None:
+    """Return the rule's optional `fix()` callable, or None.
+
+    Convention identical to notices: `fix` attr on handler modules, or
+    `<type>_fix` for built-in types.
+    """
+    module = _handler_module(spec)
+    if spec.type:
+        return getattr(module, f"{spec.type}_fix", None)
+    return getattr(module, "fix", None)
+
+
+def run_fix(
+    spec: RuleSpec,
+    ctx: LintContext,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+) -> list[FixApplied]:
+    """Invoke a rule's `fix()` hook if defined, else return [].
+
+    The rule itself is responsible for honouring `dry_run` (not mutating
+    the filesystem) and `force` (skipping confirmation prompts).
+    """
+    fn = resolve_fix(spec)
+    if fn is None:
+        return []
+    exclude = set(spec.exclude or [])
+    return fn(ctx, dict(spec.params), exclude, force=force, dry_run=dry_run) or []
 
 
 def lint_service(

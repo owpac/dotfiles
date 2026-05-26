@@ -7,6 +7,7 @@ from pathlib import Path
 from kompose._engine import LintContext
 from kompose.rules._builtin import (
     property_order,
+    property_order_fix,
     substring_forbidden,
     substring_required,
 )
@@ -378,6 +379,202 @@ class TestEnvCheck(unittest.TestCase):
         # .env missing — would normally yield 1 issue, but excluded
         issues = env_check.check(self._ctx(), {}, {self.service_dir.name})
         self.assertEqual(issues, [])
+
+
+class TestPropertyOrderFix(unittest.TestCase):
+    """Tests for the property_order auto-fix (text-based reordering)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.compose = Path(self.tmp.name) / "paperless" / "compose.yml"
+        self.compose.parent.mkdir()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _ctx(self, content: str) -> LintContext:
+        self.compose.write_text(content)
+        return LintContext(
+            service_name="paperless",
+            compose_path=self.compose,
+            content=content,
+            parsed={},
+            globals={},
+        )
+
+    def test_no_changes_when_already_ordered(self):
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    container_name: app\n"
+            "    image: x\n"
+        )
+        ctx = self._ctx(content)
+        fixes = property_order_fix(ctx, {"order": ["container_name", "image"]}, set())
+        self.assertEqual(fixes, [])
+        self.assertEqual(self.compose.read_text(), content)
+
+    def test_reorders_properties(self):
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    image: foo:latest\n"
+            "    container_name: app\n"
+        )
+        ctx = self._ctx(content)
+        fixes = property_order_fix(ctx, {"order": ["container_name", "image"]}, set())
+        self.assertEqual(len(fixes), 1)
+        self.assertIn("app", fixes[0].message)
+        new = self.compose.read_text()
+        # container_name should appear before image now
+        self.assertLess(new.index("container_name"), new.index("image"))
+
+    def test_dry_run_does_not_write(self):
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    image: x\n"
+            "    container_name: app\n"
+        )
+        ctx = self._ctx(content)
+        fixes = property_order_fix(ctx, {"order": ["container_name", "image"]}, set(), dry_run=True)
+        self.assertEqual(len(fixes), 1)
+        self.assertEqual(self.compose.read_text(), content)  # unchanged
+
+    def test_preserves_value_blocks_with_lists(self):
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    image: foo:latest\n"
+            "    environment:\n"
+            "      - TZ=Europe/Paris\n"
+            "      - PUID=1000\n"
+            "    container_name: app\n"
+        )
+        ctx = self._ctx(content)
+        property_order_fix(ctx, {"order": ["container_name", "environment", "image"]}, set())
+        new = self.compose.read_text()
+        # Environment list items must stay attached to environment:
+        env_idx = new.index("environment:")
+        tz_idx = new.index("TZ=Europe/Paris")
+        puid_idx = new.index("PUID=1000")
+        self.assertLess(env_idx, tz_idx)
+        self.assertLess(tz_idx, puid_idx)
+
+    def test_comments_above_property_move_with_it(self):
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    image: foo\n"
+            "    # the next prop is container_name\n"
+            "    container_name: app\n"
+        )
+        ctx = self._ctx(content)
+        property_order_fix(ctx, {"order": ["container_name", "image"]}, set())
+        new = self.compose.read_text()
+        # The comment should now precede container_name AND container_name should be first
+        lines = new.split("\n")
+        cname_idx = next(i for i, l in enumerate(lines) if "container_name:" in l)
+        cmt_idx = next(i for i, l in enumerate(lines) if "the next prop" in l)
+        self.assertEqual(cmt_idx, cname_idx - 1)
+
+    def test_excluded_container_not_touched(self):
+        content = (
+            "services:\n"
+            "  app:\n"
+            "    image: x\n"
+            "    container_name: app\n"
+        )
+        ctx = self._ctx(content)
+        fixes = property_order_fix(ctx, {"order": ["container_name", "image"]}, {"app"})
+        self.assertEqual(fixes, [])
+
+    def test_multi_container_only_changed_ones_reported(self):
+        content = (
+            "services:\n"
+            "  app1:\n"
+            "    image: a\n"
+            "    container_name: a\n"
+            "  app2:\n"
+            "    container_name: b\n"
+            "    image: b\n"
+        )
+        ctx = self._ctx(content)
+        fixes = property_order_fix(ctx, {"order": ["container_name", "image"]}, set())
+        # only app1 needed reordering
+        self.assertEqual(len(fixes), 1)
+        self.assertIn("app1", fixes[0].message)
+        self.assertNotIn("app2", fixes[0].message)
+
+
+class TestComposeIncludesSyncFix(unittest.TestCase):
+    """Tests for the compose_includes_sync auto-fix (add missing include entry)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.host_dir = Path(self.tmp.name)
+        (self.host_dir / "paperless").mkdir()
+        (self.host_dir / "paperless" / "compose.yml").write_text("services:\n  paperless:\n    image: x\n")
+        (self.host_dir / "minecraft").mkdir()
+        (self.host_dir / "minecraft" / "compose.yml").write_text("services:\n  minecraft:\n    image: y\n")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _ctx(self, service_name: str) -> LintContext:
+        return LintContext(
+            service_name=service_name,
+            compose_path=self.host_dir / service_name / "compose.yml",
+            content="",
+            parsed={},
+            globals={},
+        )
+
+    def test_no_root_compose_returns_empty(self):
+        # no root compose.yml at all
+        fixes = compose_includes_sync.fix(self._ctx("minecraft"), {}, set())
+        self.assertEqual(fixes, [])
+
+    def test_already_included_no_op(self):
+        (self.host_dir / "compose.yml").write_text(
+            "include:\n  - path: paperless/compose.yml\n"
+        )
+        fixes = compose_includes_sync.fix(self._ctx("paperless"), {}, set())
+        self.assertEqual(fixes, [])
+
+    def test_excluded_not_added(self):
+        (self.host_dir / "compose.yml").write_text("include:\n  - path: paperless/compose.yml\n")
+        fixes = compose_includes_sync.fix(self._ctx("minecraft"), {}, {"minecraft"})
+        self.assertEqual(fixes, [])
+
+    def test_adds_missing_include_dict_form(self):
+        (self.host_dir / "compose.yml").write_text(
+            "include:\n  - path: paperless/compose.yml\n"
+        )
+        fixes = compose_includes_sync.fix(self._ctx("minecraft"), {}, set())
+        self.assertEqual(len(fixes), 1)
+        new_root = (self.host_dir / "compose.yml").read_text()
+        self.assertIn("minecraft/compose.yml", new_root)
+        # Should be in dict form (matches existing style)
+        self.assertIn("- path: minecraft/compose.yml", new_root)
+
+    def test_adds_missing_include_short_form(self):
+        (self.host_dir / "compose.yml").write_text(
+            "include:\n  - paperless/compose.yml\n"
+        )
+        fixes = compose_includes_sync.fix(self._ctx("minecraft"), {}, set())
+        self.assertEqual(len(fixes), 1)
+        new_root = (self.host_dir / "compose.yml").read_text()
+        # Should match the short-form style
+        self.assertIn("- minecraft/compose.yml", new_root)
+        self.assertNotIn("path: minecraft", new_root)
+
+    def test_dry_run_does_not_write(self):
+        original = "include:\n  - path: paperless/compose.yml\n"
+        (self.host_dir / "compose.yml").write_text(original)
+        fixes = compose_includes_sync.fix(self._ctx("minecraft"), {}, set(), dry_run=True)
+        self.assertEqual(len(fixes), 1)
+        self.assertEqual((self.host_dir / "compose.yml").read_text(), original)
 
 
 if __name__ == "__main__":

@@ -7,14 +7,17 @@ from unittest import mock
 
 from kompose import _engine
 from kompose._engine import (
+    FixApplied,
     LintContext,
     RuleSpec,
     SEVERITY_ERROR,
     SEVERITY_WARNING,
     lint_service,
     load_rules,
+    resolve_fix,
     resolve_handler,
     resolve_notices,
+    run_fix,
     run_notices,
     run_rule,
 )
@@ -244,6 +247,47 @@ class TestNoticesHook(unittest.TestCase):
             spec = RuleSpec(name="r", category="c", handler="compose_includes_sync")
             issues = run_notices(spec, host, [])
             self.assertEqual(len(issues), 1)
+
+
+class TestFixHook(unittest.TestCase):
+    """Tests for the optional `fix()` hook on rules."""
+
+    def test_resolve_fix_returns_none_for_handler_without_fix(self):
+        # reverse_proxy_network has no fix() function (yet)
+        spec = RuleSpec(name="r", category="c", handler="reverse_proxy_network")
+        self.assertIsNone(resolve_fix(spec))
+
+    def test_resolve_fix_returns_callable_for_property_order_builtin(self):
+        # property_order has a `property_order_fix` companion in _builtin
+        spec = RuleSpec(name="r", category="c", type="property_order")
+        fn = resolve_fix(spec)
+        self.assertTrue(callable(fn))
+
+    def test_resolve_fix_returns_callable_for_compose_includes_sync(self):
+        spec = RuleSpec(name="r", category="c", handler="compose_includes_sync")
+        fn = resolve_fix(spec)
+        self.assertTrue(callable(fn))
+
+    def test_resolve_fix_returns_none_for_substring_required(self):
+        # No fix possible — would need to know where to insert
+        spec = RuleSpec(name="r", category="c", type="substring_required")
+        self.assertIsNone(resolve_fix(spec))
+
+    def test_run_fix_returns_empty_when_handler_has_none(self):
+        spec = RuleSpec(name="r", category="c", handler="reverse_proxy_network")
+        ctx = LintContext(
+            service_name="svc",
+            compose_path=Path("/tmp/compose.yml"),
+            content="",
+            parsed={},
+            globals={},
+        )
+        self.assertEqual(run_fix(spec, ctx), [])
+
+    def test_fix_applied_dataclass_defaults(self):
+        f = FixApplied(target="paperless/compose.yml", message="did X")
+        self.assertEqual(f.before, "")
+        self.assertEqual(f.after, "")
 
 
 if __name__ == "__main__":

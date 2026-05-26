@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .._engine import Issue, LintContext
+from .._engine import FixApplied, Issue, LintContext
 
 
 def substring_required(ctx: LintContext, params: dict, exclude: set[str]) -> list[Issue]:
@@ -122,3 +122,203 @@ def property_order(ctx: LintContext, params: dict, exclude: set[str]) -> list[Is
             continue
         issues.extend(_order_issues_for_container(container, props, expected_order))
     return issues
+
+
+# ---------------------------------------------------------------------------
+# property_order — auto-fix via text manipulation (no ruamel dep)
+# ---------------------------------------------------------------------------
+
+
+def _find_top_level_key(lines: list[str], key: str) -> int | None:
+    for i, line in enumerate(lines):
+        stripped = line.lstrip()
+        if stripped.startswith(f"{key}:") and len(line) - len(stripped) == 0:
+            return i
+    return None
+
+
+def _find_next_top_level(lines: list[str], start: int) -> int:
+    for i in range(start, len(lines)):
+        stripped = lines[i].lstrip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if len(lines[i]) - len(stripped) == 0:
+            return i
+    return len(lines)
+
+
+def _find_first_child_indent(lines: list[str], start: int, end: int) -> int | None:
+    for i in range(start, end):
+        stripped = lines[i].lstrip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        indent = len(lines[i]) - len(stripped)
+        if indent > 0 and stripped.endswith(":") and not stripped.startswith("-"):
+            return indent
+    return None
+
+
+def _reorder_service_block(body: list[str], expected_order: list[str]) -> tuple[list[str], bool]:
+    """Reorder property blocks inside a single service body. Returns (new_body, changed)."""
+    if not body:
+        return body, False
+
+    prop_indent: int | None = None
+    for line in body:
+        stripped = line.lstrip()
+        if stripped and not stripped.startswith("#"):
+            indent = len(line) - len(stripped)
+            if ":" in stripped and not stripped.startswith("-"):
+                prop_indent = indent
+                break
+    if prop_indent is None:
+        return body, False
+
+    blocks: list[tuple[str | None, list[str]]] = []
+    buffered: list[str] = []
+    current_prop: str | None = None
+    current_lines: list[str] = []
+
+    for line in body:
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped) if stripped else 0
+
+        if not stripped or stripped.startswith("#"):
+            # Comment or blank: attach to NEXT property (so reorder moves it correctly).
+            # Exception: if it sits inside a value block (indent > prop_indent), keep it
+            # with the current property.
+            if current_prop is None:
+                buffered.append(line)
+            elif stripped and indent > prop_indent:
+                current_lines.append(line)
+            else:
+                buffered.append(line)
+            continue
+
+        is_property = (
+            indent == prop_indent
+            and ":" in stripped
+            and not stripped.startswith("-")
+        )
+
+        if is_property:
+            if current_prop is not None:
+                blocks.append((current_prop, current_lines))
+            current_prop = stripped.split(":")[0].strip()
+            current_lines = buffered + [line]
+            buffered = []
+        else:
+            current_lines.extend(buffered)
+            buffered = []
+            current_lines.append(line)
+
+    if current_prop is not None:
+        blocks.append((current_prop, current_lines))
+    trailing = buffered  # blanks/comments after the last property stay at the end
+
+    def sort_key(prop: str) -> tuple[int, int]:
+        try:
+            return (0, expected_order.index(prop))
+        except ValueError:
+            return (1, 0)  # unknown props go after; stable sort keeps their order
+
+    sorted_blocks = sorted(blocks, key=lambda b: sort_key(b[0]))
+
+    changed = [p for p, _ in blocks] != [p for p, _ in sorted_blocks]
+
+    new_body: list[str] = []
+    for _, lines_ in sorted_blocks:
+        new_body.extend(lines_)
+    new_body.extend(trailing)
+    return new_body, changed
+
+
+def _reorder_compose_keys(content: str, expected_order: list[str], exclude: set[str]) -> tuple[str, list[str]]:
+    """Reorder property keys within each service of a compose file.
+
+    Returns (new_content, list of container names whose body changed).
+    """
+    lines = content.split("\n")
+
+    services_idx = _find_top_level_key(lines, "services")
+    if services_idx is None:
+        return content, []
+
+    services_end = _find_next_top_level(lines, services_idx + 1)
+    body_start, body_end = services_idx + 1, services_end
+
+    service_indent = _find_first_child_indent(lines, body_start, body_end)
+    if service_indent is None:
+        return content, []
+
+    new_body: list[str] = []
+    changed: list[str] = []
+    i = body_start
+    while i < body_end:
+        line = lines[i]
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+
+        is_service_header = (
+            stripped and not stripped.startswith("#")
+            and indent == service_indent
+            and stripped.endswith(":")
+            and not stripped.startswith("-")
+        )
+
+        if is_service_header:
+            container = stripped.rstrip(":").strip()
+            new_body.append(line)
+            svc_start = i + 1
+            svc_end = svc_start
+            for j in range(svc_start, body_end):
+                line_j = lines[j]
+                stripped_j = line_j.lstrip()
+                indent_j = len(line_j) - len(stripped_j)
+                if (stripped_j and not stripped_j.startswith("#")
+                        and indent_j == service_indent
+                        and stripped_j.endswith(":")
+                        and not stripped_j.startswith("-")):
+                    break
+                svc_end = j + 1
+
+            svc_body = lines[svc_start:svc_end]
+            if container in exclude:
+                new_body.extend(svc_body)
+            else:
+                reordered, was_changed = _reorder_service_block(svc_body, expected_order)
+                if was_changed:
+                    changed.append(container)
+                new_body.extend(reordered)
+            i = svc_end
+        else:
+            new_body.append(line)
+            i += 1
+
+    new_lines = lines[:body_start] + new_body + lines[body_end:]
+    return "\n".join(new_lines), changed
+
+
+def property_order_fix(ctx: LintContext, params: dict, exclude: set[str], *, force: bool = False, dry_run: bool = False) -> list[FixApplied]:
+    """Auto-fix the property_order rule: reorder service keys to match `expected_order`.
+
+    Preserves comments and exact formatting of value blocks. Comments between
+    two properties are treated as 'leading for the next property' and move with it.
+    """
+    expected_order = params.get("order") or []
+    if not expected_order:
+        return []
+
+    new_content, changed = _reorder_compose_keys(ctx.content, expected_order, exclude)
+    if not changed:
+        return []
+
+    if not dry_run:
+        ctx.compose_path.write_text(new_content)
+
+    return [FixApplied(
+        target=f"{ctx.service_name}/compose.yml",
+        message=f"reordered properties in {', '.join(changed)}",
+    )]
+
+
