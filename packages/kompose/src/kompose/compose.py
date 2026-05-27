@@ -873,7 +873,16 @@ def _render_status_once(
 
 
 def _watch_status(args) -> int:
-    """Live refreshing status table (kompose status -f). Stats stream in background."""
+    """Live refreshing status table (kompose status -f). Stats stream in background.
+
+    Renders inside the terminal's *alternate screen buffer* (`\\033[?1049h`),
+    the same technique `htop`/`vim`/`less` use. On exit, the original terminal
+    content is restored — nothing from the live session pollutes the scrollback.
+    Each frame is built in memory then written atomically to avoid mid-render
+    flicker.
+    """
+    import contextlib
+    import io
     import time
     from datetime import datetime
 
@@ -886,31 +895,35 @@ def _watch_status(args) -> int:
     # Give the streamer ~1s to receive the first batch of samples before the first render.
     time.sleep(1.0)
 
-    # Hide cursor + register cleanup
-    sys.stdout.write("\033[?25l")
+    # Enter alternate screen buffer + hide cursor.
+    sys.stdout.write("\033[?1049h\033[?25l")
     sys.stdout.flush()
 
     try:
         while True:
-            # Clear screen + cursor home
-            sys.stdout.write("\033[2J\033[H")
-
             now = datetime.now().strftime("%H:%M:%S")
             header = (
                 f"{Colors.BOLD}kompose status --stats -f{Colors.RESET}  "
                 f"{Colors.GRAY}refresh {interval}s · {now} · Ctrl+C to exit{Colors.RESET}"
             )
-            print(header)
 
-            _render_status_once(args, host, None, show_stats, streamer, follow_logs=False)
+            # Capture the table render to a buffer so we can write the whole
+            # frame atomically — no flicker from partial paints.
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                _render_status_once(args, host, None, show_stats, streamer, follow_logs=False)
 
+            # Compose frame: cursor home → header → captured table → clear-to-end.
+            frame = "\033[H" + header + "\n" + buf.getvalue() + "\033[J"
+            sys.stdout.write(frame)
             sys.stdout.flush()
+
             time.sleep(interval)
     except KeyboardInterrupt:
-        print()  # newline after ^C
+        pass
     finally:
         streamer.close()
-        # Restore cursor
-        sys.stdout.write("\033[?25h")
+        # Show cursor + leave alternate screen buffer (restores prior content).
+        sys.stdout.write("\033[?25h\033[?1049l")
         sys.stdout.flush()
     return 0
