@@ -28,27 +28,26 @@ kompose <command> [options]
 
 ### Commands
 
-The CLI follows a **noun-verb** canonical form (`service <verb>`, `env <verb>`)
+The CLI follows a **noun-verb** canonical form (`service <verb>`)
 with short top-level aliases for daily use. Both forms are first-class.
 
 **Top-level (daily ergonomics)**
 
-| Command | Description |
-|---------|-------------|
-| `up [service] [containers...]` | Start services (alias of `service up`) |
-| `down [service] [containers...]` | Stop services (alias of `service down`) |
-| `restart [service] [containers...]` | Restart services (alias of `service restart`) |
-| `logs <service> [containers...]` | View service logs (alias of `service logs`) |
-| `status [service]` | Show services status (alias of `service status`) |
-| `check [service]` | Lint compose.yml + env drift against declarative rules |
-| `fix [service]` | Auto-fix what can be fixed (today: env sync) |
+| Command | Alias | Description |
+|---------|-------|-------------|
+| `up [service] [containers...]` | — | Start services |
+| `down [service] [containers...]` | — | Stop services |
+| `restart [service] [containers...]` | `r` | Restart services |
+| `logs <service> [containers...]` | `l` | View service logs |
+| `status [service]` | `st` | Show services status |
+| `check [service]` | — | Lint compose.yml + env drift against declarative rules |
+| `fix [service] [--auto\|--env]` | — | Apply fixes (compose auto-fixes + interactive env sync) |
 
-**Canonical forms**
+**Canonical form**
 
-| Command | Description |
-|---------|-------------|
-| `service up\|down\|restart\|logs\|status [name] [containers...]` | Service lifecycle |
-| `env fix [service]` | Interactive `.env` / `.env.example` sync |
+| Command | Alias | Description |
+|---------|-------|-------------|
+| `service up\|down\|restart\|logs\|status [name] [containers...]` | `svc` | Service lifecycle |
 
 ### Options
 
@@ -66,23 +65,37 @@ kompose up                       # Start all services
 kompose up paperless             # Start a single service
 kompose up servarr               # Start a group (= all services in servarr/compose.yml)
 kompose up servarr plex          # Start specific container(s) inside a group
-kompose restart sonarr radarr    # Restart by service name(s)
+kompose r sonarr radarr          # Restart by service name(s)
 kompose down                     # Stop all services
-kompose logs paperless -n 50
-kompose status                   # Rich table of all services
+kompose l paperless -n 50        # Tail last 50 log lines (l = logs)
+kompose st                       # Rich table of all services (st = status)
 kompose status traefik           # Filtered table + last 30 log lines
 kompose status traefik -f        # Same, follow logs continuously
-kompose status traefik -n 100    # Show last 100 log lines instead
-kompose status traefik --no-logs # Just the filtered table, no logs
+kompose status --stats -f        # Live refresh of CPU/Mem table
 kompose check                    # Lint everything (compose + env)
 kompose check paperless          # Lint a single service
-kompose fix                      # Apply auto-fixes (today: env sync)
-kompose fix -f                   # Non-interactive
+kompose fix                      # All fixes: compose auto-fixes + env interactive sync
+kompose fix --auto               # Only compose-level auto-fixes (skip env)
+kompose fix --env                # Only interactive env sync (skip compose fixes)
 kompose fix --dry-run            # Preview without applying
-kompose env fix paperless        # Scoped env sync for one service
 kompose service status           # Canonical form of `kompose status`
 kompose --host other up          # Use different host directory
 ```
+
+### Fix scopes
+
+`kompose fix` covers two distinct correction layers and exposes scope flags
+to invoke them independently:
+
+| Invocation | Compose-level rule fixes | Interactive env sync |
+|---|---|---|
+| `kompose fix` (default) | ✓ | ✓ |
+| `kompose fix --auto` | ✓ | — |
+| `kompose fix --env` | — | ✓ |
+
+`--auto` and `--env` are mutually exclusive. `--dry-run` previews the
+compose-level fixes; the env sync step is always skipped in dry-run
+(interactive by design).
 
 ## Execution modes
 
@@ -224,7 +237,7 @@ Built-in handlers live in `src/kompose/rules/`:
 | `traefik_middleware_correlation` | Public→wan@file, private→lan@file | router names | — |
 | `reverse_proxy_network` | Service must use proxy network or `network_mode` | service names | — |
 | `compose_includes_sync` | Service dirs ↔ `<host>/compose.yml` `include:` stay in sync | service / dir names | ✓ (direction A: adds missing dir to includes) |
-| `env_check` | `.env` ↔ `.env.example` parity (vars + structure). Shares its check logic with `kompose env fix`. | service names | via `kompose env fix` |
+| `env_check` | `.env` ↔ `.env.example` parity (vars + structure). Shares its check logic with `kompose fix --env`. | service names | via `kompose fix` (or `--env` for env-only) |
 
 Built-in YAML types with auto-fix: `property_order` (reorders keys preserving comments).
 
@@ -362,13 +375,13 @@ Active vars and commented-out vars follow the same rule: preserve the existing
               → aligns: order, comments, blank lines, sanitizes secrets
 ```
 
-### `kompose env fix`
+### `kompose fix --env`
 
 Interactive synchronization of `.env` and `.env.example` files. The
-standalone command for env drift detection has been removed — use
-`kompose check` for the read-only diagnostic (the `env_check` lint rule
-surfaces drift in the unified lint table). Use `env fix` to actually
-apply changes.
+standalone `kompose env fix` command has been removed in favour of the
+scope flag — `kompose fix --env [service]` runs ONLY the env sync.
+Use `kompose check` for read-only diagnostic (the `env_check` lint rule
+surfaces drift in the unified lint table).
 
 **Creation** — If `.env.example` exists but `.env` does not, `.env` is created as a copy
 of `.env.example`.
@@ -432,7 +445,7 @@ packages/kompose/
       _engine.py               # rule loading, dispatch, types
       compose.py               # kompose up/down/restart/logs/status
       config.py                # paths, host helpers
-      env.py                   # kompose env fix (formerly env sync)
+      env.py                   # env sync workflow (invoked by `kompose fix [--env]`)
       lint.py                  # kompose check orchestrator (formerly lint)
       fix.py                   # kompose fix orchestrator (rule fixes + env fix chain)
       utils.py                 # Colors, Table, confirm()

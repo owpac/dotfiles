@@ -7,15 +7,16 @@ Usage:
 Top-level (daily ergonomics):
     up           Start services             (alias: service up)
     down         Stop services              (alias: service down)
-    restart      Restart services           (alias: service restart)
-    logs         View service logs          (alias: service logs)
-    status       Show services status       (alias: service status)
+    restart   r  Restart services           (alias: service restart)
+    logs      l  View service logs          (alias: service logs)
+    status    st Show services status       (alias: service status)
     check        Lint compose files and env drift
-    fix          Auto-fix what can be fixed (today: env sync)
+    fix          Auto-fix (compose-level rules + interactive env sync)
+                   --auto  : only compose-level auto-fixes
+                   --env   : only interactive env sync
 
-Canonical noun-verb forms:
-    service up|down|restart|logs|status
-    env fix
+Canonical noun-verb form:
+    service [svc] up|down|restart|logs|status
 """
 
 import argparse
@@ -24,7 +25,6 @@ import sys
 from kompose import __version__
 from kompose.compose import cmd_down, cmd_logs, cmd_restart, cmd_status, cmd_up
 from kompose.config import DEFAULT_HOST
-from kompose.env import cmd_env_fix
 from kompose.fix import cmd_fix
 from kompose.lint import cmd_check
 from kompose.utils import init_colors
@@ -66,6 +66,9 @@ def _add_fix_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("service", nargs="?", metavar="<service>", help="Service to fix (default: all)")
     parser.add_argument("-f", "--force", action="store_true", help="Skip confirmation, apply defaults")
     parser.add_argument("--dry-run", action="store_true", help="Preview what would change without applying")
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument("--auto", action="store_true", help="Only run compose-level auto-fixes (skip the interactive env sync)")
+    scope.add_argument("--env", action="store_true", help="Only run the interactive env sync (skip compose-level rule fixes)")
 
 
 def main() -> int:
@@ -78,15 +81,16 @@ Examples:
   kompose up                    Start all services (host: {DEFAULT_HOST})
   kompose up paperless          Start a single service (or expand a group)
   kompose down servarr plex     Stop a specific container inside a group
-  kompose restart immich
-  kompose logs paperless -n 50
-  kompose status                Rich table of all services
+  kompose restart immich        (alias: kompose r immich)
+  kompose logs paperless -n 50  (alias: kompose l paperless -n 50)
+  kompose st                    Rich table of all services (alias of `status`)
   kompose status traefik        Filtered table + last 30 log lines
   kompose status traefik -f     Same, follow logs continuously
   kompose check                 Run every lint rule (compose + env)
-  kompose fix                   Apply auto-fixes (today: env sync)
-  kompose fix -f                Non-interactive fix
-  kompose env fix paperless     Scoped env sync for one service
+  kompose fix                   Apply all fixes (compose + interactive env sync)
+  kompose fix --auto            Only compose-level auto-fixes (no env prompts)
+  kompose fix --env             Only interactive env sync
+  kompose fix --dry-run         Preview only
   kompose service status        Canonical form of `kompose status`
 
 Host override:
@@ -108,15 +112,15 @@ Host override:
     _add_lifecycle_args(p)
     p.set_defaults(func=cmd_down)
 
-    p = subparsers.add_parser("restart", help="Restart services (alias of: service restart)")
+    p = subparsers.add_parser("restart", aliases=["r"], help="Restart services (alias of: service restart)")
     _add_lifecycle_args(p)
     p.set_defaults(func=cmd_restart)
 
-    p = subparsers.add_parser("logs", help="View service logs (alias of: service logs)")
+    p = subparsers.add_parser("logs", aliases=["l"], help="View service logs (alias of: service logs)")
     _add_logs_args(p)
     p.set_defaults(func=cmd_logs)
 
-    p = subparsers.add_parser("status", help="Show services status (alias of: service status)")
+    p = subparsers.add_parser("status", aliases=["st"], help="Show services status (alias of: service status)")
     _add_status_args(p)
     p.set_defaults(func=cmd_status)
 
@@ -125,12 +129,12 @@ Host override:
     _add_check_args(p)
     p.set_defaults(func=cmd_check)
 
-    p = subparsers.add_parser("fix", help="Auto-fix what can be fixed (today: env sync)")
+    p = subparsers.add_parser("fix", help="Apply fixes (compose auto-fixes + interactive env sync). Scope: --auto or --env.")
     _add_fix_args(p)
     p.set_defaults(func=cmd_fix)
 
     # ---- Canonical noun: service ----
-    service_parser = subparsers.add_parser("service", help="Service lifecycle (canonical noun-verb form)")
+    service_parser = subparsers.add_parser("service", aliases=["svc"], help="Service lifecycle (canonical noun-verb form)")
     service_subparsers = service_parser.add_subparsers(dest="service_command", metavar="<verb>")
 
     sp = service_subparsers.add_parser("up", help="Start services")
@@ -141,25 +145,17 @@ Host override:
     _add_lifecycle_args(sp)
     sp.set_defaults(func=cmd_down)
 
-    sp = service_subparsers.add_parser("restart", help="Restart services")
+    sp = service_subparsers.add_parser("restart", aliases=["r"], help="Restart services")
     _add_lifecycle_args(sp)
     sp.set_defaults(func=cmd_restart)
 
-    sp = service_subparsers.add_parser("logs", help="View service logs")
+    sp = service_subparsers.add_parser("logs", aliases=["l"], help="View service logs")
     _add_logs_args(sp)
     sp.set_defaults(func=cmd_logs)
 
-    sp = service_subparsers.add_parser("status", help="Show services status with IPs")
+    sp = service_subparsers.add_parser("status", aliases=["st"], help="Show services status with IPs")
     _add_status_args(sp)
     sp.set_defaults(func=cmd_status)
-
-    # ---- Canonical noun: env ----
-    env_parser = subparsers.add_parser("env", help="Environment file operations")
-    env_subparsers = env_parser.add_subparsers(dest="env_command", metavar="<verb>")
-
-    ep = env_subparsers.add_parser("fix", help="Interactive .env / .env.example sync")
-    _add_fix_args(ep)
-    ep.set_defaults(func=cmd_env_fix)
 
     # ---- Dispatch ----
     args = parser.parse_args()
@@ -170,12 +166,8 @@ Host override:
         parser.print_help()
         return 0
 
-    if args.command == "service" and getattr(args, "service_command", None) is None:
+    if args.command in ("service", "svc") and getattr(args, "service_command", None) is None:
         service_parser.print_help()
-        return 0
-
-    if args.command == "env" and getattr(args, "env_command", None) is None:
-        env_parser.print_help()
         return 0
 
     if hasattr(args, "func"):

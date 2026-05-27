@@ -4,7 +4,12 @@ For each service, every rule that defines a `fix()` hook is invoked once.
 The env-drift workflow (`cmd_env_fix`) is then chained at the end, since
 its interactivity model doesn't fit the per-service hook pattern.
 
-Flags:
+Scope flags (mutually exclusive):
+  --auto    Only run compose-level rule fixes; skip the interactive env sync.
+  --env     Only run the interactive env sync; skip compose-level rule fixes.
+  (none)    Run both (default).
+
+Other flags:
   -f / --force   Skip confirmation prompts; apply defaults.
   --dry-run      Preview what would be done; do not mutate files. The env fix
                  step is skipped in dry-run mode (it's interactive by design).
@@ -33,8 +38,17 @@ def cmd_fix(args) -> int:
     host = getattr(args, "host", None)
     force = getattr(args, "force", False)
     dry_run = getattr(args, "dry_run", False)
+    auto_only = getattr(args, "auto", False)
+    env_only = getattr(args, "env", False)
 
     host_dir = get_host_dir(host)
+
+    if env_only:
+        # Skip the rule-fix loop entirely, go straight to the interactive sync.
+        if dry_run:
+            print(f"{Colors.GRAY}(dry-run + --env: nothing to preview — env sync is interactive){Colors.RESET}")
+            return 0
+        return cmd_env_fix(args)
 
     try:
         globals_dict, rules = load_rules(host)
@@ -62,6 +76,10 @@ def cmd_fix(args) -> int:
                 fixes.append((spec, applied))
 
     _render_fixes(fixes, dry_run=dry_run)
+
+    # --auto stops here; default flow continues into the env interactive workflow.
+    if auto_only:
+        return 0
 
     if dry_run:
         print(f"\n{Colors.GRAY}(dry-run: skipping interactive env fix){Colors.RESET}")
