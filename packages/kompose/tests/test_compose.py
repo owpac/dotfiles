@@ -7,7 +7,9 @@ from unittest import mock
 
 from kompose import compose, config
 from kompose.compose import (
-    _parse_ports_string,
+    _format_cpu,
+    _format_ports,
+    _parse_exposed_ports,
     build_compose_command,
     build_service_to_group_map,
     get_compose_files,
@@ -74,39 +76,81 @@ class TestBuildComposeCommand(unittest.TestCase):
         self.assertEqual(cmd, ["docker", "compose", "-f", "/path/compose.yml", "down", "plex"])
 
 
-class TestParsePortsString(unittest.TestCase):
+class TestParseExposedPorts(unittest.TestCase):
     def test_empty_string(self):
-        self.assertEqual(_parse_ports_string(""), [])
+        self.assertEqual(_parse_exposed_ports(""), [])
 
-    def test_single_port(self):
-        self.assertEqual(
-            _parse_ports_string("0.0.0.0:8080->80/tcp"),
-            [{"PublishedPort": 8080, "TargetPort": 80}],
-        )
+    def test_exposed_only_simple(self):
+        self.assertEqual(_parse_exposed_ports("2283/tcp"), ["2283/tcp"])
+
+    def test_published_returns_target(self):
+        # Published entry → keep the right side (target inside the container)
+        self.assertEqual(_parse_exposed_ports("0.0.0.0:8080->80/tcp"), ["80/tcp"])
 
     def test_dual_stack_deduplication(self):
+        # IPv4 + IPv6 published forms of the same target collapse
         self.assertEqual(
-            _parse_ports_string("0.0.0.0:8080->80/tcp, :::8080->80/tcp"),
-            [{"PublishedPort": 8080, "TargetPort": 80}],
+            _parse_exposed_ports("0.0.0.0:8080->80/tcp, :::8080->80/tcp"),
+            ["80/tcp"],
         )
 
-    def test_multiple_ports(self):
-        self.assertEqual(
-            _parse_ports_string("0.0.0.0:8080->80/tcp, 0.0.0.0:8443->443/tcp"),
-            [
-                {"PublishedPort": 8080, "TargetPort": 80},
-                {"PublishedPort": 8443, "TargetPort": 443},
-            ],
-        )
+    def test_mix_exposed_and_published(self):
+        # AdGuard-style: a long list of bare exposed ports
+        ports = _parse_exposed_ports("53/udp, 53/tcp, 80/tcp, 443/tcp")
+        self.assertEqual(ports, ["53/udp", "53/tcp", "80/tcp", "443/tcp"])
 
-    def test_exposed_only_ignored(self):
-        self.assertEqual(_parse_ports_string("80/tcp, 443/tcp"), [])
+    def test_port_range_preserved(self):
+        ports = _parse_exposed_ports("8324/tcp, 32412-32414/udp, 32400/tcp")
+        self.assertIn("32412-32414/udp", ports)
 
-    def test_mixed_published_and_exposed(self):
-        self.assertEqual(
-            _parse_ports_string("80/tcp, 0.0.0.0:8080->80/tcp, 443/tcp"),
-            [{"PublishedPort": 8080, "TargetPort": 80}],
-        )
+    def test_published_and_exposed_dedup(self):
+        # Plex-style: exposed line + published line for the same port
+        ports = _parse_exposed_ports("32400/tcp, 0.0.0.0:32400->32400/tcp")
+        self.assertEqual(ports, ["32400/tcp"])
+
+
+class TestFormatPorts(unittest.TestCase):
+    def test_empty_renders_dash(self):
+        # Strip ANSI for assertion robustness
+        import re
+        s = re.sub(r"\033\[[0-9;]*m", "", _format_ports([]))
+        self.assertEqual(s, "-")
+
+    def test_under_limit(self):
+        s = _format_ports(["80/tcp", "443/tcp"], limit=4)
+        self.assertIn("80/tcp", s)
+        self.assertIn("443/tcp", s)
+        self.assertNotIn("+", s)
+
+    def test_over_limit_appends_plus_n(self):
+        ports = ["1/tcp", "2/tcp", "3/tcp", "4/tcp", "5/tcp", "6/tcp"]
+        s = _format_ports(ports, limit=4)
+        self.assertIn("+2", s)
+        self.assertNotIn("5/tcp", s)
+
+
+class TestFormatCpu(unittest.TestCase):
+    @staticmethod
+    def _strip(s):
+        import re
+        return re.sub(r"\033\[[0-9;]*m", "", s)
+
+    def test_low_cpu(self):
+        self.assertIn("0.1%", self._strip(_format_cpu("0.05%")))
+
+    def test_medium_cpu(self):
+        # 60% should land in yellow band, but we just check the number
+        self.assertIn("60", self._strip(_format_cpu("60.32%")))
+
+    def test_high_cpu_over_100(self):
+        # 180% (= 1.8 cores) rendered without crashing, integer format
+        out = self._strip(_format_cpu("180.45%"))
+        self.assertIn("180%", out)
+
+    def test_invalid_input_falls_back(self):
+        out = _format_cpu("")
+        # Should produce SOMETHING, not crash
+        self.assertTrue(isinstance(out, str))
 
 
 class _WorkspaceFixture(unittest.TestCase):

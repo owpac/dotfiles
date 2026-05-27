@@ -351,23 +351,45 @@ def get_network_containers(network: str = "reverse-proxy") -> dict[str, dict]:
         return {}
 
 
-def _parse_ports_string(ports_str: str) -> list[dict]:
-    """Parse docker ps Ports string into Publishers-compatible format.
+def _parse_exposed_ports(ports_str: str) -> list[str]:
+    """Extract listed ports from docker ps Ports column.
 
-    Input: '0.0.0.0:8080->80/tcp, :::8080->80/tcp'
-    Output: [{'PublishedPort': 8080, 'TargetPort': 80}]
+    Captures both exposed-only entries (e.g. `2283/tcp`) and the target port of
+    published entries (e.g. `0.0.0.0:8080->80/tcp` → `80/tcp`). Returns a
+    deduplicated list of `<port|range>/<proto>` strings in original order.
+
+    Input examples:
+      `0.0.0.0:8080->80/tcp, :::8080->80/tcp`        → ['80/tcp']
+      `53/udp, 53/tcp, 80/tcp`                       → ['53/udp', '53/tcp', '80/tcp']
+      `8324/tcp, 32412-32414/udp, 32400/tcp`         → ['8324/tcp', '32412-32414/udp', '32400/tcp']
     """
     if not ports_str:
         return []
-    publishers = []
-    seen = set()
-    for match in re.finditer(r"(?:\d+\.[\d.]+):(\d+)->(\d+)", ports_str):
-        published, target = match.groups()
-        key = (published, target)
-        if key not in seen:
-            seen.add(key)
-            publishers.append({"PublishedPort": int(published), "TargetPort": int(target)})
-    return publishers
+    out: list[str] = []
+    seen: set[str] = set()
+    for entry in ports_str.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        # Published port has the form `<ip>:<port>-><port|range>/<proto>` — take the right side.
+        if "->" in entry:
+            entry = entry.split("->", 1)[1].strip()
+        if entry and entry not in seen:
+            seen.add(entry)
+            out.append(entry)
+    return out
+
+
+def _format_ports(ports: list[str], limit: int = 4) -> str:
+    """Format a list of exposed ports for the status table (top `limit` + `+N`)."""
+    if not ports:
+        return f"{Colors.GRAY}-{Colors.RESET}"
+    visible = ports[:limit]
+    remaining = len(ports) - limit
+    rendered = ", ".join(visible)
+    if remaining > 0:
+        rendered += f" {Colors.GRAY}+{remaining}{Colors.RESET}"
+    return rendered
 
 
 def _get_all_compose_containers() -> list[dict]:
@@ -397,7 +419,7 @@ def _get_all_compose_containers() -> list[dict]:
                     "Name": data.get("Names", ""),
                     "State": data.get("State", ""),
                     "Status": data.get("Status", ""),
-                    "Publishers": _parse_ports_string(data.get("Ports", "")),
+                    "ExposedPorts": _parse_exposed_ports(data.get("Ports", "")),
                     "_project": project,
                     "_service": service,
                 })
@@ -506,109 +528,143 @@ def _format_memory(mem_str: str, system_mem: float) -> str:
         return mem_str
 
 
-def get_container_memory_stats(system_mem: float) -> dict[str, str]:
-    """Get memory usage/limit for all running containers."""
-    cmd = ["docker", "stats", "--no-stream", "--format", "{{.Name}}\t{{.MemUsage}}"]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            return {}
+def _format_cpu(cpu_perc_str: str) -> str:
+    """Format CPU percentage with thresholds: <50% green, 50-100% yellow, >100% red.
 
-        stats = {}
-        for line in result.stdout.strip().split("\n"):
-            if line and "\t" in line:
-                name, mem_usage = line.split("\t", 1)
-                stats[name] = _format_memory(mem_usage, system_mem)
-        return stats
-    except Exception:
-        return {}
-
-
-def cmd_status(args) -> int:
-    """Show status of services with IPs.
-
-    Without `service` arg: rich table of every running service.
-    With `service` arg: filtered table for that service/group, then tails the
-    last N log lines (default 30). With `-f`, follows the logs after the tail.
-    `--no-logs` suppresses the log section.
+    Input from docker stats is `% of one core` (so 100% = 1 core saturated,
+    200% = 2 cores, etc.). We keep that semantic — raw value, just colorized.
     """
-    from concurrent.futures import ThreadPoolExecutor
+    try:
+        pct = float(cpu_perc_str.rstrip("%").strip())
+    except (ValueError, AttributeError):
+        return cpu_perc_str or f"{Colors.GRAY}-{Colors.RESET}"
 
-    host = getattr(args, "host", None)
-    service_arg = getattr(args, "service", None)
-    # When a single service is targeted, show stats by default (we're zoomed in).
-    show_stats = getattr(args, "stats", False) or bool(service_arg)
-    services = get_services(host)
+    if pct >= 100:
+        color = Colors.RED
+    elif pct >= 50:
+        color = Colors.YELLOW
+    else:
+        color = Colors.GREEN
 
-    if not services:
-        print(f"{Colors.YELLOW}No services found{Colors.RESET}")
-        return 0
+    pct_str = f"{pct:.1f}%" if pct < 10 else f"{pct:.0f}%"
+    return f"{color}{pct_str}{Colors.RESET}"
 
-    system_mem = _get_system_memory() if show_stats else 0
-    system_mem_str = _compact_mem(system_mem) if system_mem > 0 else "?"
 
-    service_to_group = build_service_to_group_map(host)
-    service_dir_names = {s.name for s in services}
+# ---------------------------------------------------------------------------
+# Stats source: snapshot (one-shot) vs streaming (live `-f` mode)
+# ---------------------------------------------------------------------------
 
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        future_containers = pool.submit(_get_all_compose_containers)
-        future_network = pool.submit(get_network_containers, "reverse-proxy")
-        future_memory = pool.submit(get_container_memory_stats, system_mem) if show_stats else None
 
-        all_containers = future_containers.result()
-        network_containers = future_network.result()
-        memory_stats = future_memory.result() if future_memory else {}
+class StatsSource:
+    """Interface — returns the latest stats dict for a container, or {} if absent."""
 
-    # Group containers by their source group (dir name).
-    # - Root mode: derive group from the service label via service_to_group map.
-    # - Legacy mode: use the project label (which IS the group name).
-    service_groups: dict[str, list[dict]] = {}
-    for container in all_containers:
-        project = container.get("_project", "")
-        svc_label = container.get("_service", "")
-        group = service_to_group.get(svc_label) if service_to_group else project
-        if not group or group not in service_dir_names:
-            continue
-        name = container.get("Name", "")
-        container["_ip"] = network_containers.get(name, {}).get("ipv4", "")
-        container["_service_dir"] = group
-        service_groups.setdefault(group, []).append(container)
+    def get(self, name: str) -> dict:
+        raise NotImplementedError
 
-    # Drill-down: filter to the requested service/group or its single container.
-    if service_arg:
-        if service_arg in service_groups:
-            service_groups = {service_arg: service_groups[service_arg]}
-        else:
-            # Maybe service_arg is a docker compose service name (e.g. `plex`)
-            # rather than a group dir name (e.g. `servarr`).
-            filtered: dict[str, list[dict]] = {}
-            for group_name, conts in service_groups.items():
-                matching = [c for c in conts if c.get("_service") == service_arg]
-                if matching:
-                    filtered[group_name] = matching
-            if filtered:
-                service_groups = filtered
-            else:
-                print(f"{Colors.YELLOW}No containers found for '{service_arg}'{Colors.RESET}")
-                return 0
+    def close(self) -> None:
+        pass
 
-    if not service_groups:
-        print(f"{Colors.YELLOW}No containers found{Colors.RESET}")
-        return 0
 
-    def get_main_ip(containers: list[dict]) -> str:
-        for c in containers:
-            if c.get("_ip"):
-                return c["_ip"]
-        return ""
+class SnapshotStats(StatsSource):
+    """One-shot `docker stats --no-stream` fetch."""
 
-    sorted_services = sorted(
-        service_groups.items(),
-        key=lambda x: parse_ip_for_sort(get_main_ip(x[1]))
-    )
+    def __init__(self):
+        self._data: dict[str, dict] = {}
 
+    def load(self) -> None:
+        import json
+        cmd = ["docker", "stats", "--no-stream", "--format", "{{json .}}"]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                return
+            for line in result.stdout.strip().split("\n"):
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    name = data.get("Name", "")
+                    if name:
+                        self._data[name] = data
+                except json.JSONDecodeError:
+                    continue
+        except Exception:
+            return
+
+    def get(self, name: str) -> dict:
+        return self._data.get(name, {})
+
+
+class StreamingStats(StatsSource):
+    """Background subprocess streaming `docker stats` updates.
+
+    `docker stats` (without --no-stream) emits one JSON line per container
+    roughly every second. A reader thread keeps `self.latest[name]` updated
+    with the freshest payload. Render loops just read from memory.
+    """
+
+    def __init__(self):
+        self.latest: dict[str, dict] = {}
+        self._proc: subprocess.Popen | None = None
+        self._thread: "threading.Thread | None" = None
+
+    def start(self) -> None:
+        import threading
+        self._proc = subprocess.Popen(
+            ["docker", "stats", "--format", "{{json .}}"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,
+        )
+        self._thread = threading.Thread(target=self._read, daemon=True)
+        self._thread.start()
+
+    def _read(self) -> None:
+        import json
+        if self._proc is None or self._proc.stdout is None:
+            return
+        try:
+            for line in self._proc.stdout:
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                    name = data.get("Name", "")
+                    if name:
+                        self.latest[name] = data
+                except json.JSONDecodeError:
+                    continue
+        except Exception:
+            return
+
+    def get(self, name: str) -> dict:
+        return self.latest.get(name, {})
+
+    def close(self) -> None:
+        if self._proc is not None:
+            try:
+                self._proc.terminate()
+                self._proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self._proc.kill()
+            except Exception:
+                pass
+            self._proc = None
+
+
+def _build_status_table(
+    sorted_services: list[tuple[str, list[dict]]],
+    *,
+    show_stats: bool,
+    stats_source: StatsSource | None,
+    system_mem_str: str,
+    system_mem: float = 0,
+) -> tuple[str, int, int]:
+    """Render the status table to a string. Returns (text, total, running)."""
     headers = ["Service", "Container", "Status", "IP"]
     if show_stats:
+        headers.append("CPU")
         headers.append(f"Mem ({system_mem_str})")
     headers.append("Ports")
     table = Table(headers)
@@ -621,7 +677,7 @@ def cmd_status(args) -> int:
         containers.sort(key=lambda c: (
             not c.get("_ip"),
             parse_ip_for_sort(c.get("_ip", "")),
-            c.get("Name", "")
+            c.get("Name", ""),
         ))
 
         has_main_with_ip = any(c.get("_ip") for c in containers)
@@ -655,46 +711,206 @@ def cmd_status(args) -> int:
                 state_str = f"{Colors.YELLOW}{status}{Colors.RESET}"
 
             ip_str = ip if ip else f"{Colors.GRAY}-{Colors.RESET}"
-
-            ports = c.get("Publishers", []) or []
-            port_strs = []
-            for p in ports:
-                if p.get("PublishedPort"):
-                    port_strs.append(f"{p.get('PublishedPort')}:{p.get('TargetPort')}")
-            ports_str = ", ".join(port_strs) if port_strs else f"{Colors.GRAY}-{Colors.RESET}"
+            ports_str = _format_ports(c.get("ExposedPorts") or [])
 
             if is_dependency:
-                container_name = f"{Colors.GRAY}{container_name}{Colors.RESET}"
+                container_name_display = f"{Colors.GRAY}{container_name}{Colors.RESET}"
+            else:
+                container_name_display = container_name
 
-            row = [svc_str, container_name, state_str, ip_str]
+            row = [svc_str, container_name_display, state_str, ip_str]
             if show_stats:
-                mem_str = memory_stats.get(c.get("Name", ""), f"{Colors.GRAY}-{Colors.RESET}")
+                stats = stats_source.get(container_name) if stats_source else {}
+                cpu_perc = stats.get("CPUPerc", "")
+                mem_usage = stats.get("MemUsage", "")
+                cpu_str = _format_cpu(cpu_perc) if cpu_perc else f"{Colors.GRAY}-{Colors.RESET}"
+                mem_str = _format_memory(mem_usage, system_mem) if mem_usage else f"{Colors.GRAY}-{Colors.RESET}"
+                row.append(cpu_str)
                 row.append(mem_str)
             row.append(ports_str)
             table.add_row(row)
 
-    print()
-    print(table.render())
+    return table.render(), total_containers, running_containers
 
-    print(f"\n{Colors.GREEN}{running_containers}{Colors.RESET}/{total_containers} container(s) running")
+
+def _gather_status_groups(host: str | None, service_arg: str | None) -> tuple[list[tuple[str, list[dict]]], list]:
+    """Collect & group containers for the status view. Pure (no stats fetch)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    services = get_services(host)
+    if not services:
+        return [], []
+
+    service_to_group = build_service_to_group_map(host)
+    service_dir_names = {s.name for s in services}
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        future_containers = pool.submit(_get_all_compose_containers)
+        future_network = pool.submit(get_network_containers, "reverse-proxy")
+        all_containers = future_containers.result()
+        network_containers = future_network.result()
+
+    service_groups: dict[str, list[dict]] = {}
+    for container in all_containers:
+        project = container.get("_project", "")
+        svc_label = container.get("_service", "")
+        group = service_to_group.get(svc_label) if service_to_group else project
+        if not group or group not in service_dir_names:
+            continue
+        name = container.get("Name", "")
+        container["_ip"] = network_containers.get(name, {}).get("ipv4", "")
+        container["_service_dir"] = group
+        service_groups.setdefault(group, []).append(container)
+
+    if service_arg:
+        if service_arg in service_groups:
+            service_groups = {service_arg: service_groups[service_arg]}
+        else:
+            filtered: dict[str, list[dict]] = {}
+            for group_name, conts in service_groups.items():
+                matching = [c for c in conts if c.get("_service") == service_arg]
+                if matching:
+                    filtered[group_name] = matching
+            service_groups = filtered
+
+    def get_main_ip(containers: list[dict]) -> str:
+        for c in containers:
+            if c.get("_ip"):
+                return c["_ip"]
+        return ""
+
+    sorted_services = sorted(
+        service_groups.items(),
+        key=lambda x: parse_ip_for_sort(get_main_ip(x[1]))
+    )
+    return sorted_services, services
+
+
+def cmd_status(args) -> int:
+    """Show status of services with IPs.
+
+    - `kompose status`                    → snapshot table
+    - `kompose status --stats`            → snapshot table + CPU/Mem columns
+    - `kompose status --stats -f [-i N]`  → live mode, refresh every N seconds
+    - `kompose status <svc>`              → filtered + tail logs (default 30)
+    - `kompose status <svc> -f`           → filtered + follow logs
+    """
+    host = getattr(args, "host", None)
+    service_arg = getattr(args, "service", None)
+    follow = getattr(args, "follow", False)
+
+    # Live mode: -f without a specific service arg → refresh-table loop.
+    if follow and not service_arg:
+        return _watch_status(args)
+
+    # Snapshot mode.
+    show_stats = getattr(args, "stats", False) or bool(service_arg)
+    stats_source: StatsSource | None = None
+    if show_stats:
+        snap = SnapshotStats()
+        snap.load()
+        stats_source = snap
+
+    return _render_status_once(args, host, service_arg, show_stats, stats_source, follow_logs=follow)
+
+
+def _render_status_once(
+    args,
+    host: str | None,
+    service_arg: str | None,
+    show_stats: bool,
+    stats_source: StatsSource | None,
+    *,
+    follow_logs: bool,
+) -> int:
+    """Render a single snapshot of the status table. Used by snapshot AND watch modes."""
+    sorted_services, services = _gather_status_groups(host, service_arg)
+
+    if not services:
+        print(f"{Colors.YELLOW}No services found{Colors.RESET}")
+        return 0
+
+    if not sorted_services:
+        if service_arg:
+            print(f"{Colors.YELLOW}No containers found for '{service_arg}'{Colors.RESET}")
+        else:
+            print(f"{Colors.YELLOW}No containers found{Colors.RESET}")
+        return 0
+
+    system_mem = _get_system_memory() if show_stats else 0
+    system_mem_str = _compact_mem(system_mem) if system_mem > 0 else "?"
+
+    table_text, total, running = _build_status_table(
+        sorted_services,
+        show_stats=show_stats,
+        stats_source=stats_source,
+        system_mem_str=system_mem_str,
+        system_mem=system_mem,
+    )
+
+    print()
+    print(table_text)
+    print(f"\n{Colors.GREEN}{running}{Colors.RESET}/{total} container(s) running")
 
     # Drill-down: tail logs of the targeted service.
     if service_arg and not getattr(args, "no_logs", False):
         tail = str(getattr(args, "tail", "30"))
-        follow = getattr(args, "follow", False)
-        # Reuse the same root/legacy resolution as cmd_logs.
         if get_root_compose(host):
             target_services = resolve_root_targets(host, service_arg, None)
             extra = ["--tail", tail]
-            if follow:
+            if follow_logs:
                 extra.append("-f")
-            print(f"\n{Colors.BOLD}──── {service_arg} logs (last {tail}{' + follow' if follow else ''}) ────{Colors.RESET}")
+            print(f"\n{Colors.BOLD}──── {service_arg} logs (last {tail}{' + follow' if follow_logs else ''}) ────{Colors.RESET}")
             run_root_compose(host, "logs", target_services, extra)
         else:
             extra = ["--tail", tail]
-            if follow:
+            if follow_logs:
                 extra.append("-f")
-            print(f"\n{Colors.BOLD}──── {service_arg} logs (last {tail}{' + follow' if follow else ''}) ────{Colors.RESET}")
+            print(f"\n{Colors.BOLD}──── {service_arg} logs (last {tail}{' + follow' if follow_logs else ''}) ────{Colors.RESET}")
             run_compose(service_arg, "logs", host, extra)
 
+    return 0
+
+
+def _watch_status(args) -> int:
+    """Live refreshing status table (kompose status -f). Stats stream in background."""
+    import time
+    from datetime import datetime
+
+    host = getattr(args, "host", None)
+    interval = max(1, int(getattr(args, "interval", 2) or 2))
+    show_stats = True  # live mode implies stats (otherwise why refresh?)
+
+    streamer = StreamingStats()
+    streamer.start()
+    # Give the streamer ~1s to receive the first batch of samples before the first render.
+    time.sleep(1.0)
+
+    # Hide cursor + register cleanup
+    sys.stdout.write("\033[?25l")
+    sys.stdout.flush()
+
+    try:
+        while True:
+            # Clear screen + cursor home
+            sys.stdout.write("\033[2J\033[H")
+
+            now = datetime.now().strftime("%H:%M:%S")
+            header = (
+                f"{Colors.BOLD}kompose status --stats -f{Colors.RESET}  "
+                f"{Colors.GRAY}refresh {interval}s · {now} · Ctrl+C to exit{Colors.RESET}"
+            )
+            print(header)
+
+            _render_status_once(args, host, None, show_stats, streamer, follow_logs=False)
+
+            sys.stdout.flush()
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print()  # newline after ^C
+    finally:
+        streamer.close()
+        # Restore cursor
+        sys.stdout.write("\033[?25h")
+        sys.stdout.flush()
     return 0

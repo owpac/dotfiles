@@ -51,9 +51,10 @@ def _add_logs_args(parser: argparse.ArgumentParser) -> None:
 
 def _add_status_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("service", nargs="?", metavar="<service>", help="Drill into a specific service: filter the table and tail its logs")
-    parser.add_argument("-s", "--stats", action="store_true", help="Show memory usage stats")
+    parser.add_argument("-s", "--stats", action="store_true", help="Show CPU and memory usage")
     parser.add_argument("-n", "--tail", default="30", metavar="N", help="Lines of log to show when drilling into a service (default: 30)")
-    parser.add_argument("-f", "--follow", action="store_true", help="Follow logs after the tail (only meaningful with a service arg)")
+    parser.add_argument("-f", "--follow", action="store_true", help="Live mode — with a service arg: follow logs after the tail; without: refresh the table every -i seconds")
+    parser.add_argument("-i", "--interval", type=int, default=2, metavar="N", help="Refresh interval in seconds for live mode (default: 2)")
     parser.add_argument("--no-logs", action="store_true", help="Suppress the log tail when drilling into a service")
 
 

@@ -40,11 +40,13 @@ _kompose() {
     )
 
     status_opts=(
-        '-s:Show memory usage stats'
-        '--stats:Show memory usage stats'
+        '-s:Show CPU and memory usage'
+        '--stats:Show CPU and memory usage'
         '-n:Number of log lines when drilling into a service'
-        '-f:Follow logs continuously'
-        '--follow:Follow logs continuously'
+        '-f:Live mode (refresh table OR follow logs depending on context)'
+        '--follow:Live mode (refresh table OR follow logs depending on context)'
+        '-i:Refresh interval in seconds for live mode (default 2)'
+        '--interval:Refresh interval in seconds for live mode (default 2)'
         '--no-logs:Suppress log tail'
     )
 

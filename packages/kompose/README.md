@@ -388,13 +388,34 @@ lines, and variable ordering. Only values differ: `.env` has real values,
 ## Status
 
 ```bash
-kompose status          # Compact view
-kompose status --stats  # With memory usage
+kompose status                    # Compact view (service / container / status / IP / ports)
+kompose status --stats            # + CPU + Mem columns (snapshot)
+kompose status --stats -f         # Live: refresh every 2s (Ctrl+C to exit)
+kompose status --stats -f -i 1    # Live with custom refresh interval
+kompose status traefik            # Drill-down: filter to traefik + tail last 30 log lines
+kompose status traefik -f         # Drill-down + follow logs continuously
 ```
 
-The `--stats` (`-s`) flag adds a memory column showing percentage usage per container.
-Containers with a custom memory limit show `pct%/limit` (e.g. `34%/2G`).
-Colors indicate usage: green < 50%, yellow 50-80%, red >= 80%.
+### Columns
+
+| Column | Source | Format |
+|---|---|---|
+| `Service` | Group dir name (= `<host>/<dir>/compose.yml`) | — |
+| `Container` | `com.docker.compose.service` label | Grey + tree glyph for "dependency" containers |
+| `Status` | docker ps `Status` | Green=running, red=exited, yellow=other |
+| `IP` | `docker network inspect reverse-proxy` | IPv4 address; `-` if not on proxy network |
+| `CPU` (with `--stats`) | docker stats `CPUPerc` (= % of one core) | <50% green, 50-100% yellow, >100% red |
+| `Mem (<total>)` (with `--stats`) | docker stats `MemUsage` | <50% green, 50-80% yellow, >=80% red; `pct%/limit` when a custom mem limit is set |
+| `Ports` | docker ps `Ports`, target side only | Top 4 + `+N more`; `-` if no exposed ports |
+
+### Live mode (`-f`)
+
+`-f` has two distinct meanings depending on arguments:
+
+- **Without a service arg** (`kompose status -f` or `kompose status --stats -f`) → **refresh the table** every `-i` seconds (default 2s). Implemented via a background `docker stats` streaming subprocess, so the CPU/Mem samples are always fresh (≤1s old). Ctrl+C to exit.
+- **With a service arg** (`kompose status traefik -f`) → **follow logs** after the tail (existing drill-down behaviour, unchanged).
+
+In live mode, the cursor is hidden during refresh and restored on exit. The header shows the timestamp + interval so you can see the table is alive.
 
 ## Development
 
