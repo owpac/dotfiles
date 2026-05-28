@@ -57,8 +57,10 @@
 {{-   end -}}
 {{- end -}}
 
-{{/* email configuration */}}
-{{- $email := "" -}}
+{{/* email configuration — default to the GitHub noreply address to avoid
+     leaking the real personal email in public commits. Safe to hardcode:
+     GitHub's noreply is designed to be public + bounces incoming mail. */}}
+{{- $email := "29702840+owpac@users.noreply.github.com" -}}
 {{- if hasKey . "email" -}}
 {{-   $email = .email -}}
 {{- end -}}
