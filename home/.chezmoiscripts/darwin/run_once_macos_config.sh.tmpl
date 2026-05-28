@@ -5,6 +5,9 @@ set -eufo pipefail
 
 source {{ .chezmoi.workingTree }}/lib/logs.sh
 
+# Ask for sudo password upfront and keep it alive for the duration of the script
+sudo -v
+
 ###############################################################################
 # Keyboard                                                                   #
 ###############################################################################
@@ -278,7 +281,9 @@ defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 59 "$DIS
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 98 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>104</integer><integer>4</integer><integer>1179648</integer></array><key>type</key><string>standard</string></dict></dict>"
 
 log_done 'Shortcuts configured! 🎉'
-log_blue '⚠️ Please note that you should either restart or disconnect from your session for the changes to take effect!'
+
+# Apply shortcut changes without requiring logout/restart
+/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u
 
 
 ################################################################################
@@ -408,6 +413,23 @@ defaults write com.apple.dock magnification -bool true
 killall Dock
 
 log_done 'Dock configured! 🎉'
+
+###############################################################################
+# Lock Screen                                                                #
+###############################################################################
+
+log_task 'Configuring lock screen...'
+
+# Turn display off on battery after 10 minutes
+sudo pmset -b displaysleep 10
+
+# Turn display off on power adapter after 20 minutes
+sudo pmset -c displaysleep 20
+
+# Require password immediately after screen saver or display sleep
+sysadminctl -screenLock immediate -password -
+
+log_done 'Lock screen configured! 🎉'
 
 ###############################################################################
 # Login items                                                                #
