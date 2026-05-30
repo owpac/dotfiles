@@ -1,6 +1,5 @@
 """Tests for the upgrade command — image extraction, discovery, log parsing."""
 
-import json
 import tempfile
 import unittest
 from pathlib import Path

@@ -33,7 +33,6 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-import sys
 import threading
 import time
 import urllib.error
@@ -67,21 +66,20 @@ EXIT_INTERRUPTED = 130
 # ---------------------------------------------------------------------------
 
 
-def read_watchtower_token(host: str | None) -> str | None:
-    """Return the bearer token from `<host>/watchtower/.env`, or None."""
-    env_path = get_host_dir(host) / WATCHTOWER_SERVICE / ".env"
-    if not env_path.exists():
-        return None
-    values = parse_env_file(env_path)
-    raw = values.get("WATCHTOWER_HTTP_API_TOKEN", "")
-    return _strip_env_quotes(raw) or None
-
-
 def _strip_env_quotes(value: str) -> str:
     """Strip a single layer of matching single/double quotes from .env values."""
     if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
         return value[1:-1]
     return value
+
+
+def read_watchtower_token(host: str | None) -> str | None:
+    """Return the bearer token from `<host>/watchtower/.env`, or None."""
+    env_path = get_host_dir(host) / WATCHTOWER_SERVICE / ".env"
+    if not env_path.exists():
+        return None
+    raw = parse_env_file(env_path).get("WATCHTOWER_HTTP_API_TOKEN", "")
+    return _strip_env_quotes(raw) or None
 
 
 def discover_watchtower_url(host: str | None) -> str | None:
@@ -93,35 +91,41 @@ def discover_watchtower_url(host: str | None) -> str | None:
          `services.watchtower.networks.<net>.ipv4_address` + port 8080
     """
     config = load_kompose_config(host).get("watchtower") or {}
-    if "url" in config and config["url"]:
-        return config["url"].rstrip("/")
+    override = config.get("url")
+    if override:
+        return override.rstrip("/")
 
-    compose_path = get_host_dir(host) / WATCHTOWER_SERVICE / "compose.yml"
+    ip = _watchtower_ip_from_compose(get_host_dir(host) / WATCHTOWER_SERVICE / "compose.yml")
+    if not ip:
+        return None
+
+    port = config.get("port") or WATCHTOWER_DEFAULT_PORT
+    return f"http://{ip}:{port}"
+
+
+def _watchtower_ip_from_compose(compose_path: Path) -> str | None:
+    """Pull `services.watchtower.networks.<net>.ipv4_address` out of compose.yml.
+
+    Prefers `reverse-proxy`; falls back to the first attached network that
+    declares an `ipv4_address`. Returns None if no fixed IP is set.
+    """
     if not compose_path.exists():
         return None
     try:
         parsed = yaml.safe_load(compose_path.read_text()) or {}
     except (OSError, yaml.YAMLError):
         return None
-
     svc = (parsed.get("services") or {}).get(WATCHTOWER_SERVICE) or {}
     networks = svc.get("networks") or {}
-    # The fixed-IP layout uses a mapping under the network name (preferred);
-    # fall back to scanning all attached networks for the first ipv4_address.
-    net = networks.get(WATCHTOWER_DEFAULT_NETWORK) if isinstance(networks, dict) else None
-    ip = None
-    if isinstance(net, dict):
-        ip = net.get("ipv4_address")
-    if not ip and isinstance(networks, dict):
-        for entry in networks.values():
-            if isinstance(entry, dict) and entry.get("ipv4_address"):
-                ip = entry["ipv4_address"]
-                break
-    if not ip:
+    if not isinstance(networks, dict):
         return None
-
-    port = (config.get("port") if isinstance(config, dict) else None) or WATCHTOWER_DEFAULT_PORT
-    return f"http://{ip}:{port}"
+    preferred = networks.get(WATCHTOWER_DEFAULT_NETWORK)
+    if isinstance(preferred, dict) and preferred.get("ipv4_address"):
+        return preferred["ipv4_address"]
+    for entry in networks.values():
+        if isinstance(entry, dict) and entry.get("ipv4_address"):
+            return entry["ipv4_address"]
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -136,12 +140,19 @@ class ImageResolution:
     images: list[str]          # sorted, deduped; empty for "all"
 
 
-def _is_digest_pinned(image_ref: str) -> bool:
-    return "@sha256:" in image_ref
+def _is_updatable(image: object) -> bool:
+    """An image ref watchtower can actually update — set, not pinned by digest."""
+    return isinstance(image, str) and bool(image) and "@sha256:" not in image
 
 
-def _is_updatable(image: str | None) -> bool:
-    return bool(image) and isinstance(image, str) and not _is_digest_pinned(image)
+def _load_services_section(compose_path: Path) -> dict:
+    """Return the `services:` mapping from a compose.yml, or `{}` on any failure."""
+    try:
+        parsed = yaml.safe_load(compose_path.read_text()) or {}
+    except (OSError, yaml.YAMLError):
+        return {}
+    services = parsed.get("services")
+    return services if isinstance(services, dict) else {}
 
 
 def extract_images_from_compose(compose_path: Path) -> list[str]:
@@ -150,14 +161,9 @@ def extract_images_from_compose(compose_path: Path) -> list[str]:
     Skips services without an `image:` (build-only) and those pinned by digest
     (`@sha256:…`) since watchtower can't update those.
     """
-    try:
-        parsed = yaml.safe_load(compose_path.read_text()) or {}
-    except (OSError, yaml.YAMLError):
-        return []
-    services = parsed.get("services") or {}
     seen: set[str] = set()
     out: list[str] = []
-    for svc_def in services.values():
+    for svc_def in _load_services_section(compose_path).values():
         if not isinstance(svc_def, dict):
             continue
         image = svc_def.get("image")
@@ -173,11 +179,7 @@ def extract_image_for_service(compose_path: Path, service_name: str) -> str | No
 
     Returns None if the service isn't found, is build-only, or is digest-pinned.
     """
-    try:
-        parsed = yaml.safe_load(compose_path.read_text()) or {}
-    except (OSError, yaml.YAMLError):
-        return None
-    svc = (parsed.get("services") or {}).get(service_name)
+    svc = _load_services_section(compose_path).get(service_name)
     if not isinstance(svc, dict):
         return None
     image = svc.get("image")
@@ -299,27 +301,40 @@ def slice_latest_session(lines: list[str]) -> list[LogEvent]:
 # ---------------------------------------------------------------------------
 
 
-# Map of (level, message-prefix) → (icon, formatter). Order matters: first match wins.
-_RENDERED_EVENTS: list[tuple[str, str, str]] = [
-    ("Received HTTP API update", f"{Colors.CYAN}→{Colors.RESET}", "triggered via HTTP API"),
-    ("Running update on schedule", f"{Colors.CYAN}→{Colors.RESET}", "triggered by schedule"),
-    ("Pulling", f"{Colors.BLUE}⬇{Colors.RESET}", "pulling"),
-    ("Found new", f"{Colors.YELLOW}⚑{Colors.RESET}", "new image"),
-    ("Stopping container", f"{Colors.GRAY}⏸{Colors.RESET}", "stopping"),
-    ("Creating new container", f"{Colors.GRAY}+{Colors.RESET}", "creating"),
-    ("Started new container", f"{Colors.GREEN}▶{Colors.RESET}", "started"),
-    ("Removed image", f"{Colors.GRAY}🗑{Colors.RESET}", "cleaned up image"),
-    ("Update session completed", f"{Colors.BOLD}■{Colors.RESET}", "session done"),
-]
+@dataclass(frozen=True)
+class _EventStyle:
+    """Render style for a watchtower log event.
+
+    `color_attr` names a field on `Colors` (resolved at render time, not at
+    import time — `init_colors()` flips those fields if `--no-color`).
+    """
+    prefix: str            # message-prefix to match (first match wins)
+    glyph: str             # plain unicode, coloured at render time
+    color_attr: str        # attribute name on Colors
+    label: str             # human-readable verb
+    is_session_end: bool = False
+
+
+_EVENT_STYLES: tuple[_EventStyle, ...] = (
+    _EventStyle("Received HTTP API update", "→", "CYAN", "triggered via HTTP API"),
+    _EventStyle("Running update on schedule", "→", "CYAN", "triggered by schedule"),
+    _EventStyle("Pulling", "⬇", "BLUE", "pulling"),
+    _EventStyle("Found new", "⚑", "YELLOW", "new image"),
+    _EventStyle("Stopping container", "⏸", "GRAY", "stopping"),
+    _EventStyle("Creating new container", "+", "GRAY", "creating"),
+    _EventStyle("Started new container", "▶", "GREEN", "started"),
+    _EventStyle("Removed image", "🗑", "GRAY", "cleaned up image"),
+    _EventStyle("Update session completed", "■", "BOLD", "session done", is_session_end=True),
+)
 
 
 def render_event(event: LogEvent) -> str | None:
     """Return a one-line rendering of a notable event, or None to skip."""
     if event.level not in ("INFO", "WARN", "ERRO"):
         return None
-    for prefix, icon, label in _RENDERED_EVENTS:
-        if event.message.startswith(prefix):
-            return _format_event(event, icon, label)
+    for style in _EVENT_STYLES:
+        if event.message.startswith(style.prefix):
+            return _format_event(event, style)
     if event.level in ("WARN", "ERRO"):
         # Surface unknown warnings/errors verbatim.
         color = Colors.YELLOW if event.level == "WARN" else Colors.RED
@@ -327,20 +342,19 @@ def render_event(event: LogEvent) -> str | None:
     return None
 
 
-def _format_event(event: LogEvent, icon: str, label: str) -> str:
+def _format_event(event: LogEvent, style: _EventStyle) -> str:
+    color = getattr(Colors, style.color_attr, "")
+    icon = f"{color}{style.glyph}{Colors.RESET}"
+    if style.is_session_end:
+        return (
+            f"  {icon} {style.label} "
+            f"{Colors.GREEN}{event.fields.get('updated', '?')} updated{Colors.RESET} · "
+            f"{Colors.RED}{event.fields.get('failed', '?')} failed{Colors.RESET} · "
+            f"{Colors.GRAY}{event.fields.get('scanned', '?')} scanned{Colors.RESET}"
+        )
     target = event.fields.get("container") or event.fields.get("image") or ""
     detail = f" {Colors.GRAY}{target}{Colors.RESET}" if target else ""
-    if "session" in label:
-        scanned = event.fields.get("scanned", "?")
-        updated = event.fields.get("updated", "?")
-        failed = event.fields.get("failed", "?")
-        return (
-            f"  {icon} {label} "
-            f"{Colors.GREEN}{updated} updated{Colors.RESET} · "
-            f"{Colors.RED}{failed} failed{Colors.RESET} · "
-            f"{Colors.GRAY}{scanned} scanned{Colors.RESET}"
-        )
-    return f"  {icon} {label}{detail}"
+    return f"  {icon} {style.label}{detail}"
 
 
 def _render_kv(fields: dict) -> str:
@@ -475,8 +489,8 @@ def _extract_summary(body: dict | None) -> tuple[int, int, int]:
     return updated, failed, max(skipped, 0)
 
 
-def render_summary(result: TriggerResult) -> None:
-    updated, failed, skipped = _extract_summary(result.body)
+def render_summary(summary: tuple[int, int, int]) -> None:
+    updated, failed, skipped = summary
     print()
     print(
         f"{Colors.BOLD}Result:{Colors.RESET} "
@@ -555,15 +569,14 @@ def cmd_upgrade(args) -> int:
 
     try:
         result = trigger_update(url, token, resolution.images)
+        # "Update session completed" arrives slightly after the HTTP response
+        # on some builds — give the tail a brief window to flush it before we
+        # tear it down. Skipped on the Ctrl+C path (the user wants out now).
+        time.sleep(0.8)
     except KeyboardInterrupt:
-        tail.stop()
         print(f"\n{Colors.YELLOW}Interrupted locally — watchtower may still finish.{Colors.RESET}")
         return EXIT_INTERRUPTED
     finally:
-        # The "Update session completed" line arrives slightly after the HTTP
-        # response on some builds — give the tail a brief window to flush it
-        # before we tear it down.
-        time.sleep(0.8)
         tail.stop()
 
     if not (200 <= result.http_status < 300):
@@ -574,9 +587,9 @@ def cmd_upgrade(args) -> int:
         )
         return EXIT_TRIGGER_FAILED
 
-    render_summary(result)
-    _updated, failed, _skipped = _extract_summary(result.body)
-    return EXIT_PARTIAL if failed > 0 else EXIT_OK
+    summary = _extract_summary(result.body)
+    render_summary(summary)
+    return EXIT_PARTIAL if summary[1] > 0 else EXIT_OK
 
 
 def _cmd_upgrade_logs(host: str | None) -> int:
