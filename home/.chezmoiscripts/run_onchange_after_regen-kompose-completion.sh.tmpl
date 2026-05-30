@@ -1,3 +1,4 @@
+{{- if not .is_minimum -}}
 #!/usr/bin/env bash
 # Regenerates the zsh completion for kompose whenever its CLI surface
 # (`__main__.py`) changes. Cheap (<1s), so it makes sense to keep this
@@ -19,3 +20,4 @@ log_task "Regenerating zsh completion → $COMPLETION_FILE"
 mkdir -p "$(dirname "$COMPLETION_FILE")"
 kompose --completion zsh > "$COMPLETION_FILE"
 log_done "completion regenerated ($(awk 'END{print NR}' "$COMPLETION_FILE") lines)"
+{{- end -}}

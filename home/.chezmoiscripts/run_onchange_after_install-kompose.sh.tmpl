@@ -1,3 +1,4 @@
+{{- if not .is_minimum -}}
 #!/usr/bin/env bash
 # Reinstalls kompose via pipx (editable mode) whenever pyproject.toml changes.
 # The companion `regen-kompose-completion` script handles the lighter zsh
@@ -19,3 +20,4 @@ fi
 log_task "Installing kompose via pipx (editable mode)..."
 pipx install --editable "$PACKAGE_DIR" --force >/dev/null
 log_done "kompose installed: $(command -v kompose)"
+{{- end -}}
