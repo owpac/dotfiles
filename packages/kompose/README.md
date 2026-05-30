@@ -6,7 +6,8 @@ CLI for managing Docker Compose services on the homelab.
 
 Installed via [pipx](https://pipx.pypa.io) in editable mode from this repo. The
 chezmoi script at `home/.chezmoiscripts/run_onchange_after_install-kompose.sh.tmpl`
-handles this automatically on `chezmoi apply` whenever `pyproject.toml` changes.
+handles this automatically on `chezmoi apply` whenever `pyproject.toml` or
+`src/kompose/__main__.py` changes (re-run also rebuilds the zsh completion).
 
 Manual install:
 
@@ -15,8 +16,24 @@ pipx install --editable ~/.dotfiles/packages/kompose --force
 ```
 
 This creates an isolated venv at `~/.local/pipx/venvs/kompose/` with PyYAML
-installed, and exposes `kompose` in `~/.local/bin/`. Code changes in
-`~/.dotfiles/packages/kompose/src/` are picked up live (editable mode).
+and shtab installed, and exposes `kompose` in `~/.local/bin/`. Code changes
+in `~/.dotfiles/packages/kompose/src/` are picked up live (editable mode).
+
+### Shell completion
+
+Zsh completion is generated from the argparse parser (via
+[shtab](https://github.com/iterative/shtab)) so it never drifts from the CLI.
+The chezmoi script regenerates `~/.local/bin/completions/_kompose` on every
+relevant code change. To regenerate manually:
+
+```bash
+kompose --completion zsh > ~/.local/bin/completions/_kompose
+```
+
+Dynamic completions are wired via small zsh helpers in the script's preamble:
+service groups → `ls $WORKSPACE_DIR/$HOST/`, nested containers → `awk` on the
+group's `compose.yml`, `--host` values → `ls $WORKSPACE_DIR/`. Override the
+defaults with `KOMPOSE_WORKSPACE` and `KOMPOSE_HOST` env vars if needed.
 
 A future Homebrew tap is drafted at `brew/` — see `brew/README.md`.
 

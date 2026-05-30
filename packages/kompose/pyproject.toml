@@ -12,6 +12,7 @@ license = "MIT"
 authors = [{ name = "owpac" }]
 dependencies = [
     "pyyaml>=6.0",
+    "shtab>=1.7",
 ]
 
 [project.scripts]

@@ -1,7 +1,7 @@
 """Verify that each service's .env and .env.example stay in sync.
 
 Reuses `check_service_env` from kompose.env so the rule and the standalone
-`kompose env check` command share the same logic.
+`kompose fix --env` command share the same logic.
 
 For each affected service, one Issue per variable in drift, plus one Issue
 if there is a structure drift (comments / blank lines / ordering / trailing
@@ -60,6 +60,6 @@ def check(ctx: LintContext, params: dict, exclude: set[str]) -> list[Issue]:
         issues.append(Issue(
             message="structure drift (order / comments / blank lines)",
             location=".env.example",
-            fix="run `kompose env sync`",
+            fix="run `kompose fix --env`",
         ))
     return issues

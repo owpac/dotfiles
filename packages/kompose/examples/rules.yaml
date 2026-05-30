@@ -95,9 +95,8 @@ rules:
     params:
       root: compose.yml
 
-  # Per-service .env / .env.example drift (vars + structure).
-  # `kompose env check` standalone keeps working; this rule surfaces the same
-  # information in the lint table.
+  # Per-service .env / .env.example drift (vars + structure). Surfaces the
+  # same information `kompose fix --env` would prompt you to reconcile.
   - name: env-check
     category: env
     handler: env_check

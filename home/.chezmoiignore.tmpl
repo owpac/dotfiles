@@ -1,5 +1,8 @@
 .asdfrc
 
+# Regenerated locally by `kompose --completion zsh` post-install — never sourced from the repo.
+.local/bin/completions/_kompose
+
 {{- if not (stat (joinPath .chezmoi.homeDir ".ssh" "encryption_ed25519")) }}
 .npmrc
 .workrc
@@ -54,6 +57,5 @@ Workspace/*
 {{- end -}}
 
 {{- if not .is_headless }}
-.local/bin/_kompose
 .local/bin/kompose
 {{- end -}}
