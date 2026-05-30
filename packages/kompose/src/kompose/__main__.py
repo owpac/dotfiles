@@ -14,6 +14,8 @@ Top-level (daily ergonomics):
     fix          Auto-fix (compose-level rules + interactive env sync)
                    --auto  : only compose-level auto-fixes
                    --env   : only interactive env sync
+    upgrade      Trigger image updates via watchtower's HTTP API
+                   --logs  : render the latest session, no trigger
 
 Canonical noun-verb form:
     service [svc] up|down|restart|logs|status
@@ -27,6 +29,7 @@ from kompose.compose import cmd_down, cmd_logs, cmd_restart, cmd_status, cmd_up
 from kompose.config import DEFAULT_HOST
 from kompose.fix import cmd_fix
 from kompose.lint import cmd_check
+from kompose.upgrade import cmd_upgrade
 from kompose.utils import init_colors
 
 
@@ -71,6 +74,12 @@ def _add_fix_args(parser: argparse.ArgumentParser) -> None:
     scope.add_argument("--env", action="store_true", help="Only run the interactive env sync (skip compose-level rule fixes)")
 
 
+def _add_upgrade_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("service", nargs="?", metavar="<service>", help="Service group to upgrade (default: all containers)")
+    parser.add_argument("-f", "--force", action="store_true", help="Skip confirmation on the global form")
+    parser.add_argument("--logs", action="store_true", help="Render the latest watchtower session (no trigger)")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="kompose",
@@ -91,6 +100,9 @@ Examples:
   kompose fix --auto            Only compose-level auto-fixes (no env prompts)
   kompose fix --env             Only interactive env sync
   kompose fix --dry-run         Preview only
+  kompose upgrade               Trigger watchtower update on every container
+  kompose upgrade paperless     Same, scoped to one group's images
+  kompose upgrade --logs        Show the latest watchtower session
   kompose service status        Canonical form of `kompose status`
 
 Host override:
@@ -132,6 +144,10 @@ Host override:
     p = subparsers.add_parser("fix", help="Apply fixes (compose auto-fixes + interactive env sync). Scope: --auto or --env.")
     _add_fix_args(p)
     p.set_defaults(func=cmd_fix)
+
+    p = subparsers.add_parser("upgrade", help="Trigger image updates via watchtower's HTTP API")
+    _add_upgrade_args(p)
+    p.set_defaults(func=cmd_upgrade)
 
     # ---- Canonical noun: service ----
     service_parser = subparsers.add_parser("service", aliases=["svc"], help="Service lifecycle (canonical noun-verb form)")

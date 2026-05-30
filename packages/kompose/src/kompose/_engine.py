@@ -131,6 +131,27 @@ def _parse_rules_block(block: list, source: Path) -> list[RuleSpec]:
     return specs
 
 
+def load_kompose_config(host: str | None = None) -> dict:
+    """Load the optional `kompose:` section from .kompose/ — CLI-level settings.
+
+    Distinct from `globals:` (which feeds lint handlers via ctx.globals). The
+    `kompose:` block holds settings consumed by the CLI itself (e.g.
+    `kompose.watchtower.url`). Returns `{}` if absent.
+    """
+    kompose_dir = get_kompose_dir(host)
+    if not kompose_dir.exists():
+        return {}
+
+    merged: dict = {}
+    for candidate in (kompose_dir / "rules.yaml", kompose_dir / "globals.yaml"):
+        if candidate.exists():
+            data = _load_yaml_file(candidate)
+            section = data.get("kompose")
+            if isinstance(section, dict):
+                merged.update(section)
+    return merged
+
+
 def load_rules(host: str | None = None) -> tuple[dict, list[RuleSpec]]:
     """Load globals + rules from .kompose/ in the host directory.
 

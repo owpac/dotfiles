@@ -42,6 +42,7 @@ with short top-level aliases for daily use. Both forms are first-class.
 | `status [service]` | `st` | Show services status |
 | `check [service]` | — | Lint compose.yml + env drift against declarative rules |
 | `fix [service] [--auto\|--env]` | — | Apply fixes (compose auto-fixes + interactive env sync) |
+| `upgrade [service] [--logs]` | — | Trigger image updates via watchtower's HTTP API |
 
 **Canonical form**
 
@@ -78,6 +79,10 @@ kompose fix                      # All fixes: compose auto-fixes + env interacti
 kompose fix --auto               # Only compose-level auto-fixes (skip env)
 kompose fix --env                # Only interactive env sync (skip compose fixes)
 kompose fix --dry-run            # Preview without applying
+kompose upgrade                  # Trigger watchtower update on every container (confirms)
+kompose upgrade paperless        # Same, scoped to one group's images
+kompose upgrade -f               # Skip the confirmation prompt
+kompose upgrade --logs           # Render the latest watchtower session (no trigger)
 kompose service status           # Canonical form of `kompose status`
 kompose --host other up          # Use different host directory
 ```
@@ -430,6 +435,73 @@ kompose status traefik -f         # Drill-down + follow logs continuously
 
 In live mode, the cursor is hidden during refresh and restored on exit. The header shows the timestamp + interval so you can see the table is alive.
 
+## Upgrade
+
+```bash
+kompose upgrade                   # Trigger watchtower update on all containers (prompts)
+kompose upgrade paperless         # Same, scoped to one group's images
+kompose upgrade -f                # Skip the prompt on the global form
+kompose upgrade --logs            # Render the last watchtower session (no trigger)
+```
+
+`kompose upgrade` calls watchtower's `POST /v1/update` synchronously. While it
+waits, a background thread tails `docker logs -f watchtower --since <t0>` and
+prints a compact line for each high-signal event (pull / stop / create /
+start / cleanup / session done). The HTTP JSON response is used as the
+authoritative final summary.
+
+### Resolution
+
+| Input | Action |
+|---|---|
+| `kompose upgrade` | Full update — no `image=` filter |
+| `kompose upgrade <group>` | Reads `<host>/<group>/compose.yml`, extracts unique `image:` values, sends `?image=…&image=…`. Build-only and digest-pinned services are skipped silently. |
+| `kompose upgrade --logs` | No trigger. Reads `docker logs watchtower`, slices the last session (between the most recent "Received HTTP API update request" / "Running update on schedule" and the matching "Update session completed"), prints the same compact rendering. |
+
+### Watchtower-side prerequisites
+
+Watchtower must run with both flags set so the HTTP trigger and the cron
+schedule coexist:
+
+```env
+WATCHTOWER_HTTP_API_UPDATE='true'
+WATCHTOWER_HTTP_API_PERIODIC_POLLS='true'
+WATCHTOWER_HTTP_API_TOKEN='<token>'
+```
+
+Without `WATCHTOWER_HTTP_API_PERIODIC_POLLS`, enabling `HTTP_API_UPDATE`
+silently disables the periodic schedule.
+
+### Discovery / override
+
+| What | Default | Override |
+|---|---|---|
+| Token | `<host>/watchtower/.env::WATCHTOWER_HTTP_API_TOKEN` | — |
+| Base URL | derived from `<host>/watchtower/compose.yml` — `services.watchtower.networks.<network>.ipv4_address` + port `8080` | `kompose.watchtower.url` |
+
+The override lives in `<host>/.kompose/rules.yaml` (or `globals.yaml` in the
+multi-file layout) as a top-level `kompose:` section, sibling of `globals:`
+and `rules:`:
+
+```yaml
+kompose:
+  watchtower:
+    url: http://10.10.10.200:8080   # optional; absent → discover from compose.yml
+    # port: 8080                    # optional; only used during compose discovery
+```
+
+This `kompose:` section is reserved for CLI-level settings — it is not
+exposed to lint handlers (those still consume `globals:`).
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success (no `failed`, even when `skipped > 0`) |
+| `1` | Partial — at least one container failed to update |
+| `2` | Trigger failed (no token, no URL, HTTP non-2xx, network error) |
+| `130` | Local Ctrl+C — the foreground exits but watchtower keeps running |
+
 ## Development
 
 ### Layout
@@ -448,6 +520,7 @@ packages/kompose/
       env.py                   # env sync workflow (invoked by `kompose fix [--env]`)
       lint.py                  # kompose check orchestrator (formerly lint)
       fix.py                   # kompose fix orchestrator (rule fixes + env fix chain)
+      upgrade.py               # kompose upgrade — watchtower HTTP API trigger + log session view
       utils.py                 # Colors, Table, confirm()
       rules/
         __init__.py
@@ -466,6 +539,7 @@ packages/kompose/
     test_engine.py
     test_env.py
     test_lint.py
+    test_upgrade.py
     fixtures/
 ```
 
