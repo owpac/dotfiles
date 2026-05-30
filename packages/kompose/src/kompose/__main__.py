@@ -103,6 +103,18 @@ _COMPLETE_CONTAINER = {"zsh": "_kompose_containers"}
 _COMPLETE_HOST = {"zsh": "_kompose_hosts"}
 
 
+def _add_subparser(subparsers, name: str, help: str, **kwargs) -> argparse.ArgumentParser:
+    """Create a subparser with `help=` mirrored into `description=`.
+
+    argparse uses `help=` for `--help` output but stores it on the subparser
+    *action*, not on the subparser itself. shtab reads `parser.description`
+    when building the zsh `_commands` table — without this mirror, command
+    rows render as `name:` (empty description), which collapses the nice
+    two-column `_describe` layout.
+    """
+    return subparsers.add_parser(name, help=help, description=help, **kwargs)
+
+
 def _add_lifecycle_args(parser: argparse.ArgumentParser) -> None:
     """Args shared by up/down/restart: <service> + <containers...>."""
     parser.add_argument("service", nargs="?", metavar="<service>", help="Service (group dir) or docker compose service name").complete = _COMPLETE_SERVICE
@@ -182,60 +194,60 @@ Host override:
     subparsers = parser.add_subparsers(dest="command", metavar="<command>")
 
     # ---- Top-level aliases (lifecycle) ----
-    p = subparsers.add_parser("up", help="Start services (alias of: service up)")
+    p = _add_subparser(subparsers, "up", "Start services (alias of: service up)")
     _add_lifecycle_args(p)
     p.set_defaults(func=cmd_up)
 
-    p = subparsers.add_parser("down", help="Stop services (alias of: service down)")
+    p = _add_subparser(subparsers, "down", "Stop services (alias of: service down)")
     _add_lifecycle_args(p)
     p.set_defaults(func=cmd_down)
 
-    p = subparsers.add_parser("restart", aliases=["r"], help="Restart services (alias of: service restart)")
+    p = _add_subparser(subparsers, "restart", "Restart services (alias of: service restart)", aliases=["r"])
     _add_lifecycle_args(p)
     p.set_defaults(func=cmd_restart)
 
-    p = subparsers.add_parser("logs", aliases=["l"], help="View service logs (alias of: service logs)")
+    p = _add_subparser(subparsers, "logs", "View service logs (alias of: service logs)", aliases=["l"])
     _add_logs_args(p)
     p.set_defaults(func=cmd_logs)
 
-    p = subparsers.add_parser("status", aliases=["st"], help="Show services status (alias of: service status)")
+    p = _add_subparser(subparsers, "status", "Show services status (alias of: service status)", aliases=["st"])
     _add_status_args(p)
     p.set_defaults(func=cmd_status)
 
     # ---- Top-level globals ----
-    p = subparsers.add_parser("check", help="Lint compose files and env drift")
+    p = _add_subparser(subparsers, "check", "Lint compose files and env drift")
     _add_check_args(p)
     p.set_defaults(func=cmd_check)
 
-    p = subparsers.add_parser("fix", help="Apply fixes (compose auto-fixes + interactive env sync). Scope: --auto or --env.")
+    p = _add_subparser(subparsers, "fix", "Apply fixes (compose auto-fixes + interactive env sync). Scope: --auto or --env.")
     _add_fix_args(p)
     p.set_defaults(func=cmd_fix)
 
-    p = subparsers.add_parser("upgrade", help="Trigger image updates via watchtower's HTTP API")
+    p = _add_subparser(subparsers, "upgrade", "Trigger image updates via watchtower's HTTP API")
     _add_upgrade_args(p)
     p.set_defaults(func=cmd_upgrade)
 
     # ---- Canonical noun: service ----
-    service_parser = subparsers.add_parser("service", aliases=["svc"], help="Service lifecycle (canonical noun-verb form)")
+    service_parser = _add_subparser(subparsers, "service", "Service lifecycle (canonical noun-verb form)", aliases=["svc"])
     service_subparsers = service_parser.add_subparsers(dest="service_command", metavar="<verb>")
 
-    sp = service_subparsers.add_parser("up", help="Start services")
+    sp = _add_subparser(service_subparsers, "up", "Start services")
     _add_lifecycle_args(sp)
     sp.set_defaults(func=cmd_up)
 
-    sp = service_subparsers.add_parser("down", help="Stop services")
+    sp = _add_subparser(service_subparsers, "down", "Stop services")
     _add_lifecycle_args(sp)
     sp.set_defaults(func=cmd_down)
 
-    sp = service_subparsers.add_parser("restart", aliases=["r"], help="Restart services")
+    sp = _add_subparser(service_subparsers, "restart", "Restart services", aliases=["r"])
     _add_lifecycle_args(sp)
     sp.set_defaults(func=cmd_restart)
 
-    sp = service_subparsers.add_parser("logs", aliases=["l"], help="View service logs")
+    sp = _add_subparser(service_subparsers, "logs", "View service logs", aliases=["l"])
     _add_logs_args(sp)
     sp.set_defaults(func=cmd_logs)
 
-    sp = service_subparsers.add_parser("status", aliases=["st"], help="Show services status with IPs")
+    sp = _add_subparser(service_subparsers, "status", "Show services status with IPs", aliases=["st"])
     _add_status_args(sp)
     sp.set_defaults(func=cmd_status)
 
