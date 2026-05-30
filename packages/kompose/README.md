@@ -4,10 +4,17 @@ CLI for managing Docker Compose services on the homelab.
 
 ## Installation
 
-Installed via [pipx](https://pipx.pypa.io) in editable mode from this repo. The
-chezmoi script at `home/.chezmoiscripts/run_onchange_after_install-kompose.sh.tmpl`
-handles this automatically on `chezmoi apply` whenever `pyproject.toml` or
-`src/kompose/__main__.py` changes (re-run also rebuilds the zsh completion).
+Installed via [pipx](https://pipx.pypa.io) in editable mode from this repo.
+Two chezmoi scripts handle the lifecycle on `chezmoi apply`:
+
+- `run_onchange_after_install-kompose.sh.tmpl` — re-runs `pipx install
+  --editable --force` when `pyproject.toml` changes (heavy, ~5–10s).
+- `run_onchange_after_regen-kompose-completion.sh.tmpl` — re-runs
+  `kompose --completion zsh > _kompose` when `src/kompose/__main__.py`
+  changes (cheap, <1s).
+
+Lexical filename ordering (`install-` < `regen-`) guarantees install runs
+first on the very first apply.
 
 Manual install:
 

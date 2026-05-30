@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Regenerates the zsh completion for kompose whenever its CLI surface
+# (`__main__.py`) changes. Cheap (<1s), so it makes sense to keep this
+# separate from the heavy pipx reinstall in the install-kompose script.
+# Hash: {{ include (joinPath .chezmoi.workingTree "packages/kompose/src/kompose/__main__.py") | sha256sum }}
+
+set -eufo pipefail
+
+source {{ .chezmoi.workingTree }}/lib/logs.sh
+
+COMPLETION_FILE="${HOME}/.local/bin/completions/_kompose"
+
+if ! command -v kompose >/dev/null 2>&1; then
+    log_error "kompose not found on PATH — the install-kompose script must run first"
+    exit 1
+fi
+
+log_task "Regenerating zsh completion → $COMPLETION_FILE"
+mkdir -p "$(dirname "$COMPLETION_FILE")"
+kompose --completion zsh > "$COMPLETION_FILE"
+log_done "completion regenerated ($(awk 'END{print NR}' "$COMPLETION_FILE") lines)"
