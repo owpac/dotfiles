@@ -16,6 +16,7 @@ from kompose.upgrade import (
     _extract_summary,
     _strip_env_quotes,
     discover_watchtower_url,
+    extract_image_for_service,
     extract_images_from_compose,
     parse_watchtower_line,
     read_watchtower_token,
@@ -121,7 +122,8 @@ class TestResolveTarget(unittest.TestCase):
         )
 
     def test_missing_service_raises(self):
-        with mock.patch.object(upgrade, "get_host_dir", return_value=self.host_dir):
+        with mock.patch.object(upgrade, "get_host_dir", return_value=self.host_dir), \
+             mock.patch.object(upgrade, "build_service_to_group_map", return_value={}):
             with self.assertRaises(FileNotFoundError):
                 resolve_target(host="nas", service="nope")
 
@@ -130,6 +132,59 @@ class TestResolveTarget(unittest.TestCase):
         with mock.patch.object(upgrade, "get_host_dir", return_value=self.host_dir):
             result = resolve_target(host="nas", service="app")
         self.assertEqual(result.images, [])
+
+    def test_nested_docker_service_name(self):
+        # `plex` is not a top-level dir but is declared inside the servarr group.
+        self._make_service(
+            "servarr",
+            "services:\n"
+            "  plex:\n    image: plexinc/pms-docker:latest\n"
+            "  sonarr:\n    image: linuxserver/sonarr:latest\n",
+        )
+        with mock.patch.object(upgrade, "get_host_dir", return_value=self.host_dir), \
+             mock.patch.object(upgrade, "build_service_to_group_map",
+                               return_value={"plex": "servarr", "sonarr": "servarr"}):
+            result = resolve_target(host="nas", service="plex")
+        self.assertEqual(result.target, "plex")
+        self.assertEqual(result.images, ["plexinc/pms-docker:latest"])
+
+    def test_nested_service_with_build_only_returns_empty(self):
+        self._make_service(
+            "servarr",
+            "services:\n  app:\n    build: .\n",
+        )
+        with mock.patch.object(upgrade, "get_host_dir", return_value=self.host_dir), \
+             mock.patch.object(upgrade, "build_service_to_group_map",
+                               return_value={"app": "servarr"}):
+            result = resolve_target(host="nas", service="app")
+        self.assertEqual(result.target, "app")
+        self.assertEqual(result.images, [])
+
+
+class TestExtractImageForService(unittest.TestCase):
+    def _write(self, content: str) -> Path:
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".yml", mode="w")
+        tmp.write(content)
+        tmp.close()
+        path = Path(tmp.name)
+        self.addCleanup(path.unlink)
+        return path
+
+    def test_returns_image(self):
+        path = self._write("services:\n  plex:\n    image: plexinc/pms-docker:latest\n")
+        self.assertEqual(extract_image_for_service(path, "plex"), "plexinc/pms-docker:latest")
+
+    def test_returns_none_for_missing_service(self):
+        path = self._write("services:\n  plex:\n    image: plexinc/pms-docker:latest\n")
+        self.assertIsNone(extract_image_for_service(path, "sonarr"))
+
+    def test_returns_none_for_build_only(self):
+        path = self._write("services:\n  app:\n    build: .\n")
+        self.assertIsNone(extract_image_for_service(path, "app"))
+
+    def test_returns_none_for_digest_pinned(self):
+        path = self._write("services:\n  app:\n    image: foo/bar@sha256:abc\n")
+        self.assertIsNone(extract_image_for_service(path, "app"))
 
 
 # ---------------------------------------------------------------------------

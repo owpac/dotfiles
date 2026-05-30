@@ -46,6 +46,7 @@ from pathlib import Path
 import yaml
 
 from ._engine import load_kompose_config
+from .compose import build_service_to_group_map
 from .config import get_host_dir
 from .env import parse_env_file
 from .utils import Colors, confirm
@@ -139,6 +140,10 @@ def _is_digest_pinned(image_ref: str) -> bool:
     return "@sha256:" in image_ref
 
 
+def _is_updatable(image: str | None) -> bool:
+    return bool(image) and isinstance(image, str) and not _is_digest_pinned(image)
+
+
 def extract_images_from_compose(compose_path: Path) -> list[str]:
     """Return unique updatable images from a compose.yml.
 
@@ -156,36 +161,62 @@ def extract_images_from_compose(compose_path: Path) -> list[str]:
         if not isinstance(svc_def, dict):
             continue
         image = svc_def.get("image")
-        if not image or not isinstance(image, str):
-            continue
-        if _is_digest_pinned(image):
-            continue
-        if image in seen:
+        if not _is_updatable(image) or image in seen:
             continue
         seen.add(image)
         out.append(image)
     return sorted(out)
 
 
+def extract_image_for_service(compose_path: Path, service_name: str) -> str | None:
+    """Return the updatable image of a specific service inside a compose.yml.
+
+    Returns None if the service isn't found, is build-only, or is digest-pinned.
+    """
+    try:
+        parsed = yaml.safe_load(compose_path.read_text()) or {}
+    except (OSError, yaml.YAMLError):
+        return None
+    svc = (parsed.get("services") or {}).get(service_name)
+    if not isinstance(svc, dict):
+        return None
+    image = svc.get("image")
+    return image if _is_updatable(image) else None
+
+
 def resolve_target(host: str | None, service: str | None) -> ImageResolution:
     """Expand a CLI `service` argument to the list of images to pass to watchtower.
 
-    - None / empty → full update (no filter).
-    - A group dir → expand `<host>/<service>/compose.yml` to its images.
-    - Anything else → error (no clean way to map a docker service name to an
-      image without scanning every compose file; if you hit this in practice
-      and want it, we'll add it then).
+    - None / empty       → full update (no filter).
+    - A group dir        → expand `<host>/<service>/compose.yml` to all its images.
+    - A docker service   → look up its parent group via the root compose's
+                            `include:` map, return that single service's image.
     """
     if not service:
         return ImageResolution(target=None, images=[])
 
-    compose_path = get_host_dir(host) / service / "compose.yml"
-    if not compose_path.exists():
-        raise FileNotFoundError(
-            f"Service '{service}' not found at {compose_path}"
-        )
-    images = extract_images_from_compose(compose_path)
-    return ImageResolution(target=service, images=images)
+    # 1. Group dir at the host root.
+    group_compose = get_host_dir(host) / service / "compose.yml"
+    if group_compose.exists():
+        images = extract_images_from_compose(group_compose)
+        return ImageResolution(target=service, images=images)
+
+    # 2. Docker compose service name nested inside a group's compose.yml.
+    service_to_group = build_service_to_group_map(host)
+    group = service_to_group.get(service)
+    if group:
+        nested_compose = get_host_dir(host) / group / "compose.yml"
+        image = extract_image_for_service(nested_compose, service)
+        # Found the service, even if it has no updatable image (build-only,
+        # digest-pinned). Return an empty image list so the caller can
+        # surface the "nothing to upgrade" message instead of mistaking it
+        # for an unknown target.
+        return ImageResolution(target=service, images=[image] if image else [])
+
+    raise FileNotFoundError(
+        f"Service '{service}' not found at {group_compose} "
+        f"and not declared in any group's compose.yml"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -588,6 +619,7 @@ __all__ = [
     "discover_watchtower_url",
     "read_watchtower_token",
     "extract_images_from_compose",
+    "extract_image_for_service",
     "resolve_target",
     "parse_watchtower_line",
     "slice_latest_session",

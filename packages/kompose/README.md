@@ -456,6 +456,7 @@ authoritative final summary.
 |---|---|
 | `kompose upgrade` | Full update — no `image=` filter |
 | `kompose upgrade <group>` | Reads `<host>/<group>/compose.yml`, extracts unique `image:` values, sends `?image=…&image=…`. Build-only and digest-pinned services are skipped silently. |
+| `kompose upgrade <service>` | If the arg isn't a top-level dir, walks the root compose's `include:` map (same one used by `kompose up`) to find which group it lives in, then sends only that single service's image. |
 | `kompose upgrade --logs` | No trigger. Reads `docker logs watchtower`, slices the last session (between the most recent "Received HTTP API update request" / "Running update on schedule" and the matching "Update session completed"), prints the same compact rendering. |
 
 ### Watchtower-side prerequisites
