@@ -521,6 +521,7 @@ packages/kompose/
       env.py                   # env sync workflow (invoked by `kompose fix [--env]`)
       lint.py                  # kompose check orchestrator (formerly lint)
       fix.py                   # kompose fix orchestrator (rule fixes + env fix chain)
+      status.py                # kompose status — formatters, stats sources, table + watch loop
       upgrade.py               # kompose upgrade — watchtower HTTP API trigger + log session view
       utils.py                 # Colors, Table, confirm()
       rules/
@@ -540,6 +541,7 @@ packages/kompose/
     test_engine.py
     test_env.py
     test_lint.py
+    test_status.py
     test_upgrade.py
     fixtures/
 ```
