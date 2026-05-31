@@ -1,0 +1,19 @@
+{{- if not .is_minimum -}}
+#!/usr/bin/env bash
+# Installs the latest Python via mise on the very first apply per machine.
+# `run_once_` runs exactly once per chezmoi state; rerun by editing this file
+# or via `chezmoi state delete-bucket --bucket=scriptState`.
+
+set -eufo pipefail
+
+source {{ .chezmoi.workingTree }}/lib/logs.sh
+
+if ! command -v mise >/dev/null 2>&1; then
+    log_error "mise not found on PATH — install it first (brew install mise)"
+    exit 1
+fi
+
+log_task "Installing latest Python via mise..."
+mise use --global python@latest
+log_done "python ready: $(mise current python)"
+{{- end -}}
