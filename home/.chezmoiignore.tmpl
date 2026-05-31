@@ -1,63 +1,103 @@
-# Regenerated locally by `kompose --completion zsh` post-install — never sourced from the repo.
+{{- /*
+   Allowlist semantics: if a destination path isn't listed below, chezmoi
+   will NOT manage it on this machine. Duplicating paths across profiles
+   is fine — readability beats DRY here.
+
+   Two flavours of inclusion exist:
+     $managed   — include path + ALL descendants (`!path` + `!path/**`).
+                  Use for dirs whose entire subtree is managed.
+     $shallow   — include path only, NOT its descendants (`!path` alone).
+                  Use for dirs where children are selectively re-included
+                  by deeper $managed entries (e.g. `Workspace` shallow on
+                  darwin, then `Workspace/doctolib` recursive on work).
+
+   Profiles are mutually exclusive (minimum / headless / personal). Two
+   orthogonal overlays add their own paths on top:
+     - darwin   (eq .chezmoi.os "darwin")  → adds macOS-only paths
+     - work     (.is_work AND encryption_ed25519 present on disk)
+
+   Why the stat guard on the work overlay: encrypted files
+   (`encrypted_dot_npmrc.tmpl.age`, `encrypted_dot_workrc.tmpl.age`) need
+   that key to decrypt. On a fresh `chezmoi init`, the key itself is
+   chezmoi-managed and isn't on disk yet — without this stat, the first
+   apply would crash trying to decrypt before the key has been deployed.
+   Subsequent applies pass the guard naturally.
+*/ -}}
+
+{{- $managed := list -}}
+{{- $shallow := list -}}
+
+{{- if .is_minimum -}}
+{{- /* ──── minimum: cloud VM / container — shell ergonomics only ──── */ -}}
+{{- $managed = list
+    ".zshrc" ".zshenv" ".zprofile"
+    ".p10k.zsh" ".oh-my-zsh"
+    ".gitconfig"
+-}}
+
+{{- else if .is_headless -}}
+{{- /* ──── headless: homelab NAS — shell + ssh essentials + kompose ──── */ -}}
+{{- $managed = list
+    ".zshrc" ".zshenv" ".zprofile"
+    ".p10k.zsh" ".oh-my-zsh"
+    ".gitconfig"
+    ".ssh/authorized_keys" ".ssh/config" ".ssh/mbp_ed25519.pub"
+    ".local/bin/kompose"
+-}}
+
+{{- else -}}
+{{- /* ──── personal: full workstation set ──── */ -}}
+{{- $managed = list
+    ".zshrc" ".zshenv" ".zprofile"
+    ".p10k.zsh" ".oh-my-zsh"
+    ".gitconfig"
+    ".aerospace.toml"
+    ".claude"
+    ".ssh"
+    ".local/bin/pac" ".local/bin/completions/_pac"
+    ".local/bin/kompose"
+-}}
+{{- if eq .chezmoi.os "darwin" -}}
+{{- /* darwin overlay: macOS-only. Workspace is "shallow" so the dir entry
+       is un-ignored without dragging in `Workspace/**` — that lets the
+       work overlay below choose precisely which sub-trees to manage. */ -}}
+{{- $managed = concat $managed (list "Backup" "Library") -}}
+{{- $shallow = concat $shallow (list "Workspace") -}}
+{{- end -}}
+{{- end -}}
+
+{{- /* Work overlay: encrypted files + the doctolib workspace subtree. */ -}}
+{{- if and .is_work (stat (joinPath .chezmoi.homeDir ".ssh" "encryption_ed25519")) -}}
+{{- $managed = concat $managed (list ".npmrc" ".workrc" "Workspace/doctolib") -}}
+{{- end -}}
+
+{{- /* chezmoi-internal: scripts must always be re-included (chezmoi needs them
+       to run on apply, regardless of profile). */ -}}
+{{- $managed = concat $managed (list ".chezmoiscripts") -}}
+
+# Default-ignore everything. The allowlist below re-includes per-profile paths
+# (with their ancestor chain — gitignore can't re-include a child of an
+# excluded parent dir, so each path expands top-down). $managed paths add
+# `!path/**` to recurse; $shallow paths don't, leaving descendants ignored
+# unless a deeper $managed entry re-includes them explicitly.
+**
+
+{{ range $path := $managed -}}
+{{- $acc := "" -}}
+{{- range $part := splitList "/" $path -}}
+{{- if $acc -}}{{- $acc = printf "%s/%s" $acc $part -}}{{- else -}}{{- $acc = $part -}}{{- end }}
+!{{ $acc }}
+{{- end }}
+!{{ $path }}/**
+{{ end -}}
+
+{{ range $path := $shallow -}}
+{{- $acc := "" -}}
+{{- range $part := splitList "/" $path -}}
+{{- if $acc -}}{{- $acc = printf "%s/%s" $acc $part -}}{{- else -}}{{- $acc = $part -}}{{- end }}
+!{{ $acc }}
+{{- end }}
+{{ end -}}
+
+# Regenerated locally post-install — never sourced from the repo.
 .local/bin/completions/_kompose
-
-{{- if not (stat (joinPath .chezmoi.homeDir ".ssh" "encryption_ed25519")) }}
-.npmrc
-.workrc
-{{- end -}}
-
-{{- if .is_minimum }}
-.claude/
-.claude/*
-.local/bin/pac
-.local/bin/completions/_pac
-.gitconfig
-.local/bin/pac
-.local/bin/completions/_pac
-.workrc
-.ssh/
-.ssh/*
-Backup/
-Backup/*
-Library/
-Library/*
-Workspace/
-Workspace/*
-{{- end -}}
-
-{{- if .is_headless }}
-.claude/
-.claude/*
-.local/bin/pac
-.local/bin/completions/_pac
-.npmrc
-.workrc
-.ssh/*
-!.ssh/authorized_keys
-!.ssh/config
-!.ssh/mbp_ed25519.pub
-Backup/
-Backup/*
-Library/
-Library/*
-Workspace/
-Workspace/*
-{{- end -}}
-
-{{- if ne .chezmoi.os "darwin" }}
-.local/bin/pac
-.local/bin/completions/_pac
-Library/
-Library/*
-{{- end -}}
-
-{{- if not .is_work }}
-.npmrc
-.workrc
-Workspace/
-Workspace/*
-{{- end -}}
-
-{{- if not .is_headless }}
-.local/bin/kompose
-{{- end -}}
