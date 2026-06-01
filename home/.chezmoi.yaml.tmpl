@@ -106,8 +106,10 @@
 {{-   writeToStdout (printf "✅ Profile type set to '%s'\n" $profileType) -}}
 {{- end -}}
 
-{{/* email pro configuration */}}
-{{- $email_work := "" -}}
+{{/* work email — same default as personal: the GitHub noreply address.
+     Keeps work commits anonymized by default. Override interactively if
+     you use a separate work GitHub account. */}}
+{{- $email_work := "29702840+owpac@users.noreply.github.com" -}}
 {{- if hasKey . "email_work" -}}
 {{-   $email_work = .email_work -}}
 {{- end -}}
