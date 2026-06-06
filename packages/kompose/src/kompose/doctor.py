@@ -92,7 +92,6 @@ def check_rules_yaml(host: str | None = None) -> list[DoctorFinding]:
         findings.append(DoctorFinding(SEVERITY_ERROR, "rules.yaml", str(e) or type(e).__name__))
         return findings
 
-    host_dir = get_host_dir(host)
     builtin_types = _builtin_types()
 
     for spec in rules:
@@ -113,13 +112,9 @@ def check_rules_yaml(host: str | None = None) -> list[DoctorFinding]:
                 location=f"rule '{spec.name}'",
             ))
 
-        for excluded in spec.exclude:
-            if not (host_dir / excluded).is_dir():
-                findings.append(DoctorFinding(
-                    SEVERITY_WARNING, "rules.yaml",
-                    f"excluded service '{excluded}' has no directory under {host_dir.name}/",
-                    location=f"rule '{spec.name}'",
-                ))
+        # `exclude:` semantics are handler/type-specific (service names,
+        # router names, container names, …) — doctor can't validate them
+        # without per-handler knowledge. Skipped on purpose.
 
     return findings
 

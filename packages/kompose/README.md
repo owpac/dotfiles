@@ -620,8 +620,8 @@ the lint config and the actions map.
 |---|---|---|
 | `rules.yaml` | error | `handler:` resolves to an importable module under `kompose.rules` |
 | `rules.yaml` | error | `type:` matches a known built-in (`substring_required`, `property_order`, …) |
-| `rules.yaml` | warning | Each name in `exclude:` matches an existing directory under `<host>/` |
 | `rules.yaml` | error | Schema (top-level keys, required fields, valid severity) |
+| `rules.yaml` | — | `exclude:` items are not validated — semantics are handler-specific (service names, router names, container names, …) |
 | `commands.yaml` | error | Schema (services > actions, exec is non-empty string, `tty:` is bool) |
 | `commands.yaml` | error | Each action's target service has a `compose.yml` |
 | `commands.yaml` | error | Each action's target container is declared in that `compose.yml` |

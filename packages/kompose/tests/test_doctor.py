@@ -138,7 +138,10 @@ class TestCheckRulesYaml(_DoctorTestCase):
         self.assertEqual(findings[0].severity, SEVERITY_ERROR)
         self.assertIn("not_a_real_type", findings[0].message)
 
-    def test_excluded_service_missing_is_warning(self):
+    def test_exclude_items_not_validated(self):
+        # exclude: semantics are handler/type-specific (services, routers,
+        # containers, …). Doctor must NOT assume they're service dirs and
+        # therefore can't warn on missing dirs without false positives.
         self._write_kompose(
             "rules.yaml",
             "rules:\n"
@@ -146,13 +149,11 @@ class TestCheckRulesYaml(_DoctorTestCase):
             "    category: foo\n"
             "    type: substring_required\n"
             "    exclude:\n"
-            "      - ghost-service\n"
+            "      - ghost-router\n"
             "    params:\n"
             "      required: ['x']\n",
         )
-        findings = check_rules_yaml()
-        warnings = [f for f in findings if f.severity == SEVERITY_WARNING]
-        self.assertTrue(any("ghost-service" in f.message for f in warnings))
+        self.assertEqual(check_rules_yaml(), [])
 
     def test_schema_invalid_is_error(self):
         self._write_kompose("rules.yaml", "rules:\n  - missing-name-and-category: x\n")
