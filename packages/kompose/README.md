@@ -39,10 +39,27 @@ kompose --completion zsh > ~/.local/bin/completions/_kompose
 
 Dynamic completions are wired via small zsh helpers in the script's preamble:
 service groups → `ls $WORKSPACE_DIR/$HOST/`, nested containers → `awk` on the
-group's `compose.yml`, `--host` values → `ls $WORKSPACE_DIR/`. Override the
-defaults with `KOMPOSE_WORKSPACE` and `KOMPOSE_HOST` env vars if needed.
+group's `compose.yml`, `--host` values → `ls $WORKSPACE_DIR/`. The same env
+vars are read by the Python runtime (see [Configuration](#configuration)
+below), so completion and exec stay in sync.
 
 A future Homebrew tap is drafted at `brew/` — see `brew/README.md`.
+
+## Configuration
+
+`WORKSPACE_DIR` (where the homelab repo lives) and `DEFAULT_HOST` (which host
+directory to operate on by default) are resolved in this order, highest
+priority first:
+
+| # | Source | Notes |
+|---|---|---|
+| 1 | `--host <name>` CLI flag | Per-invocation override for the host only. No CLI flag for the workspace today. |
+| 2 | Env vars `KOMPOSE_WORKSPACE` / `KOMPOSE_HOST` | Same vars the zsh completion preamble reads, so set them once in your shell rc and completion + runtime agree. |
+| 3 | `$XDG_CONFIG_HOME/kompose/config.yaml` (default `~/.config/kompose/config.yaml`) | Two-key YAML: `workspace:`, `host:`. Either key is optional and falls back independently. |
+| 4 | Hardcoded fallback | `/mnt/home/thomas/workspace/homelab` + `nas`, matching the homelab the CLI was built for. |
+
+A ready-to-copy example lives at `examples/config.yaml`. A malformed or
+non-mapping YAML config is silently ignored — the CLI stays usable.
 
 ## Usage
 
@@ -695,6 +712,7 @@ packages/kompose/
         traefik_middleware_correlation.py
         traefik_router_naming.py
   examples/
+    config.yaml                # ready-to-copy XDG user config
     rules.yaml                 # ready-to-copy lint config
     commands.yaml              # ready-to-copy actions config
   brew/

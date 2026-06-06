@@ -1,0 +1,22 @@
+# Example kompose user-level config.
+#
+# Copy this file to:  $XDG_CONFIG_HOME/kompose/config.yaml
+# (default path:      ~/.config/kompose/config.yaml)
+#
+# Both keys are optional — anything left out falls back to the next
+# precedence layer:
+#
+#     CLI flag (--host)
+#       └─ KOMPOSE_WORKSPACE / KOMPOSE_HOST env vars
+#            └─ this file
+#                 └─ hardcoded defaults (/mnt/home/thomas/workspace/homelab + nas)
+#
+# The same env vars are read by the zsh completion preamble, so an
+# alternative workflow is to keep this file empty and set the env vars
+# in your shell rc — completion will then match the CLI behaviour.
+
+# Where the homelab repo lives. Service dirs live under <workspace>/<host>/.
+workspace: /mnt/home/thomas/workspace/homelab
+
+# Default host when --host is not passed. Resolves to <workspace>/<host>/.
+host: nas
