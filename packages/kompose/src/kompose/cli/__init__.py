@@ -16,12 +16,13 @@ Conventions:
   generated script.
 """
 
-from . import _shared, check, compose, fix, run, service, status, upgrade
+from . import _shared, check, compose, doctor, fix, run, service, status, upgrade
 
 __all__ = [
     "_shared",
     "check",
     "compose",
+    "doctor",
     "fix",
     "run",
     "service",

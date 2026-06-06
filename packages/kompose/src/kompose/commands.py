@@ -260,6 +260,7 @@ def cmd_run(args) -> int:
         actions = load_commands(host)
     except (ValueError, OSError) as e:
         print(f"{Colors.RED}Error loading commands: {e}{Colors.RESET}")
+        print(f"{Colors.GRAY}Hint: run `kompose doctor --commands` for a structured report.{Colors.RESET}")
         return 2
 
     if first is None:

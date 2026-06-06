@@ -22,6 +22,9 @@ Top-level (daily ergonomics):
                    `kompose run <action>`         : auto-resolve and execute
                    `kompose run <svc> <action>`   : explicit form
                    `kompose run <action> -- ...`  : forward args verbatim
+    doctor       Validate .kompose/ config (rules.yaml + commands.yaml)
+                   --rules    : only rules.yaml
+                   --commands : only commands.yaml
 
 Canonical noun-verb form:
     service [svc] up|down|restart|logs|status
@@ -64,6 +67,8 @@ Examples:
                                 Explicit service+action form
   kompose run hub-upgrade -- --force
                                 Forward args after `--` to the in-container cmd
+  kompose doctor                Validate .kompose/rules.yaml + commands.yaml
+  kompose doctor --commands     Only check commands.yaml
   kompose service status        Canonical form of `kompose status`
 
 Host override:
@@ -74,7 +79,7 @@ Host override:
 # All cli.<name> modules registered at the top level. Order is the order of
 # precedence for shtab's `--help` output. Each module exposes
 # `register_top_level(subparsers)`.
-_TOP_LEVEL_MODULES = (cli.compose, cli.status, cli.check, cli.fix, cli.upgrade, cli.run)
+_TOP_LEVEL_MODULES = (cli.compose, cli.status, cli.check, cli.fix, cli.upgrade, cli.run, cli.doctor)
 
 
 def _build_parser() -> argparse.ArgumentParser:

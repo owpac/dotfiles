@@ -92,6 +92,7 @@ def cmd_check(args) -> int:
         globals_dict, rules = load_rules(host)
     except (FileNotFoundError, ValueError) as e:
         print(f"{Colors.RED}Error: {e}{Colors.RESET}")
+        print(f"{Colors.GRAY}Hint: run `kompose doctor --rules` for a structured report.{Colors.RESET}")
         return 1
 
     if service_name:

@@ -67,6 +67,8 @@ with short top-level aliases for daily use. Both forms are first-class.
 | `check [service]` | — | Lint compose.yml + env drift against declarative rules |
 | `fix [service] [--auto\|--env]` | — | Apply fixes (compose auto-fixes + interactive env sync) |
 | `upgrade [service] [--logs]` | — | Trigger image updates via watchtower's HTTP API |
+| `run [service] [action] [-- args]` | — | Run a per-service action declared in `commands.yaml` |
+| `doctor [--rules\|--commands]` | — | Validate `.kompose/` config |
 
 **Canonical form**
 
@@ -107,6 +109,14 @@ kompose upgrade                  # Trigger watchtower update on every container 
 kompose upgrade paperless        # Same, scoped to one group's images
 kompose upgrade -f               # Skip the confirmation prompt
 kompose upgrade --logs           # Render the latest watchtower session (no trigger)
+kompose run                      # List all actions declared in commands.yaml
+kompose run crowdsec             # List actions for one service
+kompose run hub-upgrade          # Run an action (auto-resolved to its service)
+kompose run crowdsec hub-upgrade # Explicit service+action form
+kompose run hub-upgrade -- --force  # Forward args after `--` to the in-container cmd
+kompose doctor                   # Validate .kompose/ (rules.yaml + commands.yaml)
+kompose doctor --rules           # Only check rules.yaml
+kompose doctor --commands        # Only check commands.yaml
 kompose service status           # Canonical form of `kompose status`
 kompose --host other up          # Use different host directory
 ```
@@ -527,6 +537,121 @@ exposed to lint handlers (those still consume `globals:`).
 | `2` | Trigger failed (no token, no URL, HTTP non-2xx, network error) |
 | `130` | Local Ctrl+C — the foreground exits but watchtower keeps running |
 
+## Run
+
+```bash
+kompose run                       # List all actions
+kompose run crowdsec              # List actions for one service
+kompose run hub-upgrade           # Auto-resolve and execute (must be unique)
+kompose run crowdsec hub-upgrade  # Explicit service+action form
+kompose run ban -- 1.2.3.4 -d 10m # Forward args after `--`
+kompose run -v hub-upgrade        # Echo the docker exec command before running
+```
+
+Actions are user-defined shortcuts for `docker exec <container> sh -c '<cmd>'`,
+declared in `<host>/.kompose/commands.yaml` (mono-mode) or
+`<host>/.kompose/commands/<service>.yaml` (multi-mode, one file per service).
+
+### Schema
+
+```yaml
+services:
+  <service>:
+    actions:
+      <action-name>: <shell-string>          # short form
+      # OR
+      <action-name>:
+        container: <name>                    # optional, default = service name
+        exec: <shell-string>                 # required in long form
+        tty: true                            # optional, default false
+```
+
+Both forms can mix. The short form covers the common `docker exec` case; the
+long form is for actions that need a different container (multi-container
+services like `servarr`) or an interactive TTY (psql, redis-cli, etc.).
+
+A ready-to-copy example is at `examples/commands.yaml`.
+
+### Lookup
+
+| Invocation | Behaviour |
+|---|---|
+| `kompose run <action>` | Auto-resolves against all loaded actions. Runs if unique. If ambiguous, prints the candidates and bails. |
+| `kompose run <service> <action>` | Explicit form, always unambiguous. |
+| `kompose run` | Lists every action grouped by service. |
+| `kompose run <service>` | Lists actions for that service only. |
+
+### Forward args (`--`)
+
+Args after `--` are shell-quoted and appended to the in-container command:
+
+```bash
+kompose run ban -- 1.2.3.4 -d 10m
+# → docker exec -i crowdsec sh -c "cscli decisions add --ip '1.2.3.4' '-d' '10m'"
+```
+
+The `--` separator is intercepted before argparse runs so it survives the
+normal CLI parsing. Use `-v` to echo the assembled `docker exec` command
+(rendered through `shlex.join` so only args that need quoting get it).
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `2` | Action not found, ambiguous, or schema/load error |
+| (passthrough) | The in-container command's exit code is returned |
+
+## Doctor
+
+```bash
+kompose doctor                    # Validate everything (rules.yaml + commands.yaml + general)
+kompose doctor --rules            # Only rules.yaml
+kompose doctor --commands         # Only commands.yaml
+```
+
+`kompose doctor` validates `<host>/.kompose/` contents — distinct from
+`kompose check`, which lints user services' `compose.yml` files. Doctor lints
+the lint config and the actions map.
+
+### Checks
+
+| File | Severity | Check |
+|---|---|---|
+| `rules.yaml` | error | `handler:` resolves to an importable module under `kompose.rules` |
+| `rules.yaml` | error | `type:` matches a known built-in (`substring_required`, `property_order`, …) |
+| `rules.yaml` | warning | Each name in `exclude:` matches an existing directory under `<host>/` |
+| `rules.yaml` | error | Schema (top-level keys, required fields, valid severity) |
+| `commands.yaml` | error | Schema (services > actions, exec is non-empty string, `tty:` is bool) |
+| `commands.yaml` | error | Each action's target service has a `compose.yml` |
+| `commands.yaml` | error | Each action's target container is declared in that `compose.yml` |
+| `commands.yaml` | warning | Action name doesn't shadow a kompose built-in subcommand |
+| `.kompose/` | warning | The directory exists at all |
+
+### Output
+
+Findings are grouped by source file, with `✗` for errors and `⚠` for
+warnings. The footer counts both. Example:
+
+```
+commands.yaml
+  ✗  crowdsec:sonarr-rescan  container 'lidarr' not declared in nas/servarr/compose.yml (found: qbittorrent, sonarr)
+  ⚠  crowdsec:fix  action name 'fix' shadows a kompose built-in subcommand — the bare `kompose run fix` still works, but it may surprise readers
+
+1 error · 1 warning
+```
+
+`check` and `run` print a hint pointing at the relevant `kompose doctor`
+flag when they fail to load their config, so users discover the command
+when they need it.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Clean (or only warnings) |
+| `1` | One or more errors found |
+
 ## Development
 
 ### Layout
@@ -538,37 +663,88 @@ packages/kompose/
   src/
     kompose/
       __init__.py              # version
-      __main__.py              # CLI entry point (kompose script)
+      __main__.py              # thin CLI assembler — iterates over cli modules
       _engine.py               # rule loading, dispatch, types
-      compose.py               # kompose up/down/restart/logs/status
+      commands.py              # kompose run — Action schema, lookup, docker exec
+      compose.py               # kompose up/down/restart/logs (exec logic)
       config.py                # paths, host helpers
+      doctor.py                # kompose doctor — validate .kompose/ config
       env.py                   # env sync workflow (invoked by `kompose fix [--env]`)
-      lint.py                  # kompose check orchestrator (formerly lint)
       fix.py                   # kompose fix orchestrator (rule fixes + env fix chain)
+      lint.py                  # kompose check orchestrator
       status.py                # kompose status — formatters, stats sources, table + watch loop
       upgrade.py               # kompose upgrade — watchtower HTTP API trigger + log session view
       utils.py                 # Colors, Table, confirm()
+      cli/                     # per-command argparse + zsh completion plumbing
+        __init__.py
+        _shared.py             # shared ZSH preamble (workspace/services/hosts) + COMPLETE_* + add_subparser
+        check.py
+        compose.py             # subparsers for up/down/restart/logs (top-level + canonical)
+        doctor.py
+        fix.py
+        run.py                 # subparser + ZSH_PREAMBLE + split_forwarded_args (`--` handling)
+        service.py             # canonical `service <verb>` wrapper
+        status.py              # subparsers for status (top-level + canonical)
+        upgrade.py
       rules/
         __init__.py
         _builtin.py            # substring_required, substring_forbidden, property_order
-        traefik_router_naming.py
-        traefik_middleware_correlation.py
+        compose_includes_sync.py
+        env_check.py
         reverse_proxy_network.py
+        traefik_middleware_correlation.py
+        traefik_router_naming.py
   examples/
     rules.yaml                 # ready-to-copy lint config
+    commands.yaml              # ready-to-copy actions config
   brew/
     kompose.rb                 # draft Homebrew formula
     README.md
   tests/
+    test_commands.py
     test_compose.py
     test_config.py
+    test_doctor.py
     test_engine.py
     test_env.py
     test_lint.py
+    test_main.py
     test_status.py
     test_upgrade.py
     fixtures/
 ```
+
+Two siblings own each command:
+- `kompose/<name>.py` — exec logic (the `cmd_<name>` function, dataclasses, helpers).
+- `kompose/cli/<name>.py` — argparse subparser registration (`register_top_level`),
+  optional `register_canonical` if the command has a `service <verb>` form,
+  and optional `ZSH_PREAMBLE` for completion helpers.
+
+`__main__.py` is a thin assembler: iterate over the cli modules listed in
+`_TOP_LEVEL_MODULES`, call `register_top_level(subparsers)` on each, then
+concatenate every module's `ZSH_PREAMBLE` snippet (after `_shared`) into the
+shtab preamble.
+
+### Adding a new command
+
+1. Write `src/kompose/<name>.py` with the exec logic, exposing `cmd_<name>(args) -> int`.
+2. Write `src/kompose/cli/<name>.py`:
+   ```python
+   from kompose.<name> import cmd_<name>
+   from . import _shared
+
+   def register_top_level(subparsers) -> None:
+       p = _shared.add_subparser(subparsers, "<name>", "<one-line description>")
+       p.add_argument(...)
+       p.set_defaults(func=cmd_<name>)
+   ```
+3. Add the module to `cli/__init__.py` (the re-export list) and to
+   `_TOP_LEVEL_MODULES` in `__main__.py`.
+4. Add tests at `tests/test_<name>.py`.
+
+If the command needs custom zsh completion helpers, export them as a string
+constant `ZSH_PREAMBLE` from `cli/<name>.py` — `__main__.py` will append it
+to shtab's preamble automatically.
 
 ### Running tests
 
