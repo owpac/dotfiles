@@ -27,6 +27,7 @@ completion, `--` separator handling) lives in `kompose.cli.run`.
 
 from __future__ import annotations
 
+import shlex
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -275,7 +276,10 @@ def cmd_run(args) -> int:
 
     cmd = build_docker_exec(action, forwarded)
     if verbose:
-        print(f"{Colors.GRAY}+ {' '.join(_shell_quote(a) for a in cmd)}{Colors.RESET}")
+        # shlex.join only quotes args that need it (spaces, shell metachars),
+        # so the output looks like a copy-pasteable shell command rather than
+        # a wall of single quotes.
+        print(f"{Colors.GRAY}+ {shlex.join(cmd)}{Colors.RESET}")
     try:
         return subprocess.run(cmd).returncode
     except KeyboardInterrupt:
