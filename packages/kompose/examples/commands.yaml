@@ -1,0 +1,52 @@
+# Example kompose commands configuration.
+#
+# Copy this file to: <host>/.kompose/commands.yaml  (mono-mode)
+#                OR  <host>/.kompose/commands/<service>.yaml  (multi-mode)
+#
+# Schema:
+#   services:
+#     <service>:
+#       actions:
+#         <action-name>: <shell-string>          # short form
+#         # OR
+#         <action-name>:
+#           container: <container-name>          # optional, default = service name
+#           exec: <shell-string>                 # required in long form
+#           tty: true                            # optional, default false
+#
+# CLI:
+#   kompose run                       # list all actions
+#   kompose run <service>             # list a service's actions
+#   kompose run <action>              # auto-resolve and execute (must be unique)
+#   kompose run <service> <action>    # explicit form
+#   kompose run <action> -- --flag    # forward args verbatim after `--`
+#   kompose run -v <action>           # echo the docker exec command
+
+services:
+  crowdsec:
+    actions:
+      # Short form (string) — most common case
+      hub-upgrade: cscli hub upgrade
+
+      # Forward-args example. Usage:
+      #   kompose run ban -- 1.2.3.4 -d 10m
+      # The args after `--` are appended verbatim to the in-container command.
+      ban: cscli decisions add --ip
+      unban: cscli decisions delete --ip
+
+      # Long form (object) — when you need an interactive TTY (prompts, etc.)
+      # Note: actions are wrapped in `sh -c '…'`, so `exec: bash` here would
+      # literally run `sh -c 'bash'`. Works, but for a plain shell prefer
+      # `docker exec -it <ctn> sh` directly. Use long form for things that
+      # really need TTY: interactive CLIs (psql, redis-cli), prompts, etc.
+      db-shell:
+        exec: psql -U postgres
+        tty: true
+
+  servarr:
+    # Multi-container service: each action targets a specific container via
+    # the `container:` override.
+    actions:
+      sonarr-rescan:
+        container: sonarr
+        exec: curl -s http://localhost:8989/api/v3/command -X POST -d '{"name":"RescanSeries"}'
