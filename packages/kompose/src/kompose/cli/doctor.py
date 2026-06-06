@@ -12,6 +12,7 @@ from . import _shared
 def _add_doctor_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--rules", action="store_true", help="Only check .kompose/rules.yaml")
     parser.add_argument("--commands", action="store_true", help="Only check .kompose/commands.yaml")
+    parser.add_argument("--config", action="store_true", help="Only check the XDG user config (~/.config/kompose/config.yaml)")
 
 
 def register_top_level(subparsers) -> None:

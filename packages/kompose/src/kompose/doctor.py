@@ -17,6 +17,7 @@ from pathlib import Path
 
 import yaml
 
+from . import config
 from ._engine import (
     SEVERITY_ERROR,
     SEVERITY_WARNING,
@@ -183,6 +184,78 @@ def check_commands_yaml(host: str | None = None) -> list[DoctorFinding]:
 
 
 # ---------------------------------------------------------------------------
+# config.yaml checks (XDG user config — $XDG_CONFIG_HOME/kompose/config.yaml)
+# ---------------------------------------------------------------------------
+
+
+_CONFIG_KNOWN_KEYS = {"workspace", "host"}
+
+
+def check_config_yaml() -> list[DoctorFinding]:
+    """Validate the optional XDG user config.
+
+    The file is intentionally optional (the precedence chain in `config.py`
+    falls through to env vars / hardcoded defaults), so a missing file is
+    not a finding. We only surface issues when the file *exists* but has
+    something wrong with it.
+    """
+    findings: list[DoctorFinding] = []
+    path = config._config_file_path()
+    if not path.exists():
+        return findings
+
+    import yaml as _yaml  # local import keeps the optional surface tight
+    try:
+        data = _yaml.safe_load(path.read_text()) or {}
+    except _yaml.YAMLError as e:
+        findings.append(DoctorFinding(
+            SEVERITY_ERROR, "config.yaml", f"malformed YAML: {e}",
+        ))
+        return findings
+    except OSError as e:
+        findings.append(DoctorFinding(
+            SEVERITY_ERROR, "config.yaml", f"can't read file: {e}",
+        ))
+        return findings
+
+    if not isinstance(data, dict):
+        findings.append(DoctorFinding(
+            SEVERITY_ERROR, "config.yaml",
+            f"top-level must be a mapping, got {type(data).__name__}",
+        ))
+        return findings
+
+    for key in data:
+        if key not in _CONFIG_KNOWN_KEYS:
+            findings.append(DoctorFinding(
+                SEVERITY_WARNING, "config.yaml",
+                f"unknown key '{key}' (expected one of: {', '.join(sorted(_CONFIG_KNOWN_KEYS))})",
+            ))
+
+    workspace = data.get("workspace")
+    if workspace is not None:
+        if not isinstance(workspace, str):
+            findings.append(DoctorFinding(
+                SEVERITY_ERROR, "config.yaml",
+                f"`workspace:` must be a string, got {type(workspace).__name__}",
+            ))
+        elif not Path(workspace).is_dir():
+            findings.append(DoctorFinding(
+                SEVERITY_WARNING, "config.yaml",
+                f"`workspace:` path does not exist or is not a directory: {workspace}",
+            ))
+
+    host = data.get("host")
+    if host is not None and not isinstance(host, str):
+        findings.append(DoctorFinding(
+            SEVERITY_ERROR, "config.yaml",
+            f"`host:` must be a string, got {type(host).__name__}",
+        ))
+
+    return findings
+
+
+# ---------------------------------------------------------------------------
 # General checks (.kompose/ presence, etc.)
 # ---------------------------------------------------------------------------
 
@@ -251,14 +324,16 @@ def _render(findings: list[DoctorFinding]) -> str:
 
 
 def cmd_doctor(args) -> int:
-    """`kompose doctor [--rules] [--commands]`.
+    """`kompose doctor [--rules] [--commands] [--config]`.
 
-    No flags → check everything. Flags scope to specific concerns.
+    No flags → check everything. Flags scope to specific concerns; passing
+    multiple flags additively expands the scope.
     """
     host = getattr(args, "host", None)
     only_rules = getattr(args, "rules", False)
     only_commands = getattr(args, "commands", False)
-    scoped = only_rules or only_commands
+    only_config = getattr(args, "config", False)
+    scoped = only_rules or only_commands or only_config
 
     findings: list[DoctorFinding] = []
     if not scoped:
@@ -267,6 +342,8 @@ def cmd_doctor(args) -> int:
         findings.extend(check_rules_yaml(host))
     if not scoped or only_commands:
         findings.extend(check_commands_yaml(host))
+    if not scoped or only_config:
+        findings.extend(check_config_yaml())
 
     print(_render(findings))
     return 1 if any(f.severity == SEVERITY_ERROR for f in findings) else 0

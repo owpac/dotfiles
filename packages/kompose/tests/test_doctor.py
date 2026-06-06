@@ -12,6 +12,7 @@ from kompose.doctor import (
     _compose_containers,
     _render,
     check_commands_yaml,
+    check_config_yaml,
     check_general,
     check_rules_yaml,
     cmd_doctor,
@@ -218,6 +219,82 @@ class TestCheckCommandsYaml(_DoctorTestCase):
 
 
 # ---------------------------------------------------------------------------
+# check_config_yaml
+# ---------------------------------------------------------------------------
+
+
+class TestCheckConfigYaml(unittest.TestCase):
+    """Validate the optional XDG user config — independent of any host/.kompose state."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.xdg = Path(self.tmpdir.name)
+        self.env_patch = mock.patch.dict(
+            "os.environ", {"XDG_CONFIG_HOME": str(self.xdg)}, clear=False,
+        )
+        self.env_patch.start()
+
+    def tearDown(self):
+        self.env_patch.stop()
+        self.tmpdir.cleanup()
+
+    def _write_config(self, content: str) -> Path:
+        cfg_dir = self.xdg / "kompose"
+        cfg_dir.mkdir(parents=True, exist_ok=True)
+        path = cfg_dir / "config.yaml"
+        path.write_text(content)
+        return path
+
+    def test_missing_file_no_findings(self):
+        # Optional config — absence is not a finding.
+        self.assertEqual(check_config_yaml(), [])
+
+    def test_clean_config_no_findings(self):
+        # Use a path that exists on every system so workspace check passes.
+        self._write_config(f"workspace: {self.xdg}\nhost: somehost\n")
+        self.assertEqual(check_config_yaml(), [])
+
+    def test_unknown_key_is_warning(self):
+        self._write_config("default_host: nas\n")
+        findings = check_config_yaml()
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].severity, SEVERITY_WARNING)
+        self.assertIn("default_host", findings[0].message)
+
+    def test_workspace_wrong_type_is_error(self):
+        self._write_config("workspace: 42\n")
+        findings = check_config_yaml()
+        errors = [f for f in findings if f.severity == SEVERITY_ERROR]
+        self.assertTrue(any("must be a string" in f.message for f in errors))
+
+    def test_workspace_missing_dir_is_warning(self):
+        self._write_config("workspace: /this/does/not/exist\n")
+        findings = check_config_yaml()
+        warnings = [f for f in findings if f.severity == SEVERITY_WARNING]
+        self.assertTrue(any("does not exist" in f.message for f in warnings))
+
+    def test_host_wrong_type_is_error(self):
+        self._write_config(f"workspace: {self.xdg}\nhost: 42\n")
+        findings = check_config_yaml()
+        errors = [f for f in findings if f.severity == SEVERITY_ERROR]
+        self.assertTrue(any("`host:` must be a string" in f.message for f in errors))
+
+    def test_non_mapping_top_level_is_error(self):
+        self._write_config("- just\n- a\n- list\n")
+        findings = check_config_yaml()
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].severity, SEVERITY_ERROR)
+        self.assertIn("mapping", findings[0].message)
+
+    def test_malformed_yaml_is_error(self):
+        self._write_config("workspace: [unclosed\n")
+        findings = check_config_yaml()
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].severity, SEVERITY_ERROR)
+        self.assertIn("malformed YAML", findings[0].message)
+
+
+# ---------------------------------------------------------------------------
 # check_general
 # ---------------------------------------------------------------------------
 
@@ -270,6 +347,7 @@ class TestCmdDoctor(_DoctorTestCase):
         ns.host = None
         ns.rules = kw.get("rules", False)
         ns.commands = kw.get("commands", False)
+        ns.config = kw.get("config", False)
         return ns
 
     def test_clean_config_returns_zero(self):
@@ -302,6 +380,19 @@ class TestCmdDoctor(_DoctorTestCase):
             "rules:\n  - name: x\n    category: foo\n    handler: missing\n",
         )
         rc = cmd_doctor(self._args(commands=True))
+        self.assertEqual(rc, 0)
+
+    def test_only_config_skips_rules_and_commands(self):
+        # Errors in both .kompose/ files should be ignored when --config scopes.
+        self._write_kompose(
+            "rules.yaml",
+            "rules:\n  - name: x\n    category: foo\n    handler: missing\n",
+        )
+        self._write_kompose(
+            "commands.yaml",
+            "services:\n  ghost:\n    actions:\n      x: echo hi\n",
+        )
+        rc = cmd_doctor(self._args(config=True))
         self.assertEqual(rc, 0)
 
 

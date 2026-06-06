@@ -85,7 +85,7 @@ with short top-level aliases for daily use. Both forms are first-class.
 | `fix [service] [--auto\|--env]` | — | Apply fixes (compose auto-fixes + interactive env sync) |
 | `upgrade [service] [--logs]` | — | Trigger image updates via watchtower's HTTP API |
 | `run [service] [action] [-- args]` | — | Run a per-service action declared in `commands.yaml` |
-| `doctor [--rules\|--commands]` | — | Validate `.kompose/` config |
+| `doctor [--rules\|--commands\|--config]` | — | Validate `.kompose/` and XDG config |
 
 **Canonical form**
 
@@ -622,14 +622,16 @@ normal CLI parsing. Use `-v` to echo the assembled `docker exec` command
 ## Doctor
 
 ```bash
-kompose doctor                    # Validate everything (rules.yaml + commands.yaml + general)
-kompose doctor --rules            # Only rules.yaml
-kompose doctor --commands         # Only commands.yaml
+kompose doctor                    # Validate everything
+kompose doctor --rules            # Only .kompose/rules.yaml
+kompose doctor --commands         # Only .kompose/commands.yaml
+kompose doctor --config           # Only XDG ~/.config/kompose/config.yaml
 ```
 
-`kompose doctor` validates `<host>/.kompose/` contents — distinct from
-`kompose check`, which lints user services' `compose.yml` files. Doctor lints
-the lint config and the actions map.
+`kompose doctor` validates the three files kompose reads on every run —
+distinct from `kompose check`, which lints user services' `compose.yml`
+files. Doctor lints the lint config (`rules.yaml`), the actions map
+(`commands.yaml`), and the user-level paths config (`config.yaml`).
 
 ### Checks
 
@@ -643,6 +645,10 @@ the lint config and the actions map.
 | `commands.yaml` | error | Each action's target service has a `compose.yml` |
 | `commands.yaml` | error | Each action's target container is declared in that `compose.yml` |
 | `commands.yaml` | warning | Action name doesn't shadow a kompose built-in subcommand |
+| `config.yaml` | error | Top-level is a YAML mapping (not a list or scalar) |
+| `config.yaml` | error | `workspace:` is a string and `host:` is a string when present |
+| `config.yaml` | warning | `workspace:` points at an existing directory |
+| `config.yaml` | warning | Unknown keys at top level (only `workspace:` and `host:` are recognized) |
 | `.kompose/` | warning | The directory exists at all |
 
 ### Output
