@@ -1,6 +1,9 @@
 # Place a copy of this config to ~/.aerospace.toml
 # After that, you can edit ~/.aerospace.toml to your liking
 
+# Config schema version. See https://nikitabobko.github.io/AeroSpace/guide#config-version
+config-version = 2
+
 # You can use it to add commands that run after AeroSpace startup.
 # Available commands : https://nikitabobko.github.io/AeroSpace/commands
 after-startup-command = []
@@ -9,8 +12,13 @@ after-startup-command = []
 start-at-login = true
 
 # Normalizations. See: https://nikitabobko.github.io/AeroSpace/guide#normalization
+# flatten ON: single-child containers auto-collapse, so the tree never keeps stray
+# wrapper nodes. Trade-off: the i3 `split` command becomes a no-op — build layouts
+# with join-with + `layout horizontal/vertical` instead.
+# opposite-orientation OFF: nested containers keep independent orientation, so one
+# region can be horizontal while another is vertical.
 enable-normalization-flatten-containers = true
-enable-normalization-opposite-orientation-for-nested-containers = true
+enable-normalization-opposite-orientation-for-nested-containers = false
 
 # See: https://nikitabobko.github.io/AeroSpace/guide#layouts
 # The 'accordion-padding' specifies the size of accordion padding
@@ -94,6 +102,13 @@ outer.right = 0
 # Fallback value (if you omit the key): mode.main.binding = {}
 [mode.main.binding]
 
+# All window-management shortcuts use a single "Hyper" modifier: ctrl+alt+cmd.
+# Why: on a French AZERTY Mac, alt/Option alone is the special-character layer
+# (alt+5 = {, alt+shift+5 = [ ...) and ctrl alone collides with ctrl+tab / ctrl+f
+# in apps. Held together, ctrl+alt+cmd produces no character and no app shortcut,
+# so it's conflict-free and uniform.
+# Tip: for one-key ergonomics, remap Caps Lock -> Hyper with Karabiner-Elements.
+
 # All possible keys:
 # - Letters.        a, b, c, ..., z
 # - Numbers.        0, 1, 2, ..., 9
@@ -120,7 +135,7 @@ outer.right = 0
 #     activate
 # end tell'
 # '''
-alt-enter = '''exec-and-forget osascript -e '
+cmd-ctrl-alt-enter = '''exec-and-forget osascript -e '
         tell application "iTerm"
             create window with default profile
             activate
@@ -128,140 +143,130 @@ alt-enter = '''exec-and-forget osascript -e '
     '''
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#layout
-ctrl-comma = 'layout accordion horizontal vertical'
-ctrl-semicolon = 'layout floating tiling'
-ctrl-colon = 'layout tiles horizontal vertical'
+cmd-ctrl-alt-comma = 'layout accordion horizontal vertical'
+cmd-ctrl-alt-semicolon = 'layout floating tiling'
+cmd-ctrl-alt-colon = 'layout tiles horizontal vertical'   # toggle side-by-side <-> stacked
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#focus
-ctrl-h = 'focus left'
-ctrl-j = 'focus down'
-ctrl-k = 'focus up'
-ctrl-l = 'focus right'
-
-ctrl-left = 'focus left'
-ctrl-down = 'focus down'
-ctrl-up = 'focus up'
-ctrl-right = 'focus right'
+# Focus = Hyper+arrows, move = Hyper+shift+arrows.
+cmd-ctrl-alt-left = 'focus left'
+cmd-ctrl-alt-down = 'focus down'
+cmd-ctrl-alt-up = 'focus up'
+cmd-ctrl-alt-right = 'focus right'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#move
-ctrl-shift-h = 'move left'
-ctrl-shift-j = 'move down'
-ctrl-shift-k = 'move up'
-ctrl-shift-l = 'move right'
+cmd-ctrl-alt-shift-left = 'move left'
+cmd-ctrl-alt-shift-down = 'move down'
+cmd-ctrl-alt-shift-up = 'move up'
+cmd-ctrl-alt-shift-right = 'move right'
 
-ctrl-shift-left = 'move left'
-ctrl-shift-down = 'move down'
-ctrl-shift-up = 'move up'
-ctrl-shift-right = 'move right'
-
-# alt-shift-left = 'join-with left'
-# alt-shift-down = 'join-with down'
-# alt-shift-up = 'join-with up'
-# alt-shift-right = 'join-with right'
+# See: https://nikitabobko.github.io/AeroSpace/commands#join-with
+# join-with = group the focused window with a neighbor into a nested container —
+# the building block for nested layouts. ijkl is an arrow-like cluster:
+# i=up  j=left  k=down  l=right.
+cmd-ctrl-alt-shift-i = 'join-with up'
+cmd-ctrl-alt-shift-j = 'join-with left'
+cmd-ctrl-alt-shift-k = 'join-with down'
+cmd-ctrl-alt-shift-l = 'join-with right'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#resize
-ctrl-minus = 'resize smart -50'
-ctrl-equal = 'resize smart +50'
+cmd-ctrl-alt-minus = 'resize smart -50'
+cmd-ctrl-alt-equal = 'resize smart +50'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#workspace
-ctrl-0 = 'workspace 0'
-ctrl-1 = 'workspace 1'
-ctrl-2 = 'workspace 2'
-ctrl-3 = 'workspace 3'
-ctrl-4 = 'workspace 4'
-ctrl-5 = 'workspace 5'
-ctrl-6 = 'workspace 6'
-ctrl-7 = 'workspace 7'
-ctrl-8 = 'workspace 8'
-ctrl-9 = 'workspace 9'
-# ctrl-T = 'workspace T'
-# ctrl-a = 'workspace A' # In your config, you can drop workspace bindings that you don't need
-# ctrl-b = 'workspace B'
-# ctrl-c = 'workspace C'
-# ctrl-d = 'workspace D'
-# ctrl-e = 'workspace E'
-# ctrl-f = 'workspace F'
-# ctrl-g = 'workspace G'
-# ctrl-i = 'workspace I'
-# ctrl-m = 'workspace M'
-# ctrl-n = 'workspace N'
-# ctrl-o = 'workspace O'
-# ctrl-p = 'workspace P'
-# ctrl-q = 'workspace Q'
-# ctrl-r = 'workspace R'
-# ctrl-s = 'workspace S'
-# ctrl-t = 'workspace T'
-# ctrl-u = 'workspace U'
-# ctrl-v = 'workspace V'
-# ctrl-w = 'workspace W'
-# ctrl-x = 'workspace X'
-# ctrl-y = 'workspace Y'
-# ctrl-z = 'workspace Z'
+# Workspaces = Hyper+digit (see the Hyper note at the top of this binding mode).
+cmd-ctrl-alt-0 = 'workspace 0'
+cmd-ctrl-alt-1 = 'workspace 1'
+cmd-ctrl-alt-2 = 'workspace 2'
+cmd-ctrl-alt-3 = 'workspace 3'
+cmd-ctrl-alt-4 = 'workspace 4'
+cmd-ctrl-alt-5 = 'workspace 5'
+cmd-ctrl-alt-6 = 'workspace 6'
+cmd-ctrl-alt-7 = 'workspace 7'
+cmd-ctrl-alt-8 = 'workspace 8'
+cmd-ctrl-alt-9 = 'workspace 9'
+# alt-T = 'workspace T'
+# alt-a = 'workspace A' # In your config, you can drop workspace bindings that you don't need
+# alt-b = 'workspace B'
+# alt-c = 'workspace C'
+# alt-d = 'workspace D'
+# alt-e = 'workspace E'
+# alt-f = 'workspace F'
+# alt-g = 'workspace G'
+# alt-i = 'workspace I'
+# alt-m = 'workspace M'
+# alt-n = 'workspace N'
+# alt-o = 'workspace O'
+# alt-p = 'workspace P'
+# alt-q = 'workspace Q'
+# alt-r = 'workspace R'
+# alt-s = 'workspace S'
+# alt-t = 'workspace T'
+# alt-u = 'workspace U'
+# alt-v = 'workspace V'
+# alt-w = 'workspace W'
+# alt-x = 'workspace X'
+# alt-y = 'workspace Y'
+# alt-z = 'workspace Z'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
-ctrl-shift-0 = 'move-node-to-workspace 0'
-ctrl-shift-1 = 'move-node-to-workspace 1'
-ctrl-shift-2 = 'move-node-to-workspace 2'
-ctrl-shift-3 = 'move-node-to-workspace 3'
-ctrl-shift-4 = 'move-node-to-workspace 4'
-ctrl-shift-5 = 'move-node-to-workspace 5'
-ctrl-shift-6 = 'move-node-to-workspace 6'
-ctrl-shift-7 = 'move-node-to-workspace 7'
-ctrl-shift-8 = 'move-node-to-workspace 8'
-ctrl-shift-9 = 'move-node-to-workspace 9'
-# ctrl-shift-t = 'move-node-to-workspace T'
-# ctrl-shift-a = 'move-node-to-workspace A'
-# ctrl-shift-b = 'move-node-to-workspace B'
-# ctrl-shift-c = 'move-node-to-workspace C'
-# ctrl-shift-d = 'move-node-to-workspace D'
-# ctrl-shift-e = 'move-node-to-workspace E'
-# ctrl-shift-f = 'move-node-to-workspace F'
-# ctrl-shift-g = 'move-node-to-workspace G'
-# ctrl-shift-i = 'move-node-to-workspace I'
-# ctrl-shift-m = 'move-node-to-workspace M'
-# ctrl-shift-n = 'move-node-to-workspace N'
-# ctrl-shift-o = 'move-node-to-workspace O'
-# ctrl-shift-p = 'move-node-to-workspace P'
-# ctrl-shift-q = 'move-node-to-workspace Q'
-# ctrl-shift-r = 'move-node-to-workspace R'
-# ctrl-shift-s = 'move-node-to-workspace S'
-# ctrl-shift-t = 'move-node-to-workspace T'
-# ctrl-shift-u = 'move-node-to-workspace U'
-# ctrl-shift-v = 'move-node-to-workspace V'
-# ctrl-shift-w = 'move-node-to-workspace W'
-# ctrl-shift-x = 'move-node-to-workspace X'
-# ctrl-shift-y = 'move-node-to-workspace Y'
-# ctrl-shift-z = 'move-node-to-workspace Z'
+# On ctrl for the same AZERTY reason: alt+shift+digit would eat [ (⌥⇧5) etc.
+cmd-ctrl-alt-shift-0 = 'move-node-to-workspace 0'
+cmd-ctrl-alt-shift-1 = 'move-node-to-workspace 1'
+cmd-ctrl-alt-shift-2 = 'move-node-to-workspace 2'
+cmd-ctrl-alt-shift-3 = 'move-node-to-workspace 3'
+cmd-ctrl-alt-shift-4 = 'move-node-to-workspace 4'
+cmd-ctrl-alt-shift-5 = 'move-node-to-workspace 5'
+cmd-ctrl-alt-shift-6 = 'move-node-to-workspace 6'
+cmd-ctrl-alt-shift-7 = 'move-node-to-workspace 7'
+cmd-ctrl-alt-shift-8 = 'move-node-to-workspace 8'
+cmd-ctrl-alt-shift-9 = 'move-node-to-workspace 9'
+# alt-shift-t = 'move-node-to-workspace T'
+# alt-shift-a = 'move-node-to-workspace A'
+# alt-shift-b = 'move-node-to-workspace B'
+# alt-shift-c = 'move-node-to-workspace C'
+# alt-shift-d = 'move-node-to-workspace D'
+# alt-shift-e = 'move-node-to-workspace E'
+# alt-shift-f = 'move-node-to-workspace F'
+# alt-shift-g = 'move-node-to-workspace G'
+# alt-shift-i = 'move-node-to-workspace I'
+# alt-shift-m = 'move-node-to-workspace M'
+# alt-shift-n = 'move-node-to-workspace N'
+# alt-shift-o = 'move-node-to-workspace O'
+# alt-shift-p = 'move-node-to-workspace P'
+# alt-shift-q = 'move-node-to-workspace Q'
+# alt-shift-r = 'move-node-to-workspace R'
+# alt-shift-s = 'move-node-to-workspace S'
+# alt-shift-t = 'move-node-to-workspace T'
+# alt-shift-u = 'move-node-to-workspace U'
+# alt-shift-v = 'move-node-to-workspace V'
+# alt-shift-w = 'move-node-to-workspace W'
+# alt-shift-x = 'move-node-to-workspace X'
+# alt-shift-y = 'move-node-to-workspace Y'
+# alt-shift-z = 'move-node-to-workspace Z'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#workspace-back-and-forth
-ctrl-tab = 'workspace-back-and-forth'
+cmd-ctrl-alt-tab = 'workspace-back-and-forth'
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-workspace-to-monitor
-ctrl-shift-tab = 'move-workspace-to-monitor --wrap-around next'
+cmd-ctrl-alt-shift-tab = 'move-workspace-to-monitor --wrap-around next'
 # See: https://nikitabobko.github.io/AeroSpace/commands#mode
-ctrl-esc = 'mode service'
+cmd-ctrl-alt-esc = 'mode service'
 
-ctrl-f = 'fullscreen'
-ctrl-shift-f = 'macos-native-fullscreen'
+cmd-ctrl-alt-f = 'fullscreen'
+cmd-ctrl-alt-shift-f = 'macos-native-fullscreen'
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
 [mode.service.binding]
-ctrl-esc = ['reload-config', 'mode main']
+cmd-ctrl-alt-esc = ['reload-config', 'mode main']
 # r = ['flatten-workspace-tree', 'mode main'] # reset layout
-# ctrl-shift-f = ['layout floating tiling', 'mode main'] # Toggle between floating and tiling layout
+# alt-shift-f = ['layout floating tiling', 'mode main'] # Toggle between floating and tiling layout
 # backspace = ['close-all-windows-but-current', 'mode main']
 
 # sticky is not yet supported https://github.com/nikitabobko/AeroSpace/issues/2
 #s = ['layout sticky tiling', 'mode main']
 
-ctrl-shift-h = ['join-with left', 'mode main']
-ctrl-shift-j = ['join-with down', 'mode main']
-ctrl-shift-k = ['join-with up', 'mode main']
-ctrl-shift-l = ['join-with right', 'mode main']
-ctrl-shift-left = ['join-with left', 'mode main']
-ctrl-shift-down = ['join-with down', 'mode main']
-ctrl-shift-up = ['join-with up', 'mode main']
-ctrl-shift-right = ['join-with right', 'mode main']
+# join-with lives in main mode now (Hyper+shift+ijkl)
 
 # down = 'volume down'
 # up = 'volume up'
@@ -387,5 +392,30 @@ run = 'layout floating'
 
 [[on-window-detected]]
 if.app-id = "com.apple.FaceTime"
+check-further-callbacks = true
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = "theboringteam.boringnotch"
+check-further-callbacks = true
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = "com.apple.finder"
+check-further-callbacks = true
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = "net.freemacsoft.AppCleaner"
+check-further-callbacks = true
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = "com.wireguard.macos"
+check-further-callbacks = true
+run = 'layout floating'
+
+[[on-window-detected]]
+if.app-id = "com.stonerl.Thaw"
 check-further-callbacks = true
 run = 'layout floating'
