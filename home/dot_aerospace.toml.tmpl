@@ -271,62 +271,80 @@ ctrl-shift-right = ['join-with right', 'mode main']
 ### Applications ###
 ####################
 
+# Machine-specific placements. Rules are checked top-to-bottom and the first
+# match wins (check-further-callbacks defaults to false), so each machine's
+# block below is fully self-contained — no cross-machine shadowing.
 {{ if .is_work -}}
-[[on-window-detected]]
-if.app-id = "com.hnc.Discord"
-run = ['move-node-to-workspace 0']
-
+# --- Work ---
+# Browser
 [[on-window-detected]]
 if.app-id = "com.google.Chrome"
 run = ['move-node-to-workspace 2']
 
+# Chat — Slack alone in workspace 3, other messaging apps in workspace 4
 [[on-window-detected]]
 if.app-id = "com.tinyspeck.slackmacgap"
 run = ['move-node-to-workspace 3']
 
-{{ else -}}
-
 [[on-window-detected]]
 if.app-id = "com.hnc.Discord"
-run = ['move-node-to-workspace 0']
-
-[[on-window-detected]]
-if.app-id = "com.readdle.SparkDesktop"
-run = ['move-node-to-workspace 9']
-
-[[on-window-detected]]
-if.app-id = "app.zen-browser.zen"
-run = ['move-node-to-workspace 2']
-{{ end -}}
+run = ['move-node-to-workspace 4']
 
 [[on-window-detected]]
 if.app-id = "com.apple.MobileSMS"
-run = ['move-node-to-workspace 0']
+run = ['move-node-to-workspace 4']
 
 [[on-window-detected]]
 if.app-id = "net.whatsapp.WhatsApp"
-run = ['move-node-to-workspace 0']
+run = ['move-node-to-workspace 4']
 
 [[on-window-detected]]
 if.app-id = "org.whispersystems.signal-desktop"
-run = ['move-node-to-workspace 0']
+run = ['move-node-to-workspace 4']
 
+# Mail
+[[on-window-detected]]
+if.app-id = "com.readdle.SparkDesktop"
+run = ['move-node-to-workspace 5']
+
+{{ else -}}
+# --- Personal ---
+# Browser
+[[on-window-detected]]
+if.app-id = "app.zen-browser.zen"
+run = ['move-node-to-workspace 2']
+
+# Chat — all messaging apps in workspace 3
+[[on-window-detected]]
+if.app-id = "com.hnc.Discord"
+run = ['move-node-to-workspace 3']
+
+[[on-window-detected]]
+if.app-id = "com.apple.MobileSMS"
+run = ['move-node-to-workspace 3']
+
+[[on-window-detected]]
+if.app-id = "net.whatsapp.WhatsApp"
+run = ['move-node-to-workspace 3']
+
+[[on-window-detected]]
+if.app-id = "org.whispersystems.signal-desktop"
+run = ['move-node-to-workspace 3']
+
+# Mail
+[[on-window-detected]]
+if.app-id = "com.readdle.SparkDesktop"
+run = ['move-node-to-workspace 5']
+{{ end -}}
+
+# --- Shared (both machines) ---
 [[on-window-detected]]
 if.app-id = "com.microsoft.VSCode"
 run = ['move-node-to-workspace 1']
 
 [[on-window-detected]]
-if.app-id = "com.readdle.SparkDesktop"
-run = ['move-node-to-workspace 4']
-
-[[on-window-detected]]
 if.app-id = "com.spotify.client"
 run = ['move-node-to-workspace 9']
-
-# [[on-window-detected]]
-# if.app-id = "com.apple.finder"
-# check-further-callbacks = true
-# run = ['move-node-to-workspace F']
 
 [[on-window-detected]]
 if.app-id = "com.googlecode.iterm2"
