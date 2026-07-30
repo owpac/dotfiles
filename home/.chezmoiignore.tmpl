@@ -61,7 +61,7 @@
 {{- /* darwin overlay: macOS-only. Workspace is "shallow" so the dir entry
        is un-ignored without dragging in `Workspace/**` — that lets the
        work overlay below choose precisely which sub-trees to manage. */ -}}
-{{- $managed = concat $managed (list "Backup" "Library") -}}
+{{- $managed = concat $managed (list "Backup" ".config/macos-preferences") -}}
 {{- $shallow = concat $shallow (list "Workspace") -}}
 {{- end -}}
 {{- end -}}

@@ -1,0 +1,8 @@
+# Domains whose macOS `defaults` are tracked as encrypted snapshots under
+# dot_config/macos-preferences/ and re-applied via .chezmoiscripts/darwin/
+# run_onchange_after_import-macos-preferences.sh.tmpl. Add an app: append its
+# domain here + drop encrypted_<domain>.plist.age in that folder.
+macos_preferences_domains:
+  - com.apple.Terminal
+  - com.googlecode.iterm2
+  - com.knollsoft.Rectangle

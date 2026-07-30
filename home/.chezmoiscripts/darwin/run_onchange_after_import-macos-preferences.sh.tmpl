@@ -1,0 +1,29 @@
+{{ if and (eq .chezmoi.os "darwin") (not .is_minimum) -}}
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+source {{ .chezmoi.workingTree }}/lib/logs.sh
+
+# Re-apply macOS app preferences from the tracked snapshots in
+# ~/.config/macos-preferences/ via `defaults import` (goes through cfprefsd, unlike
+# editing the live plist directly). Instead of tracking the churny live
+# ~/Library/Preferences/<domain>.plist, we track a stable encrypted snapshot
+# per domain (see .chezmoidata.yaml → macos_preferences_domains) and re-import it.
+#
+# This run_onchange re-runs only when a snapshot's *decrypted* content changes
+# (the hashes below force that — age re-encryption alone won't re-trigger):
+{{ range .macos_preferences_domains -}}
+# {{ . }}: {{ include (printf "dot_config/macos-preferences/encrypted_%s.plist.age" .) | decrypt | sha256sum }}
+{{ end -}}
+
+log_task "Importing macOS app preferences..."
+{{ range .macos_preferences_domains -}}
+defaults import "{{ . }}" "$HOME/.config/macos-preferences/{{ . }}.plist"
+{{ end -}}
+log_done "macOS app preferences imported. (Restart the app to pick up changes.)"
+
+# Capture a change after editing an app's settings:  pac preferences save [name...]
+# Add a new app:  pac preferences save <domain>  then add <domain> to .chezmoidata.yaml
+# (macos_preferences_domains) so it is re-applied on every machine.
+{{ end -}}
