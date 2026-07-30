@@ -3,7 +3,10 @@
 _pac() {
   local -a subcmds
   if (( CURRENT == 2 )); then
-    subcmds=('update:Update everything')
+    subcmds=(
+      'update:Update everything (macOS, apps, brew, mise)'
+      'preferences:Save/list macOS app preference snapshots'
+    )
     _describe 'command' subcmds
   elif (( CURRENT == 3 )) && [[ "${words[2]}" == "update" ]]; then
     subcmds=(
@@ -13,6 +16,23 @@ _pac() {
       'mise:Update mise plugins'
     )
     _describe 'subcommand' subcmds
+  elif (( CURRENT == 3 )) && [[ "${words[2]}" == "preferences" ]]; then
+    subcmds=(
+      'list:List saved macOS app preferences'
+      'save:Snapshot app preferences (all, or by slug/domain)'
+      'remove:Stop tracking a saved app'
+    )
+    _describe 'subcommand' subcmds
+  elif (( CURRENT >= 4 )) && [[ "${words[2]}" == "preferences" && ( "${words[3]}" == "save" || "${words[3]}" == "remove" ) ]]; then
+    local dir="$HOME/.config/macos-preferences" f domain slug
+    local -a names
+    for f in "$dir"/*.plist(N); do
+      domain="${f:t:r}"        # com.apple.Terminal.plist -> com.apple.Terminal
+      slug="${domain##*.}"     # last dot-component
+      names+=("${(L)slug}")    # slug (lowercased): terminal
+      names+=("$domain")       # full domain
+    done
+    (( ${#names} )) && compadd -a names
   fi
 }
 

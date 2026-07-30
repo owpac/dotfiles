@@ -13,13 +13,13 @@ log_error() { printf "${_red}❌ %s${_reset}\n" "$*" >&2; }
 update_macos() {
     log_task "Upgrading macOS..."
     softwareupdate -ia
-    log_done "macOS updated!"
+    log_done "macOS updated"
 }
 
 update_apps() {
     log_task "Upgrading App Store apps..."
     mas upgrade
-    log_done "App Store apps updated!"
+    log_done "App Store apps updated"
 }
 
 update_brew() {
@@ -29,34 +29,155 @@ update_brew() {
     brew upgrade
     log_task "Cleaning up..."
     brew cleanup
-    log_done "Homebrew updated!"
+    log_done "Homebrew updated"
 }
 
 update_mise() {
     log_task "Updating mise plugins..."
     mise plugins update
-    log_done "Mise plugins updated!"
+    log_done "Mise plugins updated"
 }
 
 update_all() {
     local failed=0
-    update_macos || { log_error "macOS update failed!"; failed=1; }
-    update_apps  || { log_error "App Store update failed!"; failed=1; }
-    update_brew  || { log_error "Homebrew update failed!"; failed=1; }
-    update_mise  || { log_error "Mise update failed!"; failed=1; }
+    update_macos || { log_error "macOS update failed"; failed=1; }
+    update_apps  || { log_error "App Store update failed"; failed=1; }
+    update_brew  || { log_error "Homebrew update failed"; failed=1; }
+    update_mise  || { log_error "Mise update failed"; failed=1; }
     return $failed
+}
+
+# --- macOS app preference snapshots (~/.config/macos-preferences/) -----------------
+preferences_dir="$HOME/.config/macos-preferences"
+
+_preferences_domains() {
+    local f b
+    for f in "$preferences_dir"/*.plist; do
+        [[ -e "$f" ]] || continue
+        b="$(basename "$f" .plist)"
+        # keep only well-formed reverse-DNS domains (skip stray/misnamed files)
+        [[ "$b" == *.* && "$b" != *.plist ]] && printf '%s\n' "$b"
+    done
+}
+
+# slug = last dot-component, lowercased (com.apple.Terminal -> terminal)
+_slug_for() { printf '%s' "${1##*.}" | tr '[:upper:]' '[:lower:]'; }
+
+# resolve a slug OR a full domain to a domain name
+_domain_for() {
+    local arg="$1" d
+    arg="${arg%.plist}"                  # tolerate a trailing .plist (com.apple.Safari.plist)
+    if [[ "$arg" == *.* ]]; then
+        [[ "$arg" == */* ]] && return 1  # reject path-like args
+        printf '%s' "$arg"; return 0
+    fi
+    while IFS= read -r d; do
+        [[ -n "$d" ]] || continue
+        [[ "$(_slug_for "$d")" == "$arg" ]] && { printf '%s' "$d"; return 0; }
+    done < <(_preferences_domains)
+    return 1
+}
+
+_data_file() { printf '%s/.chezmoidata.yaml' "$(chezmoi source-path)"; }
+
+# Ensure a domain is listed under macos_preferences_domains in .chezmoidata.yaml
+# (the import script only re-applies domains from that list).
+_ensure_in_data() {
+    local domain="$1" data="$2" tmp
+    grep -q '^macos_preferences_domains:' "$data" || {
+        log_error "No 'macos_preferences_domains:' key in $data — add '$domain' by hand"
+        return 1
+    }
+    grep -qxF "  - $domain" "$data" && return 0   # already listed
+    tmp="$(mktemp)"
+    awk -v item="  - $domain" '
+        function flush() { if (inblock && !added) { print item; added=1 } }
+        /^[^[:space:]#]/ { flush(); inblock = ($0 == "macos_preferences_domains:") ? 1 : 0 }
+        { print }
+        END { flush() }
+    ' "$data" > "$tmp" && mv "$tmp" "$data"
+    log_task "Added '$domain' to .chezmoidata.yaml (macos_preferences_domains)"
+}
+
+preferences_save() {
+    mkdir -p "$preferences_dir"
+    local domains=() arg d out data
+    data="$(_data_file)"
+    if (( $# == 0 )); then
+        while IFS= read -r d; do [[ -n "$d" ]] && domains+=("$d"); done < <(_preferences_domains)
+    else
+        for arg in "$@"; do
+            d="$(_domain_for "$arg")" || { log_error "Unknown preference '$arg' (not a saved slug or a domain)"; return 1; }
+            domains+=("$d")
+        done
+    fi
+    if (( ${#domains[@]} == 0 )); then
+        log_error "Nothing to save — no snapshots in $preferences_dir"
+        return 1
+    fi
+    for d in "${domains[@]}"; do
+        if ! defaults read "$d" >/dev/null 2>&1; then
+            log_error "Skipping '$d' (no such defaults domain)"
+            continue
+        fi
+        out="$preferences_dir/$d.plist"
+        defaults export "$d" "$out"
+        if chezmoi managed | grep -qx ".config/macos-preferences/$d.plist"; then
+            chezmoi re-add "$out"          # no-op if nothing changed
+        else
+            chezmoi add --encrypt "$out"
+        fi
+        _ensure_in_data "$d" "$data"
+        log_done "Saved $d ($(_slug_for "$d"))"
+    done
+    log_task "Review and commit: chezmoi cd  ->  git add -p && git commit"
+}
+
+preferences_remove() {
+    (( $# )) || { log_error "Usage: pac preferences remove <name>..."; return 1; }
+    local data arg d target src tmp
+    data="$(_data_file)"
+    for arg in "$@"; do
+        d="$(_domain_for "$arg")" || { log_error "Unknown preference '$arg'"; return 1; }
+        target="$preferences_dir/$d.plist"
+        # 1. drop from the tracked list
+        if grep -qxF "  - $d" "$data"; then
+            tmp="$(mktemp)"; grep -vxF "  - $d" "$data" > "$tmp" && mv "$tmp" "$data"
+        fi
+        # 2. stop tracking the encrypted snapshot in the chezmoi source
+        if chezmoi managed | grep -qx ".config/macos-preferences/$d.plist"; then
+            src="$(chezmoi source-path "$target" 2>/dev/null)"
+            [[ -n "$src" && -f "$src" ]] && rm -f "$src"
+        fi
+        # 3. drop the local snapshot mirror (the app's live prefs stay untouched)
+        rm -f "$target"
+        log_done "Removed $d ($(_slug_for "$d")) — live app prefs untouched"
+    done
+    log_task "Review and commit: chezmoi cd  ->  git add -p && git commit"
+}
+
+preferences_list() {
+    local d found=0
+    printf "%-12s %s\n" "SLUG" "DOMAIN"
+    while IFS= read -r d; do
+        [[ -n "$d" ]] || continue
+        found=1
+        printf "%-12s %s\n" "$(_slug_for "$d")" "$d"
+    done < <(_preferences_domains)
+    (( found )) || log_error "No preferences saved yet in $preferences_dir"
 }
 
 usage() {
     cat >&2 <<EOF
-Usage: pac <command> [subcommand]
+Usage: pac <command> [args]
 
 Commands:
-    update            Update everything (macOS, apps, brew, mise)
-    update macos      Run macOS software updates
-    update apps       Update App Store apps via mas
-    update brew       Update and upgrade Homebrew packages
-    update mise       Update mise plugins
+    update                      Update everything (macOS, apps, brew, mise)
+    update macos|apps|brew|mise
+    preferences list            List saved macOS app preferences (slug -> domain)
+    preferences save [name...]  Snapshot app preferences — all tracked, or by slug/domain
+                                (e.g. 'pac preferences save terminal')
+    preferences remove <name>   Stop tracking an app's preferences (keeps live prefs)
 EOF
 }
 
@@ -69,6 +190,14 @@ case "${1:-}" in
             brew)  update_brew ;;
             mise)  update_mise ;;
             *)     usage; exit 1 ;;
+        esac
+        ;;
+    preferences)
+        case "${2:-}" in
+            ""|list) preferences_list ;;
+            save)    shift 2; preferences_save "$@" ;;
+            remove)  shift 2; preferences_remove "$@" ;;
+            *)       usage; exit 1 ;;
         esac
         ;;
     *)  usage ;;
