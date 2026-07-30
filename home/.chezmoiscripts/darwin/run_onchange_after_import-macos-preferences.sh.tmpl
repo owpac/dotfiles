@@ -20,8 +20,9 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
 log_task "Importing macOS app preferences..."
 {{ range .macos_preferences_domains -}}
 defaults import "{{ . }}" "$HOME/.config/macos-preferences/{{ . }}.plist"
+echo "   • {{ . }}"
 {{ end -}}
-log_done "macOS app preferences imported. (Restart the app to pick up changes.)"
+log_done "macOS app preferences imported (restart the apps to pick up changes)."
 
 # Capture a change after editing an app's settings:  pac preferences save [name...]
 # Add a new app:  pac preferences save <domain>  then add <domain> to .chezmoidata.yaml
