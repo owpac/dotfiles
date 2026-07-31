@@ -6,3 +6,4 @@ macos_preferences_domains:
   - com.apple.Terminal
   - com.googlecode.iterm2
   - com.knollsoft.Rectangle
+  - app.openisland.OpenIsland
