@@ -82,6 +82,12 @@ git clone https://github.com/owpac/dotfiles "$HOME/.dotfiles"
 
 ---
 
+### Guides
+
+- [Tracking macOS app preferences](./docs/macos-preferences.md) — snapshot & re-import app settings via `pac preferences`, without the `chezmoi status` noise of tracking live plists.
+
+---
+
 ### TODO
 
 - add script to init & install packages for raspberry pi
