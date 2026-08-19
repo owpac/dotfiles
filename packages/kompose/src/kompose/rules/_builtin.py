@@ -6,7 +6,15 @@ from .._engine import FixApplied, Issue, LintContext
 
 
 def substring_required(ctx: LintContext, params: dict, exclude: set[str]) -> list[Issue]:
-    """Fail if any of the configured substrings is missing from the compose file.
+    """Fail if any of the configured substrings is missing from a service.
+
+    Each service block is checked on its own. Matching the file as a whole
+    would let a multi-service file pass as soon as one of its services carried
+    the substring, so a fifteen-service file gaining a sixteenth without the
+    required block would still report clean.
+
+    Files with no `services:` block fall back to matching the whole file, which
+    keeps the type usable for top-level declarations.
 
     params:
       required: [str, ...]
@@ -17,8 +25,17 @@ def substring_required(ctx: LintContext, params: dict, exclude: set[str]) -> lis
     required = params.get("required") or []
     if isinstance(required, str):
         required = [required]
-    missing = [s for s in required if s not in ctx.content]
-    return [Issue(message=f"missing '{s}'") for s in missing]
+
+    blocks = _extract_service_blocks(ctx.content)
+    if not blocks:
+        return [Issue(message=f"missing '{s}'") for s in required if s not in ctx.content]
+
+    return [
+        Issue(message=f"{name}: missing '{s}'", location=name)
+        for name, block in blocks.items()
+        for s in required
+        if s not in block
+    ]
 
 
 def substring_forbidden(ctx: LintContext, params: dict, exclude: set[str]) -> list[Issue]:
@@ -34,6 +51,47 @@ def substring_forbidden(ctx: LintContext, params: dict, exclude: set[str]) -> li
     if isinstance(forbidden, str):
         forbidden = [forbidden]
     return [Issue(message=f"forbidden '{s}'") for s in forbidden if s in ctx.content]
+
+
+def _extract_service_blocks(content: str) -> dict[str, str]:
+    """Return the raw text of each service block, keyed by service name.
+
+    Shares the traversal rules of _extract_service_props: the first indented
+    key under `services:` sets the service indent, comment lines never open a
+    service, and a column-0 key ends the block.
+    """
+    blocks: dict[str, list[str]] = {}
+    current: str | None = None
+    in_services = False
+    service_indent: int | None = None
+
+    for line in content.split("\n"):
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+
+        if indent == 0 and stripped.startswith("services:"):
+            in_services = True
+            continue
+        if not in_services:
+            continue
+        if indent == 0 and stripped and not stripped.startswith("#"):
+            in_services = False
+            current = None
+            continue
+        if not stripped or stripped.startswith("#"):
+            if current is not None:
+                blocks[current].append(line)
+            continue
+        if service_indent is None and indent > 0 and stripped.endswith(":") and not stripped.startswith("-"):
+            service_indent = indent
+        if indent == service_indent and stripped.endswith(":") and not stripped.startswith("-"):
+            current = stripped.rstrip(":").strip()
+            blocks[current] = []
+            continue
+        if current is not None:
+            blocks[current].append(line)
+
+    return {name: "\n".join(body) for name, body in blocks.items()}
 
 
 def _extract_service_props(content: str) -> dict[str, list[tuple[str, int]]]:

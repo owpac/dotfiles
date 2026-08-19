@@ -54,6 +54,63 @@ class TestSubstringRequired(unittest.TestCase):
         issues = substring_required(ctx, {"required": ["needle"]}, {"legacy"})
         self.assertEqual(issues, [])
 
+    # --- per-service behaviour ---------------------------------------------
+
+    TWO_SERVICES = (
+        "services:\n"
+        "  a:\n"
+        "    image: x\n"
+        "    logging:\n"
+        "      driver: local\n"
+        "  b:\n"
+        "    image: y\n"
+    )
+
+    def test_reports_the_service_that_lacks_it(self):
+        """The case a whole-file match cannot catch: only one service has it."""
+        ctx = make_ctx(self.TWO_SERVICES)
+        issues = substring_required(ctx, {"required": ["driver: local"]}, set())
+        self.assertEqual(len(issues), 1)
+        self.assertIn("b", issues[0].message)
+        self.assertEqual(issues[0].location, "b")
+
+    def test_every_service_compliant(self):
+        content = self.TWO_SERVICES.replace(
+            "  b:\n    image: y\n",
+            "  b:\n    image: y\n    logging:\n      driver: local\n",
+        )
+        ctx = make_ctx(content)
+        self.assertEqual(substring_required(ctx, {"required": ["driver: local"]}, set()), [])
+
+    def test_one_issue_per_service_and_substring(self):
+        ctx = make_ctx("services:\n  a:\n    image: x\n  b:\n    image: y\n")
+        issues = substring_required(ctx, {"required": ["logging:", "driver: local"]}, set())
+        self.assertEqual(len(issues), 4)
+
+    def test_commented_service_is_not_checked(self):
+        content = (
+            "services:\n"
+            "  a:\n"
+            "    image: x\n"
+            "    logging:\n"
+            "      driver: local\n"
+            "  # b:\n"
+            "  #   image: y\n"
+        )
+        ctx = make_ctx(content)
+        self.assertEqual(substring_required(ctx, {"required": ["driver: local"]}, set()), [])
+
+    def test_top_level_key_ends_the_services_block(self):
+        """A networks: section must not be mistaken for a service."""
+        content = self.TWO_SERVICES + "\nnetworks:\n  reverse-proxy:\n    external: true\n"
+        ctx = make_ctx(content)
+        issues = substring_required(ctx, {"required": ["driver: local"]}, set())
+        self.assertEqual([i.location for i in issues], ["b"])
+
+    def test_falls_back_to_whole_file_without_services(self):
+        ctx = make_ctx("logging:\n  driver: local\n")
+        self.assertEqual(substring_required(ctx, {"required": ["driver: local"]}, set()), [])
+
 
 class TestSubstringForbidden(unittest.TestCase):
     def test_no_forbidden(self):
