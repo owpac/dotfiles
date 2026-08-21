@@ -4,6 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 from kompose._engine import LintContext
 from kompose.rules._builtin import (
     property_order,
@@ -15,6 +17,7 @@ from kompose.rules import (
     compose_includes_sync,
     env_check,
     reverse_proxy_network,
+    service_networks,
     traefik_middleware_correlation,
     traefik_router_naming,
 )
@@ -23,11 +26,19 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def make_ctx(content: str, service_name: str = "test-service", globals_dict: dict | None = None) -> LintContext:
+    # Parse like the engine does, so handlers reading ctx.parsed see the same
+    # thing they would at runtime.
+    try:
+        parsed = yaml.safe_load(content) or {}
+    except yaml.YAMLError:
+        parsed = {}
+    if not isinstance(parsed, dict):
+        parsed = {}
     return LintContext(
         service_name=service_name,
         compose_path=Path("/tmp/compose.yml"),
         content=content,
-        parsed={},
+        parsed=parsed,
         globals=globals_dict or {},
     )
 
@@ -322,6 +333,81 @@ class TestReverseProxyNetwork(unittest.TestCase):
         )
         issues = reverse_proxy_network.check(ctx, {}, set())
         self.assertEqual(issues, [])
+
+
+class TestServiceNetworks(unittest.TestCase):
+    """Tests for the service_networks handler."""
+
+    COMPOSE = """\
+services:
+  web:
+    image: nginx
+    networks:
+      network-tools:
+        ipv4_address: 10.10.40.10
+  worker:
+    image: busybox
+    networks:
+      - network-media
+      - byparr
+  host_agent:
+    image: busybox
+    network_mode: host
+"""
+
+    def _check(self, params, exclude=frozenset()):
+        return service_networks.check(make_ctx(self.COMPOSE), params, set(exclude))
+
+    # network -> services, the same shape as the zone table it mirrors
+    FULL_MAP = {
+        "network-tools": ["web"],
+        "network-media": ["worker"],
+        "byparr": ["worker"],
+    }
+
+    def test_mapping_form_matches(self):
+        self.assertEqual(self._check({"networks": self.FULL_MAP}), [])
+
+    def test_service_on_several_networks(self):
+        # worker appears under two networks and must hold exactly those
+        issues = self._check({"networks": self.FULL_MAP})
+        self.assertEqual([i for i in issues if "worker" in i.message], [])
+
+    def test_missing_network_reported(self):
+        m = dict(self.FULL_MAP, **{"socket-proxy": ["worker"]})
+        issues = self._check({"networks": m})
+        self.assertEqual(len(issues), 1)
+        self.assertIn("missing socket-proxy", issues[0].message)
+
+    def test_unexpected_network_reported(self):
+        m = {k: v for k, v in self.FULL_MAP.items() if k != "byparr"}
+        issues = self._check({"networks": m})
+        self.assertEqual(len(issues), 1)
+        self.assertIn("unexpected byparr", issues[0].message)
+
+    def test_network_mode_service_skipped(self):
+        names = " ".join(i.message for i in self._check({"networks": {}}))
+        self.assertNotIn("host_agent", names)
+
+    def test_service_in_no_network_is_an_error(self):
+        issues = self._check({"networks": {}})
+        self.assertEqual(len(issues), 2)
+        self.assertTrue(all("listed in no network" in i.message for i in issues))
+
+    def test_partial_map_still_flags_the_rest(self):
+        issues = self._check({"networks": {"network-tools": ["web"]}})
+        self.assertEqual(len(issues), 1)
+        self.assertIn("worker", issues[0].message)
+
+    def test_service_excluded(self):
+        issues = self._check({"networks": {}}, exclude={"web", "worker"})
+        self.assertEqual(issues, [])
+
+    def test_service_without_networks_reports_missing(self):
+        ctx = make_ctx("services:\n  bare:\n    image: x\n")
+        issues = service_networks.check(ctx, {"networks": {"bare": ["network-main"]}}, set())
+        self.assertEqual(len(issues), 1)
+        self.assertIn("missing network-main", issues[0].message)
 
 
 class TestComposeIncludesSync(unittest.TestCase):
