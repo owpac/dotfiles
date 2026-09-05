@@ -5,9 +5,10 @@ Exposes two flows:
 - **Trigger** (`kompose upgrade [service]`): synchronously POSTs to
   `<watchtower>/v1/update`. While waiting, a background thread tails
   `docker logs -f watchtower --since <t0>`, filters for the high-signal
-  events (Pulling / Stopping / Creating / Started / Removed image), and
-  renders them compactly. The HTTP response's JSON report is used as the
-  authoritative final summary.
+  events (new image / Stopping / Creating / Started / image cleanup), and
+  renders them compactly. Both the upstream logrus format and the
+  nickfedor fork's zerolog console format are understood. The HTTP
+  response's JSON report is used as the authoritative final summary.
 
 - **Read-only logs** (`kompose upgrade --logs`): parses
   `docker logs watchtower` and slices the most recent session — between the
@@ -54,6 +55,10 @@ WATCHTOWER_SERVICE = "watchtower"
 WATCHTOWER_DEFAULT_PORT = 8080
 WATCHTOWER_DEFAULT_NETWORK = "reverse-proxy"
 WATCHTOWER_CONTAINER_NAME = "watchtower"
+# `--logs` must cover a whole session. With WATCHTOWER_DEBUG on, a full update
+# across ~46 containers runs ~9k lines, so keep generous headroom — a short
+# tail silently truncates the session and under-reports what happened.
+WATCHTOWER_LOG_TAIL = 40000
 
 EXIT_OK = 0
 EXIT_PARTIAL = 1
@@ -222,12 +227,23 @@ def resolve_target(host: str | None, service: str | None) -> ImageResolution:
 
 
 # ---------------------------------------------------------------------------
-# Watchtower log parsing (Pretty format from logrus)
+# Watchtower log parsing (logrus `INFO[0000]` and zerolog `2:14PM INF`)
 # ---------------------------------------------------------------------------
 
 
 _ANSI_RE = re.compile(r"\x1B\[[0-9;]*m")
+# Upstream watchtower (logrus): `INFO[0214] message key=value`
 _LOG_LINE_RE = re.compile(r"^(?P<level>[A-Z]{4})\[(?P<elapsed>\d+)\]\s+(?P<rest>.*)$")
+# nickfedor fork (zerolog console): `2:14PM INF message key=value`
+_LOG_LINE_CONSOLE_RE = re.compile(
+    r"^(?:(?:\d{1,2}:\d{2}(?::\d{2})?(?:AM|PM)?|\d{4}-\d{2}-\d{2}T\S+)\s+)?"
+    r"(?P<level>TRC|DBG|INF|WRN|ERR|FTL|PAN)\s+(?P<rest>.*)$"
+)
+# zerolog's 3-letter levels, mapped onto the logrus names the renderer expects.
+_LEVEL_ALIASES = {
+    "TRC": "TRAC", "DBG": "DEBU", "INF": "INFO",
+    "WRN": "WARN", "ERR": "ERRO", "FTL": "FATA", "PAN": "PANI",
+}
 _KV_RE = re.compile(r'([A-Za-z_][A-Za-z0-9_.-]*)=("(?:[^"\\]|\\.)*"|\S+)')
 
 _SESSION_START_MARKERS = (
@@ -251,9 +267,10 @@ def parse_watchtower_line(raw: str) -> LogEvent | None:
     stripped = _ANSI_RE.sub("", raw).rstrip()
     if not stripped:
         return None
-    match = _LOG_LINE_RE.match(stripped)
+    match = _LOG_LINE_RE.match(stripped) or _LOG_LINE_CONSOLE_RE.match(stripped)
     if not match:
         return None
+    level = _LEVEL_ALIASES.get(match.group("level"), match.group("level"))
     rest = match.group("rest")
     # The message is the run of text before the first key=value pair (if any).
     kv_match = _KV_RE.search(rest)
@@ -264,7 +281,7 @@ def parse_watchtower_line(raw: str) -> LogEvent | None:
         message = rest.strip()
         kv_text = ""
     fields = {k: v.strip('"') for k, v in _KV_RE.findall(kv_text)}
-    return LogEvent(level=match.group("level"), message=message, fields=fields)
+    return LogEvent(level=level, message=message, fields=fields)
 
 
 def slice_latest_session(lines: list[str]) -> list[LogEvent]:
@@ -320,10 +337,13 @@ _EVENT_STYLES: tuple[_EventStyle, ...] = (
     _EventStyle("Running update on schedule", "→", "CYAN", "triggered by schedule"),
     _EventStyle("Pulling", "⬇", "BLUE", "pulling"),
     _EventStyle("Found new", "⚑", "YELLOW", "new image"),
-    _EventStyle("Stopping container", "⏸", "GRAY", "stopping"),
+    _EventStyle("Stopping", "⏸", "GRAY", "stopping"),
     _EventStyle("Creating new container", "+", "GRAY", "creating"),
     _EventStyle("Started new container", "▶", "GREEN", "started"),
     _EventStyle("Removed image", "🗑", "GRAY", "cleaned up image"),
+    _EventStyle("Removing image", "🗑", "GRAY", "cleaned up image"),
+    _EventStyle("Image is within cooldown period", "⏳", "GRAY", "held by cooldown"),
+    _EventStyle("Image creation time unavailable", "!", "YELLOW", "age unknown, skipped"),
     _EventStyle("Update session completed", "■", "BOLD", "session done", is_session_end=True),
 )
 
@@ -352,7 +372,13 @@ def _format_event(event: LogEvent, style: _EventStyle) -> str:
             f"{Colors.RED}{event.fields.get('failed', '?')} failed{Colors.RESET} · "
             f"{Colors.GRAY}{event.fields.get('scanned', '?')} scanned{Colors.RESET}"
         )
-    target = event.fields.get("container") or event.fields.get("image") or ""
+    # `Removing image` carries image_name rather than container/image.
+    target = (
+        event.fields.get("container")
+        or event.fields.get("image")
+        or event.fields.get("image_name")
+        or ""
+    )
     detail = f" {Colors.GRAY}{target}{Colors.RESET}" if target else ""
     return f"  {icon} {style.label}{detail}"
 
@@ -480,12 +506,23 @@ def _extract_summary(body: dict | None) -> tuple[int, int, int]:
     if not isinstance(body, dict):
         return 0, 0, 0
 
-    # The /v1/update response wraps a `metric` block; older builds inlined it.
-    metric = body.get("metric") if isinstance(body.get("metric"), dict) else body
-    updated = int(metric.get("updated", 0) or 0)
-    failed = int(metric.get("failed", 0) or 0)
-    scanned = int(metric.get("scanned", 0) or 0)
-    skipped = scanned - updated - failed
+    # Response shape varies: the nickfedor fork nests the counters under
+    # `summary`, upstream used `metric`, older builds inlined them.
+    block = body
+    for key in ("summary", "metric"):
+        candidate = body.get(key)
+        if isinstance(candidate, dict):
+            block = candidate
+            break
+
+    updated = int(block.get("updated", 0) or 0)
+    failed = int(block.get("failed", 0) or 0)
+    # Prefer the reported skip count; derive it only when absent, since
+    # `scanned - updated - failed` also swallows the containers left untouched.
+    if block.get("skipped") is not None:
+        skipped = int(block.get("skipped") or 0)
+    else:
+        skipped = int(block.get("scanned", 0) or 0) - updated - failed
     return updated, failed, max(skipped, 0)
 
 
@@ -598,7 +635,7 @@ def _cmd_upgrade_logs(host: str | None) -> int:
     # as line boundaries; --tail is generous (DEBUG mode is chatty).
     try:
         proc = subprocess.run(
-            ["docker", "logs", "--tail", "5000", WATCHTOWER_CONTAINER_NAME],
+            ["docker", "logs", "--tail", str(WATCHTOWER_LOG_TAIL), WATCHTOWER_CONTAINER_NAME],
             capture_output=True,
             text=True,
             timeout=30,

@@ -320,6 +320,31 @@ class TestParseWatchtowerLine(unittest.TestCase):
     def test_returns_none_for_unparseable(self):
         self.assertIsNone(parse_watchtower_line("random docker log line without level prefix"))
 
+    def test_parses_zerolog_console_format(self):
+        """The nickfedor fork logs `2:14PM INF msg k=v`, not logrus `INFO[0000]`."""
+        line = "\x1b[90m2:14PM\x1b[0m \x1b[32mINF\x1b[0m \x1b[1mStarted new container\x1b[0m \x1b[36mcontainer=\x1b[0mbazarr \x1b[36mnew_id=\x1b[0m105e3d08fe14"
+        event = parse_watchtower_line(line)
+        self.assertIsNotNone(event)
+        self.assertEqual(event.level, "INFO")
+        self.assertEqual(event.message, "Started new container")
+        self.assertEqual(event.fields["container"], "bazarr")
+
+    def test_normalises_zerolog_levels(self):
+        for short, expected in (("DBG", "DEBU"), ("WRN", "WARN"), ("ERR", "ERRO")):
+            event = parse_watchtower_line(f"2:14PM {short} Some message")
+            self.assertEqual(event.level, expected, short)
+
+    def test_zerolog_session_completed_counts(self):
+        line = "2:14PM INF Update session completed failed=0 notify=no scanned=42 skipped=4 updated=15"
+        event = parse_watchtower_line(line)
+        self.assertEqual(event.message, "Update session completed")
+        self.assertEqual(event.fields["updated"], "15")
+        self.assertEqual(event.fields["skipped"], "4")
+
+    def test_ignores_lines_without_a_known_level(self):
+        """Shoutrrr lines carry a `???` level and a webhook token — never render them."""
+        self.assertIsNone(parse_watchtower_line("2:14PM ??? Shoutrrr: Got custom URL: generic+http://h/x?t=SECRET"))
+
 
 class TestSliceLatestSession(unittest.TestCase):
     def test_slices_between_trigger_and_completed(self):
@@ -401,6 +426,19 @@ class TestExtractSummary(unittest.TestCase):
     def test_metric_block(self):
         body = {"metric": {"scanned": 10, "updated": 3, "failed": 1}}
         self.assertEqual(_extract_summary(body), (3, 1, 6))
+
+    def test_summary_block_from_fork(self):
+        """Real /v1/update response from nickfedor/watchtower."""
+        body = {
+            "api_version": "v1",
+            "summary": {"failed": 0, "restarted": 0, "scanned": 42, "skipped": 4, "updated": 15},
+        }
+        self.assertEqual(_extract_summary(body), (15, 0, 4))
+
+    def test_summary_block_takes_precedence_over_inline(self):
+        body = {"scanned": 1, "updated": 0, "failed": 0,
+                "summary": {"scanned": 9, "updated": 2, "failed": 1, "skipped": 3}}
+        self.assertEqual(_extract_summary(body), (2, 1, 3))
 
     def test_inline_metrics(self):
         body = {"scanned": 5, "updated": 2, "failed": 0}
