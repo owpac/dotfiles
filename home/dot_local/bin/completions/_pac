@@ -6,6 +6,7 @@ _pac() {
     subcmds=(
       'upgrade:Upgrade everything (macOS, apps, brew, mise)'
       'preferences:Save/list macOS app preference snapshots'
+      'agent:Beads tasks and their Claude/Codex sessions'
     )
     _describe 'command' subcmds
   elif (( CURRENT == 3 )) && [[ "${words[2]}" == "upgrade" ]]; then
@@ -33,6 +34,23 @@ _pac() {
       names+=("$domain")       # full domain
     done
     (( ${#names} )) && compadd -a names
+  elif (( CURRENT == 3 )) && [[ "${words[2]}" == "agent" ]]; then
+    subcmds=(
+      'init:Enable Beads in the current repo (stealth, shared Dolt server)'
+      'task:List the agent sessions linked to a Beads task'
+      'resume:Resume a linked session'
+      'new:Start a session that recovers the task context'
+    )
+    _describe 'subcommand' subcmds
+  elif (( CURRENT == 4 )) && [[ "${words[2]}" == "agent" && "${words[3]}" == "init" ]]; then
+    compadd -- --prefix --dry-run
+  elif (( CURRENT == 4 )) && [[ "${words[2]}" == "agent" && "${words[3]}" == (task|resume|new) ]]; then
+    # Task ids of the current repository (open and in progress).
+    local -a ids
+    ids=(${(f)"$(bd list --json 2>/dev/null | jq -r '.[].id' 2>/dev/null)"})
+    (( ${#ids} )) && compadd -a ids
+  elif (( CURRENT == 5 )) && [[ "${words[2]}" == "agent" && "${words[3]}" == "new" ]]; then
+    compadd claude codex
   fi
 }
 
