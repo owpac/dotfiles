@@ -6,15 +6,18 @@ set -eufo pipefail
 source {{ .chezmoi.workingTree }}/lib/logs.sh
 
 {{ $taps := list
+      "gentleman-programming/tap"
 -}}
 {{ $brews := list
       "age"
+      "beads"
       "chezmoi"
       "colima"
       "displayplacer"
       "docker"
       "docker-compose"
       "fzf"
+      "gentleman-programming/tap/engram"
       "gh"
       "git"
       "htop"
