@@ -32,7 +32,7 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
 -}}
 
 log_task "Installing work related Homebrew taps, brews, and casks..."
-brew bundle --file=/dev/stdin <<EOF || true
+brew bundle --no-upgrade --file=/dev/stdin <<EOF
 {{ range ($taps | sortAlpha | uniq) -}}
 tap "{{ . }}"
 {{ end -}}
