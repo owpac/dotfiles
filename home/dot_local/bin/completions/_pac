@@ -4,11 +4,11 @@ _pac() {
   local -a subcmds
   if (( CURRENT == 2 )); then
     subcmds=(
-      'update:Update everything (macOS, apps, brew, mise)'
+      'upgrade:Upgrade everything (macOS, apps, brew, mise)'
       'preferences:Save/list macOS app preference snapshots'
     )
     _describe 'command' subcmds
-  elif (( CURRENT == 3 )) && [[ "${words[2]}" == "update" ]]; then
+  elif (( CURRENT == 3 )) && [[ "${words[2]}" == "upgrade" ]]; then
     subcmds=(
       'macos:Run macOS software updates'
       'apps:Update App Store apps via mas'

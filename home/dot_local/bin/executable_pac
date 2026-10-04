@@ -10,19 +10,19 @@ log_task() { printf "${_blue}👉 %s${_reset}\n" "$*" >&2; }
 log_done() { printf "${_green}✅ %s${_reset}\n" "$*" >&2; }
 log_error() { printf "${_red}❌ %s${_reset}\n" "$*" >&2; }
 
-update_macos() {
+upgrade_macos() {
     log_task "Upgrading macOS..."
     softwareupdate -ia
-    log_done "macOS updated"
+    log_done "macOS upgraded"
 }
 
-update_apps() {
+upgrade_apps() {
     log_task "Upgrading App Store apps..."
     mas upgrade
-    log_done "App Store apps updated"
+    log_done "App Store apps upgraded"
 }
 
-update_brew() {
+upgrade_brew() {
     log_task "Updating Homebrew..."
     brew update
     log_task "Upgrading packages..."
@@ -30,21 +30,21 @@ update_brew() {
     HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade
     log_task "Cleaning up..."
     brew cleanup
-    log_done "Homebrew updated"
+    log_done "Homebrew upgraded"
 }
 
-update_mise() {
+upgrade_mise() {
     log_task "Updating mise plugins..."
     mise plugins update
-    log_done "Mise plugins updated"
+    log_done "Mise plugins upgraded"
 }
 
-update_all() {
+upgrade_all() {
     local failed=0
-    update_macos || { log_error "macOS update failed"; failed=1; }
-    update_apps  || { log_error "App Store update failed"; failed=1; }
-    update_brew  || { log_error "Homebrew update failed"; failed=1; }
-    update_mise  || { log_error "Mise update failed"; failed=1; }
+    upgrade_macos || { log_error "macOS upgrade failed"; failed=1; }
+    upgrade_apps  || { log_error "App Store upgrade failed"; failed=1; }
+    upgrade_brew  || { log_error "Homebrew upgrade failed"; failed=1; }
+    upgrade_mise  || { log_error "Mise upgrade failed"; failed=1; }
     return $failed
 }
 
@@ -173,8 +173,8 @@ usage() {
 Usage: pac <command> [args]
 
 Commands:
-    update                      Update everything (macOS, apps, brew, mise)
-    update macos|apps|brew|mise
+    upgrade                     Upgrade everything (macOS, apps, brew, mise)
+    upgrade macos|apps|brew|mise
     preferences list            List saved macOS app preferences (slug -> domain)
     preferences save [name...]  Snapshot app preferences — all tracked, or by slug/domain
                                 (e.g. 'pac preferences save terminal')
@@ -183,13 +183,13 @@ EOF
 }
 
 case "${1:-}" in
-    update)
+    upgrade)
         case "${2:-}" in
-            "")    update_all ;;
-            macos) update_macos ;;
-            apps)  update_apps ;;
-            brew)  update_brew ;;
-            mise)  update_mise ;;
+            "")    upgrade_all ;;
+            macos) upgrade_macos ;;
+            apps)  upgrade_apps ;;
+            brew)  upgrade_brew ;;
+            mise)  upgrade_mise ;;
             *)     usage; exit 1 ;;
         esac
         ;;
