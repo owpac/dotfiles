@@ -1,0 +1,69 @@
+{{- if and (not .is_minimum) (not .is_headless) -}}
+#!/usr/bin/env bash
+
+# Configure the coding agents (see ~/.config/ia/AGENTS.md):
+#   - Claude Code: engram MCP server (user scope), owpac marketplace and plugins;
+#   - Codex: owpac marketplace and plugins (Codex reads Claude-format marketplaces).
+# Both CLIs record these in their own state and settings files, so chezmoi runs the CLIs
+# instead of managing those files. Runs on every apply and is idempotent: it catches up as
+# soon as a tool gets installed, and skips a tool that is missing.
+
+set -eufo pipefail
+
+source {{ .chezmoi.workingTree }}/lib/logs.sh
+
+marketplace="owpac/prompts" # private repository: fetching it needs GitHub credentials
+plugins=(productivity rails setup beads) # same set for Claude Code and Codex; nas stays opt-in
+
+# --- Claude Code ------------------------------------------------------------------------
+if command -v claude >/dev/null 2>&1; then
+  if command -v engram >/dev/null 2>&1 && ! claude mcp get engram >/dev/null 2>&1; then
+    log_task "Registering the engram MCP server for Claude Code..."
+    claude mcp add --scope user engram -- engram mcp --tools=agent >/dev/null
+    log_done "engram MCP server registered for Claude Code"
+  fi
+
+  if ! claude plugin marketplace list --json 2>/dev/null | jq -e 'any(.[]; .name == "owpac")' >/dev/null; then
+    log_task "Adding the owpac marketplace to Claude Code..."
+    claude plugin marketplace add "$marketplace" >/dev/null
+  fi
+
+  installed=$(claude plugin list --json 2>/dev/null | jq -r '.[].id' || true)
+  missing=()
+  for p in "${plugins[@]}"; do
+    grep -qx "$p@owpac" <<<"$installed" || missing+=("$p")
+  done
+  if [ ${#missing[@]} -gt 0 ]; then
+    claude plugin marketplace update owpac >/dev/null 2>&1 || true
+    for p in "${missing[@]}"; do
+      log_task "Installing Claude Code plugin $p@owpac..."
+      claude plugin install "$p@owpac" >/dev/null || log_error "Could not install $p@owpac in Claude Code"
+    done
+  fi
+fi
+
+# --- Codex (CLI on PATH, otherwise the one bundled with the VS Code extension) ----------
+set +f # the extension path needs globbing
+codex=$(command -v codex || ls -d "$HOME"/.vscode/extensions/openai.chatgpt-*/bin/*/codex 2>/dev/null | tail -1 || true)
+set -f
+
+if [ -n "$codex" ]; then
+  if ! "$codex" plugin marketplace list 2>/dev/null | awk 'NR > 1 {print $1}' | grep -qx owpac; then
+    log_task "Adding the owpac marketplace to Codex..."
+    "$codex" plugin marketplace add "$marketplace" >/dev/null
+  fi
+
+  listing=$("$codex" plugin list 2>/dev/null || true)
+  missing=()
+  for p in "${plugins[@]}"; do
+    grep -qE "^$p@owpac[[:space:]]+installed" <<<"$listing" || missing+=("$p")
+  done
+  if [ ${#missing[@]} -gt 0 ]; then
+    "$codex" plugin marketplace upgrade owpac >/dev/null 2>&1 || true
+    for p in "${missing[@]}"; do
+      log_task "Installing Codex plugin $p@owpac..."
+      "$codex" plugin add "$p@owpac" >/dev/null || log_error "Could not install $p@owpac in Codex"
+    done
+  fi
+fi
+{{ end -}}
