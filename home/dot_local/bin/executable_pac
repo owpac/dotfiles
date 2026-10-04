@@ -26,7 +26,8 @@ update_brew() {
     log_task "Updating Homebrew..."
     brew update
     log_task "Upgrading packages..."
-    brew upgrade
+    # Self-updating casks (iTerm2, 1Password...) update themselves: don't let brew quit and replace them
+    HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade
     log_task "Cleaning up..."
     brew cleanup
     log_done "Homebrew updated"
