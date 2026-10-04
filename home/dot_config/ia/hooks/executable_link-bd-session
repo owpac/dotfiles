@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# PostToolUse hook (matcher "Bash") shared by Claude Code and Codex.
+# Links the agent session to every Beads task it works on, so the session can be
+# found and resumed from the task (see `pac agent`).
+#
+#   - Beads provenance (source of truth): kind=used, ref=<tool>:<session_id>,
+#     ref-kind=transcript, payload {cwd, transcript_path}; one entry per (session, task);
+#   - metadata sessions.<tool>: list of the session ids, separated by ", " (shown by viewers).
+#
+# Usage (as a hook): link-bd-session claude|codex   (hook JSON payload on stdin)
+# Never blocks the agent: every error is ignored, exit code is always 0.
+
+tool=${1:-agent}
+input=$(cat 2>/dev/null) || exit 0
+[[ $input == *'bd '* ]] || exit 0 # fast path: no bd command, nothing to do
+command -v jq >/dev/null 2>&1 && command -v bd >/dev/null 2>&1 || exit 0
+
+session=$(jq -r '.session_id // empty' <<<"$input" 2>/dev/null)
+cwd=$(jq -r '.cwd // empty' <<<"$input" 2>/dev/null)
+transcript=$(jq -r '.transcript_path // empty' <<<"$input" 2>/dev/null)
+[[ -n $session && -d $cwd ]] || exit 0
+cd "$cwd" 2>/dev/null || exit 0
+
+# Task ids referenced by a bd command that means "worked on it"
+# (update/claim, note, close, comment, reopen, assign); not show/ready/list.
+ids=$(jq -r '
+  (.tool_input.command // "")
+  | [scan("(?:^|[;&|\\s(])bd\\s+(?:update|close|note|comment|comments|reopen|assign)\\b[^;&|]*")]
+  | map([scan("\\b[a-z0-9]+-[a-z0-9]+(?:\\.[0-9]+)*\\b")]) | flatten | unique | .[:5][]
+' <<<"$input" 2>/dev/null)
+[[ -n $ids ]] || exit 0
+
+ref="$tool:$session"
+# Agent name: BEADS_ACTOR when it belongs to this tool (claude, claude-<name>…), otherwise the tool name.
+case ${BEADS_ACTOR:-} in
+  "$tool" | "$tool"-*) actor=$BEADS_ACTOR ;;
+  *) actor=$tool ;;
+esac
+payload=$(jq -nc --arg cwd "$cwd" --arg t "$transcript" '{cwd: $cwd, transcript_path: $t}')
+
+for id in $ids; do
+  task=$(bd show "$id" --json 2>/dev/null) || continue # false positive, or repo without Beads
+  if bd provenance log "$id" --json 2>/dev/null | jq -e --arg r "$ref" 'any(.[]?; .ref == $r)' >/dev/null 2>&1; then
+    continue # already linked
+  fi
+  bd provenance record --issue "$id" --kind used --source "$tool-hook" --actor "$actor" \
+    --ref "$ref" --ref-kind transcript --payload "$payload" -q >/dev/null 2>&1 || continue
+
+  key="sessions.$tool"
+  current=$(jq -r --arg k "$key" '(.[0] // .).metadata[$k] // empty' <<<"$task" 2>/dev/null)
+  list=${current// /} # normalized "id1,id2" (older values had no space)
+  case ",$list," in
+    *",$session,"*) ;;
+    *) list=${list:+$list,}$session
+       bd update "$id" --set-metadata "$key=${list//,/, }" -q >/dev/null 2>&1 ;;
+  esac
+done
+exit 0

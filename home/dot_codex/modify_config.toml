@@ -1,0 +1,41 @@
+#!/bin/bash
+# Ensure the agent-setup entries exist in ~/.codex/config.toml without touching the
+# rest (Codex itself writes project trust levels here). Text-based on purpose: an
+# existing section is left as is, except [features], which gets `hooks = true`
+# when the key is missing.
+#   - [features] hooks = true    : enable Codex hooks (Beads context, session linking);
+#   - [mcp_servers.engram]       : shared memory, same server as Claude Code;
+#   - [shell_environment_policy] : BEADS_ACTOR=codex for bd commands run by Codex;
+#   - [sandbox_workspace_write]  : let sandboxed bd commands reach the shared Dolt server
+#     (127.0.0.1:3308) and write ~/.beads; trade-off: sandboxed commands get network access.
+
+config=$(cat)
+
+has_section() { grep -qE "^\[$1\][[:space:]]*$" <<<"$config"; }
+append() {
+  if [ -n "$config" ]; then config+=$'\n\n'; fi
+  config+="$1"
+}
+
+if ! has_section 'features'; then
+  append $'[features]\nhooks = true'
+elif ! awk '/^\[features\][[:space:]]*$/ {f = 1; next} /^\[/ {f = 0} f && /^[[:space:]]*hooks[[:space:]]*=/ {found = 1} END {exit !found}' <<<"$config"; then
+  config=$(awk '{print} /^\[features\][[:space:]]*$/ {print "hooks = true"}' <<<"$config")
+fi
+
+if ! has_section 'mcp_servers\.engram'; then
+  append $'# Shared memory between Claude Code and Codex (engram). Project detected from the git remote.\n[mcp_servers.engram]\ncommand = "engram"\nargs = ["mcp", "--tools=agent"]'
+fi
+
+if ! has_section 'shell_environment_policy'; then
+  append $'# Agent name for Beads (actor of claims, notes and comments).\n[shell_environment_policy]\nset = { BEADS_ACTOR = "codex" }'
+fi
+
+if ! has_section 'sandbox_workspace_write'; then
+  append "# Beads in the Auto preset: shared Dolt server (127.0.0.1:3308) and ~/.beads (locks, server state).
+[sandbox_workspace_write]
+network_access = true
+writable_roots = [\"$HOME/.beads\"]"
+fi
+
+printf '%s\n' "$config"

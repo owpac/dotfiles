@@ -1,0 +1,40 @@
+#!/bin/bash
+# Merge the agent-setup hooks into ~/.codex/hooks.json without touching hooks
+# installed by other tools. Hook groups are only added when no handler with the
+# same command exists.
+#   - Beads context hooks (same entries as `bd setup codex --global`);
+#   - PostToolUse hook: link the session to the Beads tasks it works on
+#     (see ~/.config/ia/AGENTS.md).
+
+current=$(cat)
+
+if [ -z "$current" ] || [ "$current" = "{}" ]; then
+  current='{}'
+fi
+
+echo "$current" | jq '
+  def add_hook($event; $group):
+    .hooks[$event] = ((.hooks[$event] // []) as $groups
+      | if any($groups[]?.hooks[]?; .command == $group.hooks[0].command)
+        then $groups else $groups + [$group] end);
+
+  add_hook("SessionStart"; {
+    "matcher": "startup|resume|clear",
+    "hooks": [{"type": "command", "command": "bd codex-hook SessionStart", "statusMessage": "Loading Beads context"}]
+  }) |
+  add_hook("UserPromptSubmit"; {
+    "hooks": [{"type": "command", "command": "bd codex-hook UserPromptSubmit", "statusMessage": "Refreshing Beads context"}]
+  }) |
+  add_hook("PreCompact"; {
+    "matcher": "manual|auto",
+    "hooks": [{"type": "command", "command": "bd codex-hook PreCompact", "statusMessage": "Checking Beads context"}]
+  }) |
+  add_hook("PostCompact"; {
+    "matcher": "manual|auto",
+    "hooks": [{"type": "command", "command": "bd codex-hook PostCompact", "statusMessage": "Scheduling Beads context refresh"}]
+  }) |
+  add_hook("PostToolUse"; {
+    "matcher": "Bash",
+    "hooks": [{"type": "command", "command": "$HOME/.config/ia/hooks/link-bd-session codex"}]
+  })
+'

@@ -1,6 +1,12 @@
 #!/bin/bash
 # Merge required settings into existing settings.json without overwriting
 # locally-added keys (e.g. enabledPlugins added per-device).
+#
+# Agent setup (see ~/.config/ia/AGENTS.md):
+#   - BEADS_ACTOR=claude so bd attributes Claude's claims, notes and comments;
+#   - SessionStart hook: inject Beads context (bd prime);
+#   - PostToolUse hook: link the session to the Beads tasks it works on.
+# Hook groups are only added when no handler with the same command exists.
 
 current=$(cat)
 
@@ -9,9 +15,27 @@ if [ -z "$current" ] || [ "$current" = "{}" ]; then
 fi
 
 echo "$current" | jq '
+  def add_hook($event; $group):
+    .hooks[$event] = ((.hooks[$event] // []) as $groups
+      | if any($groups[]?.hooks[]?; .command == $group.hooks[0].command)
+        then $groups else $groups + [$group] end);
+
   .model = "opus" |
   .statusLine = {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
-  }
+  } |
+  .env = ((.env // {}) + {"BEADS_ACTOR": "claude"}) |
+  add_hook("SessionStart"; {
+    "matcher": "",
+    "hooks": [{"type": "command", "command": "bd prime --hook-json"}]
+  }) |
+  add_hook("PostToolUse"; {
+    "matcher": "Bash",
+    "hooks": [{
+      "type": "command",
+      "command": "$HOME/.config/ia/hooks/link-bd-session claude",
+      "if": "Bash(bd *)"
+    }]
+  })
 '
