@@ -70,21 +70,18 @@ if [ -n "$codex" ]; then
     "$codex" plugin marketplace add "$marketplace" >/dev/null
   fi
 
-  # Same logic as Claude Code. Codex has no update command: `plugin add` on an installed
-  # plugin installs the marketplace version and removes the old one from the cache.
+  # When the git snapshot of the marketplace changes, `marketplace upgrade` also updates its
+  # installed plugins. The versions before and after the upgrade show what changed.
+  codex_versions() { "$codex" plugin list --marketplace owpac --json 2>/dev/null | jq -r '.installed[]? | "\(.name) \(.version)"' || true; }
+  before=$(codex_versions)
   "$codex" plugin marketplace upgrade owpac >/dev/null 2>&1 || true
-  installed=$("$codex" plugin list --marketplace owpac --json 2>/dev/null | jq -r '.installed[]? | "\(.name) \(.version) \(.source.path)"' || true)
+  installed=$(codex_versions)
 
-  while read -r p version dir; do
+  while read -r p version; do
     [ -n "$p" ] || continue
-    latest=$(jq -r '.version // empty' "$dir/.claude-plugin/plugin.json" 2>/dev/null || true)
-    if [ -n "$latest" ] && [ "$latest" != "$version" ]; then
-      log_task "Updating Codex plugin $p@owpac ($version -> $latest)..."
-      if "$codex" plugin add "$p@owpac" >/dev/null; then
-        log_done "$p@owpac updated: restart Codex to load it"
-      else
-        log_error "Could not update $p@owpac in Codex"
-      fi
+    old=$(awk -v p="$p" '$1 == p {print $2}' <<<"$before")
+    if [ -n "$old" ] && [ "$old" != "$version" ]; then
+      log_done "Codex plugin $p@owpac updated ($old -> $version): restart Codex to load it"
     fi
   done <<<"$installed"
 
