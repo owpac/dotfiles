@@ -3,7 +3,8 @@
 
 # Configure the coding agents (see ~/.config/ia/AGENTS.md):
 #   - Claude Code: engram MCP server (user scope), owpac marketplace and plugins;
-#   - Codex: owpac marketplace and plugins (Codex reads Claude-format marketplaces).
+#   - Codex: owpac marketplace and plugins (Codex reads Claude-format marketplaces);
+#   - Beads: the home workspace, for tasks outside any repository (pac agent init --home).
 # Both CLIs record these in their own state and settings files, so chezmoi runs the CLIs
 # instead of managing those files. Runs on every apply and is idempotent: it catches up as
 # soon as a tool gets installed, and skips a tool that is missing.
@@ -65,5 +66,10 @@ if [ -n "$codex" ]; then
       "$codex" plugin add "$p@owpac" >/dev/null || log_error "Could not install $p@owpac in Codex"
     done
   fi
+fi
+
+# --- Beads home workspace ---------------------------------------------------------------
+if command -v bd >/dev/null 2>&1 && [ -x "$HOME/.local/bin/pac" ] && [ ! -f "$HOME/.local/share/beads-home/.beads/metadata.json" ]; then
+  "$HOME/.local/bin/pac" agent init --home || log_error "Could not create the Beads home workspace"
 fi
 {{ end -}}

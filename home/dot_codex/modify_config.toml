@@ -7,7 +7,8 @@
 #   - [mcp_servers.engram]       : shared memory, same server as Claude Code;
 #   - [shell_environment_policy] : BEADS_ACTOR=codex for bd commands run by Codex;
 #   - [sandbox_workspace_write]  : let sandboxed bd commands reach the shared Dolt server
-#     (127.0.0.1:3308) and write ~/.beads; trade-off: sandboxed commands get network access.
+#     (127.0.0.1:3308), and write ~/.beads and the home workspace (pac agent init --home);
+#     trade-off: sandboxed commands get network access.
 
 config=$(cat)
 
@@ -32,10 +33,11 @@ if ! has_section 'shell_environment_policy'; then
 fi
 
 if ! has_section 'sandbox_workspace_write'; then
-  append "# Beads in the Auto preset: shared Dolt server (127.0.0.1:3308) and ~/.beads (locks, server state).
+  append "# Beads in the Auto preset: shared Dolt server (127.0.0.1:3308), ~/.beads (locks, server state)
+# and the home workspace.
 [sandbox_workspace_write]
 network_access = true
-writable_roots = [\"$HOME/.beads\"]"
+writable_roots = [\"$HOME/.beads\", \"$HOME/.local/share/beads-home\"]"
 fi
 
 printf '%s\n' "$config"

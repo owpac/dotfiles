@@ -1,0 +1,4 @@
+# Beads home workspace (pac agent init --home). bd follows this redirect when it finds
+# ~/.beads from a directory outside any git repository; inside a repository it never
+# looks above the repository root, so tasks there use BEADS_DIR instead.
+{{ .chezmoi.homeDir }}/.local/share/beads-home/.beads

@@ -6,6 +6,8 @@
 #   - Beads provenance (source of truth): kind=used, ref=<tool>:<session_id>,
 #     ref-kind=transcript, payload {cwd, transcript_path}; one entry per (session, task);
 #   - metadata sessions.<tool>: list of the session ids, separated by ", " (shown by viewers).
+# A task is looked up in the workspace of the session directory, then in the home workspace
+# (~/.local/share/beads-home, reached through BEADS_DIR).
 #
 # Usage (as a hook): link-bd-session claude|codex   (hook JSON payload on stdin)
 # Never blocks the agent: every error is ignored, exit code is always 0.
@@ -37,13 +39,20 @@ case ${BEADS_ACTOR:-} in
   *) actor=$tool ;;
 esac
 payload=$(jq -nc --arg cwd "$cwd" --arg t "$transcript" '{cwd: $cwd, transcript_path: $t}')
+home=$HOME/.local/share/beads-home/.beads
 
 for id in $ids; do
-  task=$(bd show "$id" --json 2>/dev/null) || continue # false positive, or repo without Beads
-  if bd provenance log "$id" --json 2>/dev/null | jq -e --arg r "$ref" 'any(.[]?; .ref == $r)' >/dev/null 2>&1; then
+  if task=$(bd show "$id" --json 2>/dev/null); then
+    bdx() { bd "$@"; }
+  elif [[ -f $home/metadata.json ]] && task=$(BEADS_DIR=$home bd show "$id" --json 2>/dev/null); then
+    bdx() { BEADS_DIR=$home bd "$@"; }
+  else
+    continue # false positive, or no workspace holds this task
+  fi
+  if bdx provenance log "$id" --json 2>/dev/null | jq -e --arg r "$ref" 'any(.[]?; .ref == $r)' >/dev/null 2>&1; then
     continue # already linked
   fi
-  bd provenance record --issue "$id" --kind used --source "$tool-hook" --actor "$actor" \
+  bdx provenance record --issue "$id" --kind used --source "$tool-hook" --actor "$actor" \
     --ref "$ref" --ref-kind transcript --payload "$payload" -q >/dev/null 2>&1 || continue
 
   key="sessions.$tool"
@@ -52,7 +61,7 @@ for id in $ids; do
   case ",$list," in
     *",$session,"*) ;;
     *) list=${list:+$list,}$session
-       bd update "$id" --set-metadata "$key=${list//,/, }" -q >/dev/null 2>&1 ;;
+       bdx update "$id" --set-metadata "$key=${list//,/, }" -q >/dev/null 2>&1 ;;
   esac
 done
 exit 0

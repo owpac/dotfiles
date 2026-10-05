@@ -171,6 +171,13 @@ preferences_list() {
 # --- AI agents: Beads tasks <-> Claude/Codex sessions (see ~/.config/ia/AGENTS.md) --------
 # Sessions are linked to tasks by the hook ~/.config/ia/hooks/link-bd-session
 # ("transcript" provenance, task metadata sessions.<tool>).
+# Two scopes: the workspace of the current repository, and the home workspace for tasks
+# that are not about one repository. bd only finds a workspace up to the git root, so
+# from a repository the home one is reached through BEADS_DIR; outside repositories, bd
+# finds it through ~/.beads/redirect.
+
+_agent_home_dir="$HOME/.local/share/beads-home"
+_agent_home_beads="$_agent_home_dir/.beads"
 
 # Explicit Claude launch options: the org-managed "opusplan" model runs Sonnet outside plan
 # mode (auto mode included), and flags win over every settings file, managed ones too.
@@ -181,8 +188,54 @@ _agent_codex_bin() {
     command -v codex || ls -d "$HOME"/.vscode/extensions/openai.chatgpt-*/bin/*/codex 2>/dev/null | tail -1
 }
 
+# Find the task in the current workspace, otherwise in the home one (then BEADS_DIR is
+# exported, so every later bd call targets the home workspace).
 _agent_require_task() {
-    bd show "$1" --json >/dev/null 2>&1 || { log_error "Task $1 not found in this repository"; exit 1; }
+    if bd show "$1" --json >/dev/null 2>&1; then
+        # Reached through ~/.beads/redirect: name the home workspace anyway, so the agent
+        # prompt does not depend on the directory the session runs in.
+        if [[ $(bd where --json 2>/dev/null | jq -r '.path // empty') == "$_agent_home_beads" ]]; then
+            export BEADS_DIR=$_agent_home_beads
+        fi
+        return
+    fi
+    if [[ -f $_agent_home_beads/metadata.json ]] && BEADS_DIR=$_agent_home_beads bd show "$1" --json >/dev/null 2>&1; then
+        export BEADS_DIR=$_agent_home_beads
+        return
+    fi
+    log_error "Task $1 not found, neither in this workspace nor in the home one"
+    exit 1
+}
+
+# bd command line for a task, as given to an agent.
+_agent_bd() {
+    if [[ ${BEADS_DIR:-} == "$_agent_home_beads" ]]; then
+        printf 'BEADS_DIR="%s" bd' "$_agent_home_beads"
+    else
+        printf 'bd'
+    fi
+}
+
+# Home workspace: a dedicated directory, because bd init outside a git repository runs
+# git init in the current directory (not in ~), and refuses any path under a .beads one.
+_agent_init_home() {
+    local dry=$1
+    if [[ -f $_agent_home_beads/metadata.json ]]; then
+        log_done "The home workspace already exists ($_agent_home_dir)"
+        return
+    fi
+    if [[ -d $HOME/.beads/shared-server/dolt/home ]]; then
+        log_error "A \"home\" database already exists on the shared server, without its workspace in $_agent_home_dir"
+        exit 1
+    fi
+    log_task "Creating the home workspace in $_agent_home_dir (prefix \"home\", shared Dolt server)..."
+    if ((dry)); then
+        log_done "Dry run: nothing was changed"
+        return
+    fi
+    mkdir -p "$_agent_home_dir"
+    (cd "$_agent_home_dir" && bd init --shared-server --skip-agents --non-interactive -q -p home >/dev/null)
+    log_done "Home workspace created. Use it from anywhere: BEADS_DIR=\"$_agent_home_beads\" bd …"
 }
 
 # Sessions linked to a task (JSON array, oldest first).
@@ -192,16 +245,25 @@ _agent_sessions() {
 }
 
 agent_init() {
-    local prefix="" dry=0 root name before after
+    local prefix="" dry=0 home=0 root common name before after
     while [[ $# -gt 0 ]]; do
         case $1 in
             --prefix) prefix=${2:?--prefix needs a name}; shift 2 ;;
+            --home) home=1; shift ;;
             --dry-run) dry=1; shift ;;
             *) log_error "Unknown option: $1"; usage; exit 1 ;;
         esac
     done
 
-    root=$(git rev-parse --show-toplevel 2>/dev/null) || { log_error "Not inside a git repository"; exit 1; }
+    if ((home)); then
+        _agent_init_home "$dry"
+        return
+    fi
+
+    root=$(git rev-parse --show-toplevel 2>/dev/null) || { log_error "Not inside a git repository (for tasks outside a repository: pac agent init --home)"; exit 1; }
+    # From a worktree, enable Beads in the main checkout: bd finds it from every worktree.
+    common=$(git rev-parse --path-format=absolute --git-common-dir)
+    if [[ $common == */.git ]]; then root=${common%/.git}; fi
     cd "$root"
 
     if [[ -e .beads ]]; then
@@ -278,8 +340,11 @@ agent_resume() {
     sid=${ref#*:}
     cwd=$(jq -r '.payload | fromjson? | .cwd // empty' <<<"$e")
     # The original worktree may have been removed: fall back to the repository root.
-    if [[ -z $cwd || ! -d $cwd ]]; then cwd=$(git rev-parse --show-toplevel); fi
+    if [[ -z $cwd || ! -d $cwd ]]; then cwd=$(git rev-parse --show-toplevel 2>/dev/null || pwd); fi
     cd "$cwd"
+    # The resumed session already knows how it reached its task: don't force the home
+    # workspace on its other bd commands.
+    unset BEADS_DIR
     log_task "Resuming $tool session $sid in $cwd"
     case $tool in
         claude) exec claude "${_agent_claude_opts[@]}" --resume "$sid" ;;
@@ -288,10 +353,11 @@ agent_resume() {
 }
 
 agent_new() {
-    local id=$1 tool=${2:-claude} root previous prompt sid current
+    local id=$1 tool=${2:-claude} root previous prompt sid current bdc
     _agent_require_task "$id"
-    root=$(git rev-parse --show-toplevel)
+    root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
     cd "$root"
+    bdc=$(_agent_bd)
 
     # Earlier sessions, so the new one knows they exist (raw transcripts only as a last resort).
     previous=$(_agent_sessions "$id" | jq -r '.[] | (.payload | fromjson? // {}) as $p
@@ -299,9 +365,13 @@ agent_new() {
 
     prompt="Work on Beads task $id.
 Before anything else, recover the context left by earlier work on this task:
-1. run 'bd show $id' and read its description, notes and comments;
+1. run '$bdc show $id' and read its description, notes and comments;
 2. search engram memory for '$id' (mem_search): earlier sessions saved their decisions and findings there.
-Claim the task with 'bd update $id --claim' if it is not already yours, then follow the \"Tasks and memory\" section of your instructions."
+Claim the task with '$bdc update $id --claim' if it is not already yours, then follow the \"Tasks and memory\" section of your instructions."
+    if [[ $bdc != bd ]]; then
+        prompt+="
+The task lives in the home Beads workspace: run every bd command about it as '$bdc …'."
+    fi
     if [[ -n $previous ]]; then
         prompt+="
 Earlier sessions on this task (read a raw transcript only if memory and notes are not enough):
@@ -318,10 +388,12 @@ $previous"
             current=${current// /} # normalized "id1,id2" (older values had no space)
             current=${current:+$current,}$sid
             bd update "$id" --set-metadata "sessions.claude=${current//,/, }" -q >/dev/null
+            unset BEADS_DIR # the prompt says which workspace the task is in
             exec claude "${_agent_claude_opts[@]}" --session-id "$sid" "$prompt"
             ;;
         codex)
             # Codex cannot take a chosen session id: the hook links it on its first bd write on the task.
+            unset BEADS_DIR
             exec "$(_agent_codex_bin)" "$prompt"
             ;;
         *) log_error "Unknown tool: $tool (claude or codex)"; exit 1 ;;
@@ -340,8 +412,13 @@ Commands:
                                 (e.g. 'pac preferences save terminal')
     preferences remove <name>   Stop tracking an app's preferences (keeps live prefs)
     agent init [--prefix <name>] [--dry-run]
-                                Enable Beads in the current repo (stealth, shared Dolt server)
-    agent task <id>             List the agent sessions linked to a Beads task
+                                Enable Beads in the current repo (stealth, shared Dolt server;
+                                from a worktree, in its main checkout)
+    agent init --home [--dry-run]
+                                Create the home workspace, for tasks outside any repository
+                                (~/.local/share/beads-home, ids home-…; chezmoi apply creates it)
+    agent task <id>             List the agent sessions linked to a Beads task (current
+                                workspace, then the home one)
     agent resume <id> [n]       Resume a linked session (default: the most recent)
     agent new <id> [claude|codex]
                                 Start a session that recovers the task's context
