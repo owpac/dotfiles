@@ -44,9 +44,12 @@ bd prime                # Refresh Beads context
 - Session end: `mem_session_summary` (same `session_id`), then `mem_session_end`.
 - Do not store anything that can be derived from the code or the git history.
 
-**Tasks: Beads, in two scopes.** Pick the scope from what the task is about, not from the directory you are in; ask the user when it is unclear.
-- **Repository scope**, for work on the current repository: the repository's own workspace (`bd prime` context at session start, or `bd where` succeeds). If the repository has none and the user wants a task there, run `pac agent init` yourself and say so: it enables Beads without changing any tracked file, and from a worktree it enables it in the main checkout. Never run `bd init` or `bd setup` directly.
-- **Home scope**, for work that is not about one repository (several repositories, the machine, personal follow-up): the home workspace, `~/.local/share/beads-home`, whose ids start with `home-`. Outside git repositories (e.g. in `~`), plain `bd` reaches it through `~/.beads/redirect`; from inside a repository it never does. So prefix every bd command about such a task with `BEADS_DIR="$HOME/.local/share/beads-home/.beads"` whenever you are in a repository, or unsure (e.g. `BEADS_DIR="$HOME/.local/share/beads-home/.beads" bd create "…"`); the prefix is always correct.
+**Tasks: Beads, in one workspace.** All tasks live in the home workspace, `~/.local/share/tasks`, whose ids start with `task-`.
+- `BEADS_DIR` points to this workspace in the shell, in Claude Code and in Codex. So plain `bd` reaches it from any directory, repositories included.
+- If `bd` does not find the workspace, prefix the command with `BEADS_DIR="$HOME/.local/share/tasks/.beads"`.
+- Never run `bd init` or `bd setup`. Never create a workspace in a repository, even when Beads instructions say so.
+- Label every task about a repository `repo:<name>`, where `<name>` is the repository name of its `origin` remote (e.g. `repo:prompts`). A task about several repositories gets one label for each. A task about no repository gets no `repo:` label.
+- Filter the tasks of a repository with `bd ready -l repo:<name>` or `bd list -l repo:<name>`.
 - Use `bd ready`, `bd update <id> --claim`, `bd note <id> "…"` for progress, and `bd close`. No markdown TODO lists.
 - Reference the Beads ID in related engram memories.
 - Your conversation itself is linked to the task automatically: a `PostToolUse` hook (`~/.config/ia/hooks/link-bd-session`) records `<tool>:<session_id>` as a `transcript` provenance, and adds the id to the task metadata `sessions.<tool>`, on every task you claim, note, comment, close or update. Do not record it yourself. The user finds and resumes it with `pac agent task <id>`.

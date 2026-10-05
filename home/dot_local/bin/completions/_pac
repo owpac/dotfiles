@@ -36,20 +36,19 @@ _pac() {
     (( ${#names} )) && compadd -a names
   elif (( CURRENT == 3 )) && [[ "${words[2]}" == "agent" ]]; then
     subcmds=(
-      'init:Enable Beads in the current repo, or create the home workspace (--home)'
+      'init:Create the Beads home workspace, which holds every task'
       'task:List the agent sessions linked to a Beads task'
       'resume:Resume a linked session'
       'new:Start a session that recovers the task context'
     )
     _describe 'subcommand' subcmds
   elif (( CURRENT == 4 )) && [[ "${words[2]}" == "agent" && "${words[3]}" == "init" ]]; then
-    compadd -- --prefix --home --dry-run
+    compadd -- --dry-run
   elif (( CURRENT == 4 )) && [[ "${words[2]}" == "agent" && "${words[3]}" == (task|resume|new) ]]; then
-    # Task ids (open and in progress) of the current workspace and of the home one.
+    # Task ids (open and in progress) of the home workspace.
     local -a ids
-    ids=(${(f)"$({ bd list --json 2>/dev/null
-                   [[ -f ~/.local/share/beads-home/.beads/metadata.json ]] && BEADS_DIR=~/.local/share/beads-home/.beads bd list --json 2>/dev/null
-                 } | jq -r '.[].id' 2>/dev/null | sort -u)"})
+    ids=(${(f)"$(BEADS_DIR=${BEADS_DIR:-$HOME/.local/share/tasks/.beads} bd list --json 2>/dev/null |
+                 jq -r '.[].id' 2>/dev/null)"})
     (( ${#ids} )) && compadd -a ids
   elif (( CURRENT == 5 )) && [[ "${words[2]}" == "agent" && "${words[3]}" == "new" ]]; then
     compadd claude codex

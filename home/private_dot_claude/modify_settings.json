@@ -4,6 +4,8 @@
 #
 # Agent setup (see ~/.config/ia/AGENTS.md):
 #   - BEADS_ACTOR=claude so bd attributes Claude's claims, notes and comments;
+#   - BEADS_DIR: every task lives in the home workspace, also when Claude Code does not
+#     start from a shell that read ~/.zshenv;
 #   - SessionStart hook: inject Beads context (bd prime);
 #   - PostToolUse hook: link the session to the Beads tasks it works on.
 # Hook groups are only added when no handler with the same command exists.
@@ -14,7 +16,7 @@ if [ -z "$current" ] || [ "$current" = "{}" ]; then
   current='{}'
 fi
 
-echo "$current" | jq '
+echo "$current" | jq --arg beads_dir "$HOME/.local/share/tasks/.beads" '
   def add_hook($event; $group):
     .hooks[$event] = ((.hooks[$event] // []) as $groups
       | if any($groups[]?.hooks[]?; .command == $group.hooks[0].command)
@@ -25,7 +27,7 @@ echo "$current" | jq '
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
   } |
-  .env = ((.env // {}) + {"BEADS_ACTOR": "claude"}) |
+  .env = ((.env // {}) + {"BEADS_ACTOR": "claude", "BEADS_DIR": $beads_dir}) |
   add_hook("SessionStart"; {
     "matcher": "",
     "hooks": [{"type": "command", "command": "bd prime --hook-json"}]

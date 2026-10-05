@@ -2,3 +2,8 @@ export PATH="${HOME}/.local/bin:${PATH}"
 {{ if and .is_work (stat "/opt/homebrew/bin/gh") -}}
 {{- /* export HOMEBREW_GITHUB_API_TOKEN="$(/opt/homebrew/bin/gh auth token 2>/dev/null)" */ -}}
 {{ end -}}
+{{ if and (not .is_minimum) (not .is_headless) -}}
+# Beads: every task lives in the home workspace (see ~/.config/ia/AGENTS.md).
+# bd uses BEADS_DIR before any workspace of the current repository.
+export BEADS_DIR="${HOME}/.local/share/tasks/.beads"
+{{ end -}}

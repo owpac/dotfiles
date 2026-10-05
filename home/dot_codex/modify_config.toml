@@ -5,9 +5,10 @@
 # when the key is missing.
 #   - [features] hooks = true    : enable Codex hooks (Beads context, session linking);
 #   - [mcp_servers.engram]       : shared memory, same server as Claude Code;
-#   - [shell_environment_policy] : BEADS_ACTOR=codex for bd commands run by Codex;
+#   - [shell_environment_policy] : BEADS_ACTOR=codex and BEADS_DIR (home workspace) for bd
+#     commands run by Codex;
 #   - [sandbox_workspace_write]  : let sandboxed bd commands reach the shared Dolt server
-#     (127.0.0.1:3308), and write ~/.beads and the home workspace (pac agent init --home);
+#     (127.0.0.1:3308), and write ~/.beads and the home workspace (pac agent init);
 #     trade-off: sandboxed commands get network access.
 
 config=$(cat)
@@ -29,7 +30,9 @@ if ! has_section 'mcp_servers\.engram'; then
 fi
 
 if ! has_section 'shell_environment_policy'; then
-  append $'# Agent name for Beads (actor of claims, notes and comments).\n[shell_environment_policy]\nset = { BEADS_ACTOR = "codex" }'
+  append "# Beads: agent name (actor of claims, notes and comments) and home workspace.
+[shell_environment_policy]
+set = { BEADS_ACTOR = \"codex\", BEADS_DIR = \"$HOME/.local/share/tasks/.beads\" }"
 fi
 
 if ! has_section 'sandbox_workspace_write'; then
@@ -37,7 +40,7 @@ if ! has_section 'sandbox_workspace_write'; then
 # and the home workspace.
 [sandbox_workspace_write]
 network_access = true
-writable_roots = [\"$HOME/.beads\", \"$HOME/.local/share/beads-home\"]"
+writable_roots = [\"$HOME/.beads\", \"$HOME/.local/share/tasks\"]"
 fi
 
 printf '%s\n' "$config"
