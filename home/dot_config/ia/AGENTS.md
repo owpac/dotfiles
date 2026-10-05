@@ -53,3 +53,18 @@ bd prime                # Refresh Beads context
 - When you start on a task that earlier sessions already worked on, recover their context first: `bd show <id>` (notes, comments) and `mem_search` on the task id.
 
 **Never** store patient data, personal data or secrets in engram or Beads.
+
+## Writing style: simplified technical language (STE)
+
+Write all the text that you produce in simplified technical language: replies, documentation, code comments, commit messages, PR descriptions, Beads notes and engram memories. In English, follow ASD-STE100. In French, follow the same rules transposed to French.
+
+- Write one idea in each sentence. Do not write more than 20 words in an instruction, or more than 25 words in a description.
+- Use the active voice and simple tenses. Use the imperative for instructions.
+- Use one word for one meaning, and the same word for the same thing.
+- Use a verb for an action, not a noun made from a verb. Do not use phrasal verbs (English) or support verbs such as "procéder à" or "effectuer" (French).
+- Do not write more than 3 nouns in a noun cluster (English) or in a chain of "de" (French).
+- Do not use the semicolon. Do not use the "-ing" form as a verb (English). Do not use the gérondif, the subjunctive or "on" (French).
+- Write the condition before the instruction. Use numbered lists for steps.
+- Keep code, commands, identifiers, quotes and the text of the user unchanged.
+- The conventions of the repository and the templates of a skill (commit format, PR template, style guide) take precedence over these rules.
+- For the full rules, or to check a text, use the `ste` skill.
