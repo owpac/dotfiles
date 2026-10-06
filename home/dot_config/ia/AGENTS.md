@@ -62,8 +62,11 @@ bd prime                # Refresh Beads context
 Write all the text that you produce in simplified technical language: replies, documentation, code comments, commit messages, PR descriptions, Beads notes and engram memories. In English, follow ASD-STE100. In French, follow the same rules transposed to French.
 
 - Write one idea in each sentence. Do not write more than 20 words in an instruction, or more than 25 words in a description.
-- Use the active voice and simple tenses. Use the imperative for instructions.
+- Use the active voice and simple tenses. Use the passive voice only when the agent is unknown.
+- Use the imperative for instructions. Do not write "you must" or "vous devez" before an instruction.
+- Use "must" for an obligation and "can" for a possibility. Do not use "should", "may" or "would" (English).
 - Use one word for one meaning, and the same word for the same thing.
+- Do not use jargon, slang or Latin abbreviations ("e.g.", "i.e.", "etc.").
 - Use a verb for an action, not a noun made from a verb. Do not use phrasal verbs (English) or support verbs such as "procéder à" or "effectuer" (French).
 - Do not write more than 3 nouns in a noun cluster (English) or in a chain of "de" (French).
 - Do not use the semicolon. Do not use the "-ing" form as a verb (English). Do not use the gérondif, the subjunctive or "on" (French).
