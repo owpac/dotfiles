@@ -1,0 +1,38 @@
+{{- if and (eq .chezmoi.os "darwin") (not .is_minimum) (not .is_headless) -}}
+#!/usr/bin/env bash
+
+# Create the Claude subscription token of the VS Code Agents window (native mode, no Copilot).
+# The token stays in the macOS Keychain: this public repository holds no secret, and
+# ~/.zshrc exports it only while VS Code reads the shell environment.
+# Runs on every apply and only checks the Keychain when the token exists. When the token
+# expired, delete the Keychain entry and run `chezmoi apply` again:
+#   security delete-generic-password -a "$USER" -s claude-code-oauth-token
+# `claude setup-token` has no machine-readable output, so you paste the token yourself.
+
+set -eufo pipefail
+
+source {{ .chezmoi.workingTree }}/lib/logs.sh
+
+service="claude-code-oauth-token"
+
+command -v claude >/dev/null 2>&1 || exit 0
+security find-generic-password -a "$USER" -s "$service" >/dev/null 2>&1 && exit 0
+
+if [ ! -t 0 ]; then
+  log_task "No Claude token in the Keychain: run chezmoi apply in a terminal to create it"
+  exit 0
+fi
+
+read -r -p "Create the Claude token of the VS Code Agents window now? [y/N] " answer
+case "$answer" in
+  [yY]*) ;;
+  *) log_task "Claude token skipped: chezmoi asks again at the next apply"; exit 0 ;;
+esac
+
+log_task "Creating a Claude token: log in with your browser, then copy the token..."
+env -u CLAUDE_CODE_OAUTH_TOKEN claude setup-token
+
+log_task "Paste the token (twice). The terminal does not show it."
+security add-generic-password -a "$USER" -s "$service" -U -w
+log_done "Claude token stored in the Keychain: restart VS Code from the Dock"
+{{- end }}
