@@ -41,16 +41,17 @@ case ${BEADS_ACTOR:-} in
 esac
 payload=$(jq -nc --arg cwd "$cwd" --arg t "$transcript" '{cwd: $cwd, transcript_path: $t}')
 
+# "(.data? // .)" reads the bd --json output in the legacy format and in the bd 2.0 envelope {data, schema_version}.
 for id in $ids; do
   task=$(bd show "$id" --json 2>/dev/null) || continue # false positive, or unknown task
-  if bd provenance log "$id" --json 2>/dev/null | jq -e --arg r "$ref" 'any(.[]?; .ref == $r)' >/dev/null 2>&1; then
+  if bd provenance log "$id" --json 2>/dev/null | jq -e --arg r "$ref" 'any((.data? // .)[]?; .ref == $r)' >/dev/null 2>&1; then
     continue # already linked
   fi
   bd provenance record --issue "$id" --kind used --source "$tool-hook" --actor "$actor" \
     --ref "$ref" --ref-kind transcript --payload "$payload" -q >/dev/null 2>&1 || continue
 
   key="sessions.$tool"
-  current=$(jq -r --arg k "$key" '(.[0] // .).metadata[$k] // empty' <<<"$task" 2>/dev/null)
+  current=$(jq -r --arg k "$key" '(.data? // .) | (.[0] // .).metadata[$k] // empty' <<<"$task" 2>/dev/null)
   list=${current// /} # normalized "id1,id2" (older values had no space)
   case ",$list," in
     *",$session,"*) ;;

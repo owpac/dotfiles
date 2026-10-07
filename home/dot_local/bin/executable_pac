@@ -222,16 +222,18 @@ agent_init() {
     log_done "Home workspace created. bd reaches it from any directory through BEADS_DIR (~/.zshenv)"
 }
 
+# "(.data? // .)" reads the bd --json output in the legacy format and in the bd 2.0 envelope {data, schema_version}.
+
 # Sessions linked to a task (JSON array, oldest first).
 _agent_sessions() {
     bd provenance log "$1" --json 2>/dev/null |
-        jq -c '[.[]? | select(.ref_kind == "transcript" and (.ref | test("^(claude|codex):")))] | sort_by(.created_at)'
+        jq -c '[(.data? // .)[]? | select(.ref_kind == "transcript" and (.ref | test("^(claude|codex):")))] | sort_by(.created_at)'
 }
 
 agent_task() {
     local id=$1 s n
     _agent_require_task "$id"
-    bd show "$id" --json | jq -r '.[0] // . | "\(.id) · \(.title) [\(.status)]"'
+    bd show "$id" --json | jq -r '(.data? // .) | .[0] // . | "\(.id) · \(.title) [\(.status)]"'
     s=$(_agent_sessions "$id")
     n=$(jq length <<<"$s")
     if ((n == 0)); then
@@ -304,7 +306,7 @@ $previous"
             sid=$(uuidgen | tr '[:upper:]' '[:lower:]')
             bd provenance record --issue "$id" --kind used --source claude-hook --actor claude \
                 --ref "claude:$sid" --ref-kind transcript --payload "$(jq -nc --arg cwd "$root" '{cwd: $cwd}')" -q >/dev/null
-            current=$(bd show "$id" --json | jq -r '(.[0] // .).metadata["sessions.claude"] // empty')
+            current=$(bd show "$id" --json | jq -r '(.data? // .) | (.[0] // .).metadata["sessions.claude"] // empty')
             current=${current// /} # normalized "id1,id2" (older values had no space)
             current=${current:+$current,}$sid
             bd update "$id" --set-metadata "sessions.claude=${current//,/, }" -q >/dev/null
