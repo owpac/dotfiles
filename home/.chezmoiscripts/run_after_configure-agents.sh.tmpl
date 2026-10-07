@@ -2,7 +2,8 @@
 #!/usr/bin/env bash
 
 # Configure the coding agents (see ~/.config/ia/AGENTS.md):
-#   - Claude Code: engram MCP server (user scope), owpac marketplace and plugins;
+#   - Claude Code: engram, GitHub and Atlassian (work) MCP servers (user scope), owpac
+#     marketplace and plugins;
 #   - Codex: owpac marketplace and plugins (Codex reads Claude-format marketplaces);
 #   - Beads: the home workspace, which holds every task (pac agent init).
 # Both CLIs record these in their own state and settings files, so chezmoi runs the CLIs
@@ -21,11 +22,34 @@ plugins=(productivity rails setup beads) # same set for Claude Code and Codex; n
 
 # --- Claude Code ------------------------------------------------------------------------
 if command -v claude >/dev/null 2>&1; then
-  if command -v engram >/dev/null 2>&1 && ! claude mcp get engram >/dev/null 2>&1; then
-    log_task "Registering the engram MCP server for Claude Code..."
-    claude mcp add --scope user engram -- engram mcp --tools=agent >/dev/null
-    log_done "engram MCP server registered for Claude Code"
+  # Register an MCP server in the user scope, or replace it when its definition changed.
+  # `claude mcp` has no JSON output, so the current definition comes from ~/.claude.json.
+  mcp_server() {
+    local name=$1 config=$2 current
+    current=$(jq -cS --arg name "$name" '.mcpServers[$name] // empty' "$HOME/.claude.json" 2>/dev/null || true)
+    [ "$current" = "$(jq -cS . <<<"$config")" ] && return
+    log_task "Registering the $name MCP server for Claude Code..."
+    [ -z "$current" ] || claude mcp remove --scope user "$name" >/dev/null
+    claude mcp add-json --scope user "$name" "$config" >/dev/null
+    log_done "$name MCP server registered for Claude Code"
+  }
+
+  if command -v engram >/dev/null 2>&1; then
+    mcp_server engram '{"type": "stdio", "command": "engram", "args": ["mcp", "--tools=agent"]}'
   fi
+
+  # The headersHelper reads the token of gh at each connection: gh keeps it in the macOS
+  # keychain, so no token is written to ~/.claude.json. Absolute paths: Claude Code can
+  # start outside a login shell (VS Code, desktop app).
+  if command -v gh >/dev/null 2>&1; then
+    helper="$(command -v gh) auth token | $(command -v jq) -Rc '{Authorization: (\"Bearer \" + .)}'"
+    mcp_server github "$(jq -n --arg helper "$helper" \
+      '{type: "http", url: "https://api.githubcopilot.com/mcp/", headersHelper: $helper}')"
+  fi
+{{- if .is_work }}
+
+  mcp_server atlassian '{"type": "sse", "url": "https://mcp.atlassian.com/v1/sse"}'
+{{- end }}
 
   if ! claude plugin marketplace list --json 2>/dev/null | jq -e 'any(.[]; .name == "owpac")' >/dev/null; then
     log_task "Adding the owpac marketplace to Claude Code..."
