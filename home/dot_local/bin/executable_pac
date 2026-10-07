@@ -207,18 +207,18 @@ agent_init() {
         log_done "The home workspace already exists ($_agent_home_dir)"
         return
     fi
-    if [[ -d $HOME/.beads/shared-server/dolt/task ]]; then
-        log_error "A \"task\" database already exists on the shared server, without its workspace in $_agent_home_dir"
+    if [[ -d $HOME/.beads/shared-server/dolt/tasks ]]; then
+        log_error "A \"tasks\" database already exists on the shared server, without its workspace in $_agent_home_dir"
         exit 1
     fi
-    log_task "Creating the home workspace in $_agent_home_dir (prefix \"task\", shared Dolt server)..."
+    log_task "Creating the home workspace in $_agent_home_dir (database \"tasks\", prefix \"task\", shared Dolt server)..."
     if ((dry)); then
         log_done "Dry run: nothing was changed"
         return
     fi
     mkdir -p "$_agent_home_dir"
     # With BEADS_DIR set, bd init creates the database but no metadata.json.
-    (cd "$_agent_home_dir" && env -u BEADS_DIR bd init --shared-server --skip-agents --non-interactive -q -p task >/dev/null)
+    (cd "$_agent_home_dir" && env -u BEADS_DIR bd init --shared-server --skip-agents --non-interactive -q -p task --database tasks >/dev/null)
     log_done "Home workspace created. bd reaches it from any directory through BEADS_DIR (~/.zshenv)"
 }
 
