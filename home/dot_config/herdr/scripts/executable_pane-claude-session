@@ -1,0 +1,31 @@
+#!/bin/sh
+# Print the Claude Code session of a herdr pane, as 4 tab-separated fields:
+#   kind (background|interactive)  session id  short id  cwd
+# Print nothing if the pane has no Claude Code agent.
+# Usage: pane-claude-session <pane_id>
+#
+# A pane can show a conversation that runs in the background (claude --bg, /resume, or a fork of
+# such a conversation). The pane process is then only a client: herdr reports the small session of
+# the client. The pane title is the name of the background session, so match the title with
+# `claude agents --json`. Use the session of herdr only when no background session has this name.
+set -eu
+
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+herdr="${HERDR_BIN_PATH:-herdr}"
+pane="$1"
+
+agent=$("$herdr" agent list | jq -c --arg pane "$pane" '.result.agents[] | select(.pane_id == $pane and .agent == "claude")')
+[ -n "$agent" ] || exit 0
+
+title=$(printf '%s' "$agent" | jq -r '.terminal_title_stripped // empty')
+if [ -n "$title" ]; then
+  matches=$(claude agents --json 2>/dev/null \
+    | jq -c --arg name "$title" '[.[] | select(.kind == "background" and .name == $name)]')
+  if [ "$(printf '%s' "$matches" | jq 'length')" = 1 ]; then
+    printf '%s' "$matches" | jq -r '.[0] | ["background", .sessionId, .id, .cwd] | @tsv'
+    exit 0
+  fi
+fi
+
+printf '%s' "$agent" | jq -r 'select(.agent_session.value != null)
+  | ["interactive", .agent_session.value, .agent_session.value[0:8], (.foreground_cwd // .cwd)] | @tsv'

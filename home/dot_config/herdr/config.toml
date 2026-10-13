@@ -1,0 +1,141 @@
+onboarding = false
+
+[ui]
+status_indicators = "symbols"
+tab_bar_position = "top"
+tab_bar_right = [{ type = "hostname" }, { type = "zoom" }]
+pane_borders = "auto"                 # borders only between split panes ("always" also frames a lone pane)
+
+[ui.sidebar.agents]
+rows = [["state_icon", "workspace", "tab"], ["agent"]]
+
+[ui.sidebar.spaces]
+rows = [["state_icon", "workspace"], ["branch", "git_status"]]
+
+[ui.toast]
+# iTerm2 shows the notification (iTerm2 icon, a click brings iTerm2 to the front).
+delivery = "terminal"
+
+[ui.toast.herdr]
+# Used only when delivery = "herdr" (in-app toasts). No center value: top-left, top-right,
+# bottom-left or bottom-right.
+position = "top-right"
+
+[ui.toast.clipboard]
+position = "top-right"
+
+# Keybindings
+#
+# All actions use the prefix (ctrl+space), then one key. The keys follow 3 rules:
+#   1. Directions are i j k l (i = up, j = left, k = down, l = right) or the arrows.
+#      The direction alone moves the focus. Shift + direction moves the pane.
+#      This is the same as AeroSpace (Hyper+arrows / Hyper+shift+arrows, Hyper+shift+ijkl).
+#      Exception: resize mode keeps h j k l, because herdr fixes these keys. The arrows also work.
+#   2. Panes use the vim window keys: v and s split, x closes, f is fullscreen.
+#   3. Tabs use the browser and VS Code keys: t, w, 1..9, n, p.
+#      Shift + the same key does the same action on the workspace.
+#      Thus t = new tab and T = new workspace, w = close tab and W = close workspace.
+#
+# In the iTerm2 "herdr" profile, cmd + key sends the prefix + the same key.
+# Exceptions: cmd+c, cmd+v and cmd+q stay macOS keys. cmd+d and cmd+shift+d split, like in iTerm2.
+# On AZERTY, ctrl+& ... ctrl+ç select tabs 1..9 (cmd + digit stays for the iTerm2 tabs).
+# With the prefix, use shift: ctrl+space shift+& = tab 1.
+# cmd+< (the key left of W) changes to the Default profile (iTerm2 keys).
+# A global iTerm2 key binding on cmd+< comes back.
+# scripts/make-iterm-profile writes the "herdr" iTerm2 dynamic profile.
+# To remove all the keybindings below, run `herdr config reset-keys`.
+# To apply a change, press ctrl+space ; or run `herdr server reload-config`.
+[keys]
+# The macOS input source shortcut (ctrl+space) is off on this Mac, so the key is free.
+prefix = "ctrl+space"
+# Old prefix, kept as a fallback during the test of ctrl+space.
+extra_prefixes = ["ctrl+b"]
+
+# General
+help = "prefix+?"
+settings = "prefix+comma"             # cmd+, in macOS apps
+reload_config = "prefix+;"            # the key next to ","
+detach = "prefix+q"                   # quit the client, like cmd+q. The agents continue.
+toggle_sidebar = "prefix+b"           # VS Code cmd+b
+goto = "prefix+g"                     # search the agents and the terminals
+open_notification_target = "prefix+o" # open the agent that needs attention
+next_agent = "prefix+a"               # alt+tab in the iTerm2 "herdr" profile
+previous_agent = "prefix+shift+a"     # alt+shift+tab in the iTerm2 "herdr" profile
+workspace_picker = "prefix+space"     # the sidebar calls workspaces "spaces"
+edit_scrollback = "prefix+e"
+copy_mode = "prefix+y"                # vim yank
+
+# Panes: vim windows (ctrl+w ...) and AeroSpace windows
+focus_pane_left = ["prefix+j", "prefix+left"]
+focus_pane_down = ["prefix+k", "prefix+down"]
+focus_pane_up = ["prefix+i", "prefix+up"]
+focus_pane_right = ["prefix+l", "prefix+right"]
+swap_pane_left = ["prefix+shift+j", "prefix+shift+left"]
+swap_pane_down = ["prefix+shift+k", "prefix+shift+down"]
+swap_pane_up = ["prefix+shift+i", "prefix+shift+up"]
+swap_pane_right = ["prefix+shift+l", "prefix+shift+right"]
+# Navigate mode (workspace picker): same directions. The arrows always work too.
+navigate_pane_left = "j"
+navigate_pane_down = "k"
+navigate_pane_up = "i"
+navigate_pane_right = "l"
+split_vertical = "prefix+v"           # vim ctrl+w v: new pane on the right
+split_horizontal = "prefix+s"         # vim ctrl+w s: new pane below
+close_pane = "prefix+x"
+zoom = "prefix+f"                     # AeroSpace fullscreen
+resize_mode = ["prefix+minus", "prefix+="] # AeroSpace resize keys, then the arrows (or h j k l)
+last_pane = "prefix+tab"              # back and forth, like AeroSpace Hyper+tab
+cycle_pane_next = ""
+cycle_pane_previous = ""
+rename_pane = "prefix+ctrl+r"
+
+# Tabs: browser and VS Code tabs
+new_tab = "prefix+t"                  # cmd+t
+close_tab = "prefix+w"                # cmd+w
+rename_tab = "prefix+r"
+next_tab = "prefix+n"                 # vim :tabnext. ctrl+tab in the iTerm2 "herdr" profile.
+previous_tab = "prefix+p"             # vim :tabprevious. ctrl+shift+tab in the iTerm2 "herdr" profile.
+move_tab_previous = "prefix+<"
+move_tab_next = "prefix+>"
+switch_tab = "prefix+1..9"            # cmd+1..9
+
+# Workspaces: shift + the tab key
+new_workspace = "prefix+shift+t"
+close_workspace = "prefix+shift+w"    # cmd+shift+w closes the window
+rename_workspace = "prefix+shift+r"
+next_workspace = "prefix+shift+n"     # ctrl+alt+tab in the iTerm2 "herdr" profile
+previous_workspace = "prefix+shift+p" # ctrl+alt+shift+tab in the iTerm2 "herdr" profile
+# Worktrees are workspaces too, so they use shift: G new, O open, X remove.
+new_worktree = "prefix+shift+g"       # g = git
+open_worktree = "prefix+shift+o"      # o = open an existing checkout
+remove_worktree = "prefix+shift+x"    # x = delete the checkout (git worktree remove). Asks first.
+
+# Fork the agent of the focused pane (Claude Code: --resume <session> --fork-session).
+# Rule: ctrl + the key that creates a split or a tab = the same, with a fork of the agent.
+# iTerm2 herdr profile: cmd+ctrl+v or cmd+ctrl+d (right), cmd+ctrl+s or cmd+ctrl+shift+d (below),
+# cmd+ctrl+t (tab), cmd+ctrl+x (close and stop).
+[[keys.command]]
+key = "prefix+ctrl+v"                 # fork into a new pane on the right
+type = "shell"
+command = "\"$HOME/.config/herdr/scripts/fork-agent\" right"
+
+[[keys.command]]
+key = "prefix+ctrl+s"                 # fork into a new pane below
+type = "shell"
+command = "\"$HOME/.config/herdr/scripts/fork-agent\" down"
+
+[[keys.command]]
+key = "prefix+ctrl+t"                 # fork into a new tab
+type = "shell"
+command = "\"$HOME/.config/herdr/scripts/fork-agent\" tab"
+
+# A fork of a conversation that runs in the background (claude --bg, /resume) also runs in the
+# background: x only closes its client. ctrl+x stops the background session, then closes the pane.
+[[keys.command]]
+key = "prefix+ctrl+x"                 # close the pane and stop its background Claude Code session
+type = "shell"
+command = "\"$HOME/.config/herdr/scripts/close-agent\""
+
+[theme]
+name = "catppuccin"
+auto_switch = false

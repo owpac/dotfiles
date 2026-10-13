@@ -1,0 +1,33 @@
+#!/bin/sh
+# Close a herdr pane. If the pane shows a Claude Code conversation that runs in the background,
+# stop that session first (claude stop). The conversation is kept: `claude attach <id>` opens it.
+# A normal (interactive) Claude Code session ends with its pane, so it needs no stop.
+# Usage: close-agent [pane_id]
+# Without pane_id, use the pane that has the focus in the herdr UI.
+# With DRY_RUN=1, print the commands and do not run them.
+set -eu
+
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+herdr="${HERDR_BIN_PATH:-herdr}"
+claude="${CLAUDE_BIN:-claude}"
+scripts=$(dirname "$0")
+
+run() {
+  if [ "${DRY_RUN:-}" = 1 ]; then
+    printf '%s\n' "$*" >&2
+  else
+    "$@"
+  fi
+}
+
+pane="${1:-}"
+if [ -z "$pane" ]; then
+  pane=$(env -u HERDR_PANE_ID -u HERDR_TAB_ID -u HERDR_WORKSPACE_ID "$herdr" pane current \
+    | jq -r '.result | (.pane // .) | .pane_id')
+fi
+
+info=$("$scripts/pane-claude-session" "$pane")
+if [ "$(printf '%s' "$info" | cut -f1)" = background ]; then
+  run "$claude" stop "$(printf '%s' "$info" | cut -f3)" >/dev/null
+fi
+run "$herdr" pane close "$pane" >/dev/null

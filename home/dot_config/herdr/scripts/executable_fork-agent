@@ -1,0 +1,64 @@
+#!/bin/sh
+# Fork the Claude Code conversation of the focused herdr pane into a new split or a new tab.
+# The original conversation stays in its pane. The fork gets a new session ID.
+# Usage: fork-agent right|down|tab [pane_id]
+# Without pane_id, use the pane that has the focus in the herdr UI.
+# With DRY_RUN=1, print the commands and messages, and do not run them.
+# A fork of a conversation that runs in the background also runs in the background:
+# close its pane with close-agent (prefix+ctrl+x) to stop it.
+set -eu
+
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+herdr="${HERDR_BIN_PATH:-herdr}"
+scripts=$(dirname "$0")
+where="${1:-right}"
+
+notify() {
+  if [ "${DRY_RUN:-}" = 1 ]; then
+    echo "message: $1" >&2
+    return
+  fi
+  "$herdr" notification show "fork" --body "$1" --position top-right >/dev/null 2>&1 || true
+}
+
+run() {
+  if [ "${DRY_RUN:-}" = 1 ]; then
+    printf '%s\n' "$*" >&2
+    echo '{"result":{"pane":{"pane_id":"DRY"},"root_pane":{"pane_id":"DRY"}}}'
+  else
+    "$@"
+  fi
+}
+
+case "$where" in
+  right|down|tab) ;;
+  *) echo "usage: fork-agent right|down|tab [pane_id]" >&2; exit 2 ;;
+esac
+
+# The pane that has the focus in the herdr UI, or the pane given as argument.
+pane="${2:-}"
+if [ -z "$pane" ]; then
+  pane=$(env -u HERDR_PANE_ID -u HERDR_TAB_ID -u HERDR_WORKSPACE_ID "$herdr" pane current \
+    | jq -r '.result | (.pane // .) | .pane_id')
+fi
+
+info=$("$scripts/pane-claude-session" "$pane")
+if [ -z "$info" ]; then
+  notify "No Claude Code session in the focused pane."
+  exit 0
+fi
+session=$(printf '%s' "$info" | cut -f2)
+cwd=$(printf '%s' "$info" | cut -f4)
+workspace=$("$herdr" pane get "$pane" | jq -r '.result | (.pane // .) | .workspace_id')
+
+# The shell alias "claude" in the new pane adds the usual options (model...).
+command="claude --resume $session --fork-session"
+
+if [ "$where" = tab ]; then
+  new=$(run "$herdr" tab create --workspace "$workspace" --cwd "$cwd" --label fork --focus \
+    | jq -r '.result.root_pane.pane_id')
+else
+  new=$(run "$herdr" pane split --pane "$pane" --direction "$where" --cwd "$cwd" --focus \
+    | jq -r '.result.pane.pane_id')
+fi
+run "$herdr" pane run "$new" "$command" >/dev/null
