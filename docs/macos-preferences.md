@@ -59,19 +59,29 @@ app's schedule.
 `run_onchange_after_import-macos-preferences.sh.tmpl` is a chezmoi
 `run_onchange_after_` script (runs after files are applied, on macOS, non-minimum):
 
-- It embeds a **sha256 of each snapshot's *decrypted* content** as a comment,
-  so it re-runs *only* when a snapshot's real content changes — not on every
-  apply, and not when age re-encryption alone produces different ciphertext.
-- It then runs `defaults import "<domain>" "~/.config/macos-preferences/<domain>.plist"`
-  for every domain in `macos_preferences_domains`, printing one line per app.
+- It embeds a **sha256 of each snapshot's *decrypted* content**, so chezmoi re-runs it
+  *only* when the real content of a snapshot changes. It does not re-run on every apply,
+  or when age re-encryption alone produces a different ciphertext.
+- It imports **only the snapshots that changed since their last import**.
+  `~/.local/state/macos-preferences/<domain>.sha256` keeps the hash of the last import of
+  each domain. So a new snapshot of one app does not reset the other apps, and a change to
+  the script itself imports nothing.
+- On a new machine, there is no state yet, so the script imports every snapshot.
 
 ```sh
+import() {   # domain, sha256 of the decrypted snapshot
+  [ "$(cat "$state/$domain.sha256" 2>/dev/null || true)" = "$hash" ] && return 0
+  defaults import "$domain" "$HOME/.config/macos-preferences/$domain.plist"
+  echo "$hash" > "$state/$domain.sha256"
+}
 {{ range .macos_preferences_domains -}}
-# {{ . }}: {{ include (printf "dot_config/macos-preferences/encrypted_%s.plist.age" .) | decrypt | sha256sum }}
+import "{{ . }}" "{{ include (printf "dot_config/macos-preferences/encrypted_%s.plist.age" .) | decrypt | sha256sum }}"
 {{ end -}}
-...
-defaults import "<domain>" "$HOME/.config/macos-preferences/<domain>.plist"
 ```
+
+To import a snapshot again by hand, run
+`defaults import "<domain>" ~/.config/macos-preferences/<domain>.plist`. chezmoi does not
+re-run the script for that: the content of the script does not change.
 
 ## Usage — `pac preferences`
 
