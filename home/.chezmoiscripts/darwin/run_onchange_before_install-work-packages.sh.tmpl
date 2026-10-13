@@ -5,8 +5,6 @@ set -eufo pipefail
 
 source {{ .chezmoi.workingTree }}/lib/logs.sh
 
-{{ $taps := list
--}}
 {{ $brews := list
       "awscli"
       "aws-iam-authenticator"
@@ -31,11 +29,23 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
       "mutedeck"
 -}}
 
+{{- $formulae := list }}{{ range $brews }}{{ if eq (len (splitList "/" .)) 3 }}{{ $formulae = append $formulae . }}{{ end }}{{ end }}
+{{- $tapCasks := list }}{{ range $casks }}{{ if eq (len (splitList "/" .)) 3 }}{{ $tapCasks = append $tapCasks . }}{{ end }}{{ end }}
+{{- if or $formulae $tapCasks }}
+# Homebrew 7 loads a formula or a cask of a third-party tap only after `brew trust`. Trust each
+# third-party entry of the lists above (owner/tap/name), not the whole tap. `brew trust` keeps
+# the entries in ~/.homebrew/trust.json, and does nothing for an entry already trusted.
+if brew trust --help >/dev/null 2>&1; then
+{{- range ($formulae | sortAlpha | uniq) }}
+  brew trust --formula {{ . | quote }} >/dev/null || log_error "Could not trust the formula {{ . }}"
+{{- end }}
+{{- range ($tapCasks | sortAlpha | uniq) }}
+  brew trust --cask {{ . | quote }} >/dev/null || log_error "Could not trust the cask {{ . }}"
+{{- end }}
+fi
+{{ end }}
 log_task "Installing work related Homebrew taps, brews, and casks..."
 brew bundle --no-upgrade --file=/dev/stdin <<EOF
-{{ range ($taps | sortAlpha | uniq) -}}
-tap "{{ . }}"
-{{ end -}}
 {{ range ($brews | sortAlpha | uniq) -}}
 brew "{{ . }}"
 {{ end -}}
