@@ -45,14 +45,21 @@ upgrade_mise() {
 # /reload-plugins, to load a change. Codex copies each plugin into its cache, and
 # `codex plugin add` replaces the copy.
 upgrade_agents() {
-    local failed=0 dir name codex id
+    local failed=0 changed=0 dir name before after codex id
 
     for dir in "$HOME"/.local/share/agent-marketplaces/*/; do
         [[ -d "$dir.git" ]] || continue
         name=$(basename "$dir")
         log_task "Updating the plugin marketplace $name..."
+        before=$(git -C "$dir" rev-parse --short HEAD)
         if git -C "$dir" pull --ff-only --quiet; then
-            log_done "Marketplace $name at $(git -C "$dir" log -1 --format='%h %s')"
+            after=$(git -C "$dir" rev-parse --short HEAD)
+            if [[ $before == "$after" ]]; then
+                log_done "Marketplace $name already up to date"
+            else
+                log_done "Marketplace $name updated ($before..$after)"
+                changed=1
+            fi
         else
             log_error "Could not update $dir: check it with git -C $dir status"
             failed=1
@@ -69,7 +76,7 @@ upgrade_agents() {
     fi
 
     (( failed == 0 )) || return 1
-    log_done "Agent plugins upgraded: restart Claude Code and Codex to load them"
+    (( changed == 0 )) || log_done "Agent plugins upgraded: restart Claude Code and Codex to load them"
 }
 
 upgrade_all() {
