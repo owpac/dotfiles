@@ -39,12 +39,46 @@ upgrade_mise() {
     log_done "Mise plugins upgraded"
 }
 
+# Update the runtime clones of the plugin marketplaces, then refresh the plugin copies of Codex.
+# chezmoi clones each marketplace once in ~/.local/share/agent-marketplaces (.chezmoiexternal
+# in the dotfiles). Claude Code reads these clones in place: restart it, or run
+# /reload-plugins, to load a change. Codex copies each plugin into its cache, and
+# `codex plugin add` replaces the copy.
+upgrade_agents() {
+    local failed=0 dir name codex id
+
+    for dir in "$HOME"/.local/share/agent-marketplaces/*/; do
+        [[ -d "$dir.git" ]] || continue
+        name=$(basename "$dir")
+        log_task "Updating the plugin marketplace $name..."
+        if git -C "$dir" pull --ff-only --quiet; then
+            log_done "Marketplace $name at $(git -C "$dir" log -1 --format='%h %s')"
+        else
+            log_error "Could not update $dir: check it with git -C $dir status"
+            failed=1
+        fi
+    done
+
+    codex=$(_agent_codex_bin || true)
+    if [[ -n "$codex" ]]; then
+        log_task "Refreshing the plugin copies of Codex..."
+        while read -r id; do
+            [[ -n "$id" ]] || continue
+            "$codex" plugin add "$id" >/dev/null || { log_error "Could not refresh $id in Codex"; failed=1; }
+        done < <("$codex" plugin list --json | jq -r '.installed[]? | select(.marketplaceSource.sourceType == "local") | .pluginId')
+    fi
+
+    (( failed == 0 )) || return 1
+    log_done "Agent plugins upgraded: restart Claude Code and Codex to load them"
+}
+
 upgrade_all() {
     local failed=0
-    upgrade_macos || { log_error "macOS upgrade failed"; failed=1; }
-    upgrade_apps  || { log_error "App Store upgrade failed"; failed=1; }
-    upgrade_brew  || { log_error "Homebrew upgrade failed"; failed=1; }
-    upgrade_mise  || { log_error "Mise upgrade failed"; failed=1; }
+    upgrade_macos  || { log_error "macOS upgrade failed"; failed=1; }
+    upgrade_apps   || { log_error "App Store upgrade failed"; failed=1; }
+    upgrade_brew   || { log_error "Homebrew upgrade failed"; failed=1; }
+    upgrade_mise   || { log_error "Mise upgrade failed"; failed=1; }
+    upgrade_agents || { log_error "Agent plugins upgrade failed"; failed=1; }
     return $failed
 }
 
@@ -169,7 +203,7 @@ preferences_list() {
 }
 
 # --- AI agents: Beads tasks <-> Claude/Codex sessions (see ~/.config/ia/AGENTS.md) --------
-# Sessions are linked to tasks by the hook ~/.config/ia/hooks/link-bd-session
+# Sessions are linked to tasks by the hook link-bd-session of the plugin beads (owpac/prompts)
 # ("transcript" provenance, task metadata sessions.<tool>).
 # Every task lives in the home workspace. BEADS_DIR points to it (~/.zshenv, Claude Code
 # and Codex settings), and bd uses BEADS_DIR before any workspace of the current repository.
@@ -325,8 +359,8 @@ usage() {
 Usage: pac <command> [args]
 
 Commands:
-    upgrade                     Upgrade everything (macOS, apps, brew, mise)
-    upgrade macos|apps|brew|mise
+    upgrade                     Upgrade everything (macOS, apps, brew, mise, agents)
+    upgrade macos|apps|brew|mise|agents
     preferences list            List saved macOS app preferences (slug -> domain)
     preferences save [name...]  Snapshot app preferences — all tracked, or by slug/domain
                                 (e.g. 'pac preferences save terminal')
@@ -343,12 +377,13 @@ EOF
 case "${1:-}" in
     upgrade)
         case "${2:-}" in
-            "")    upgrade_all ;;
-            macos) upgrade_macos ;;
-            apps)  upgrade_apps ;;
-            brew)  upgrade_brew ;;
-            mise)  upgrade_mise ;;
-            *)     usage; exit 1 ;;
+            "")     upgrade_all ;;
+            macos)  upgrade_macos ;;
+            apps)   upgrade_apps ;;
+            brew)   upgrade_brew ;;
+            mise)   upgrade_mise ;;
+            agents) upgrade_agents ;;
+            *)      usage; exit 1 ;;
         esac
         ;;
     preferences)

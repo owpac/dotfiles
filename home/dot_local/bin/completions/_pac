@@ -4,7 +4,7 @@ _pac() {
   local -a subcmds
   if (( CURRENT == 2 )); then
     subcmds=(
-      'upgrade:Upgrade everything (macOS, apps, brew, mise)'
+      'upgrade:Upgrade everything (macOS, apps, brew, mise, agents)'
       'preferences:Save/list macOS app preference snapshots'
       'agent:Beads tasks and their Claude/Codex sessions'
     )
@@ -15,6 +15,7 @@ _pac() {
       'apps:Update App Store apps via mas'
       'brew:Update and upgrade Homebrew packages'
       'mise:Update mise plugins'
+      'agents:Update the plugin marketplaces of Claude Code and Codex'
     )
     _describe 'subcommand' subcmds
   elif (( CURRENT == 3 )) && [[ "${words[2]}" == "preferences" ]]; then
