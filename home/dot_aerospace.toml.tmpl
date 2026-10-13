@@ -135,9 +135,11 @@ outer.right = 0
 #     activate
 # end tell'
 # '''
+# Hyper+enter opens an iTerm2 window with the "herdr" profile. This profile starts herdr.
+# The profile comes from ~/.config/herdr/scripts/make-iterm-profile.
 cmd-ctrl-alt-enter = '''exec-and-forget osascript -e '
         tell application "iTerm"
-            create window with default profile
+            create window with profile "herdr"
             activate
         end tell'
     '''
