@@ -117,6 +117,30 @@ _data_file() { printf '%s/.chezmoidata/macos-preferences.yaml' "$(chezmoi source
 
 # Ensure a domain is listed under macos_preferences_domains in .chezmoidata/macos-preferences.yaml
 # (the import script only re-applies domains from that list).
+# Remove the keys that the apps change on their own (macos_preferences_ignored_keys in
+# .chezmoidata/macos-preferences.yaml), so that a snapshot changes only when a real setting
+# changes. Writes an XML plist with sorted keys, so the same settings give the same file.
+_strip_ignored_keys() {
+    local plist="$1" patterns
+    patterns="$(chezmoi data --format json | jq -r '.macos_preferences_ignored_keys[]?')"
+    python3 - "$plist" "$patterns" <<'PY_STRIP'
+import fnmatch, plistlib, sys
+path, patterns = sys.argv[1], [p for p in sys.argv[2].split("\n") if p]
+with open(path, "rb") as f:
+    prefs = plistlib.load(f)
+# Top-level keys only: `defaults import` replaces each top-level value whole, so removing a
+# nested key here would also remove it from the machine at the next import.
+kept = {k: v for k, v in prefs.items() if not any(fnmatch.fnmatchcase(k, p) for p in patterns)}
+# iTerm2 copies each dynamic profile into "New Bookmarks". The profile files
+# (~/Library/Application Support/iTerm2/DynamicProfiles, managed by chezmoi) are the source,
+# so drop the copies. iTerm2 loads the dynamic profiles again from their files.
+if isinstance(kept.get("New Bookmarks"), list):
+    kept["New Bookmarks"] = [b for b in kept["New Bookmarks"] if not (isinstance(b, dict) and b.get("Is Dynamic Profile"))]
+with open(path, "wb") as f:
+    plistlib.dump(kept, f, fmt=plistlib.FMT_XML, sort_keys=True)
+PY_STRIP
+}
+
 _ensure_in_data() {
     local domain="$1" data="$2" tmp
     grep -q '^macos_preferences_domains:' "$data" || {
@@ -157,6 +181,7 @@ preferences_save() {
         fi
         out="$preferences_dir/$d.plist"
         defaults export "$d" "$out"
+        _strip_ignored_keys "$out"
         if chezmoi managed | grep -qx ".config/macos-preferences/$d.plist"; then
             chezmoi re-add "$out"          # no-op if nothing changed
         else

@@ -83,6 +83,31 @@ To import a snapshot again by hand, run
 `defaults import "<domain>" ~/.config/macos-preferences/<domain>.plist`. chezmoi does not
 re-run the script for that: the content of the script does not change.
 
+## Keys that the apps change on their own
+
+Apps also write keys that are not settings: window positions (`NSWindow Frame *`), panels
+(`NSNav*`), update checks (`SULastCheckTime`), app versions (`iTerm Version`), dates
+(`LastTerminalStartTime`) and the local state of iTerm2 (`NoSync*`). These keys change
+without a real change of settings.
+
+`pac preferences save` removes them from each snapshot before it adds the snapshot. The
+patterns are in `home/.chezmoidata/macos-preferences.yaml` → `macos_preferences_ignored_keys`
+(shell patterns, for every domain). The snapshot is an XML plist with sorted keys. So a
+snapshot changes only when a real setting changes, and the other machines re-import an app
+only after a real change.
+
+- `defaults import` merges the top-level keys of the snapshot into the domain, so the ignored
+  keys stay on each machine.
+- The filter removes top-level keys only. `defaults import` replaces each top-level value
+  whole, so removing a nested key would also remove it from the machine. For example,
+  `ProfileCurrentVersion` stays in each Terminal profile: it changes only when a macOS
+  update changes the format of the profiles.
+- If a new key changes on its own, add its pattern to the list, then run
+  `pac preferences save <app>`.
+- iTerm2 copies each dynamic profile into `New Bookmarks`. `pac preferences save` removes
+  these copies, because the files in `~/Library/Application Support/iTerm2/DynamicProfiles`
+  (managed by chezmoi) are the source of these profiles.
+
 ## Usage — `pac preferences`
 
 ```
