@@ -57,9 +57,11 @@ bd prime                # Refresh Beads context
 
 **Never** store patient data, personal data or secrets in engram or Beads.
 
-## Writing style: simplified technical language (STE)
+## Writing style: simplified technical language (STL)
 
 Write all the text that you produce in simplified technical language: replies, documentation, code comments, commit messages, PR descriptions, Beads notes and engram memories. In English, follow ASD-STE100. In French, follow the same rules transposed to French.
+
+This rule is mandatory for each text. It is not a preference, and it does not depend on the size or the urgency of the task.
 
 - Write one idea in each sentence. Do not write more than 20 words in an instruction, or more than 25 words in a description.
 - Use the active voice and simple tenses. Use the passive voice only when the agent is unknown.
@@ -72,5 +74,8 @@ Write all the text that you produce in simplified technical language: replies, d
 - Do not use the semicolon. Do not use the "-ing" form as a verb (English). Do not use the gérondif, the subjunctive or "on" (French).
 - Write the condition before the instruction. Use numbered lists for steps.
 - Keep code, commands, identifiers, quotes and the text of the user unchanged.
-- The conventions of the repository and the templates of a skill (commit format, PR template, style guide) take precedence over these rules.
-- For the full rules, or to check a text, use the `ste` skill.
+- The conventions of the repository and the templates of a skill (commit format, PR template, style guide) take precedence over these rules. This precedence applies to the format only. The text that you write in the format follows these rules.
+- The style of another author does not take precedence. If you add text to a document, a PR description or a comment of another person, write your text with these rules.
+- Load the `stl` skill before your first text in a session, and again after a compaction.
+- Before you send, publish or commit a text, check it with the `stl` skill. This applies to replies, commit messages, PR titles and descriptions, PR and issue comments, and documentation files.
+- Apply the rules to each reply, from the first to the last. In a long session, the style drifts.
