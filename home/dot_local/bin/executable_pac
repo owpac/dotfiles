@@ -277,7 +277,11 @@ agent_init() {
     fi
     mkdir -p "$_agent_home_dir"
     # With BEADS_DIR set, bd init creates the database but no metadata.json.
-    (cd "$_agent_home_dir" && env -u BEADS_DIR bd init --shared-server --skip-agents --non-interactive -q -p task --database tasks >/dev/null)
+    # A pipe sends the messages of bd init (stderr) to grep. bd shows the progress of its
+    # migrations only in a terminal, so this progress does not show. grep removes the warnings
+    # about ~/.beads/redirect, because its target is the workspace that bd init creates.
+    (cd "$_agent_home_dir" && env -u BEADS_DIR bd init --shared-server --skip-agents --non-interactive -q -p task --database tasks 2>&1 >/dev/null) |
+        { grep -v '^Warning: redirect target does not exist' || true; } >&2
     log_done "Home workspace created. bd reaches it from any directory through BEADS_DIR (~/.zshenv)"
 }
 
