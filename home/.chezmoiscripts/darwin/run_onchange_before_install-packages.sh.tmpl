@@ -56,6 +56,18 @@ source {{ .chezmoi.workingTree }}/lib/logs.sh
       "zen"
 -}}
 
+# Homebrew 7 loads a formula or a cask of a third-party tap only after `brew trust`. Trust each
+# third-party entry of the lists above (owner/tap/name), not the whole tap. `brew trust` keeps
+# the entries in ~/.homebrew/trust.json, and does nothing for an entry already trusted.
+if brew trust --help >/dev/null 2>&1; then
+{{- range ($brews | sortAlpha | uniq) }}{{ if eq (len (splitList "/" .)) 3 }}
+  brew trust --formula {{ . | quote }} >/dev/null || log_error "Could not trust the formula {{ . }}"
+{{- end }}{{ end }}
+{{- range ($casks | sortAlpha | uniq) }}{{ if eq (len (splitList "/" .)) 3 }}
+  brew trust --cask {{ . | quote }} >/dev/null || log_error "Could not trust the cask {{ . }}"
+{{- end }}{{ end }}
+fi
+
 log_task "Installing Homebrew taps, brews, and casks..."
 brew bundle --no-upgrade --file=/dev/stdin <<EOF
 {{ range ($taps | sortAlpha | uniq) -}}
