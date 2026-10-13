@@ -1,0 +1,743 @@
+{
+  "Profiles": [
+    {
+      "Dynamic Profile Parent GUID": "8E0EBBCA-A018-4FCB-B506-F268B881C020",
+      "Rewritable": true,
+      "Command": "/opt/homebrew/bin/herdr",
+      "Window Type": 12,
+      "Custom Command": "Yes",
+      "Name": "herdr",
+      "Status Bar Layout": {
+        "components": [
+          {
+            "class": "iTermStatusBarSwiftyStringComponent",
+            "configuration": {
+              "knobs": {
+                "expression": "⌘ herdr",
+                "base: priority": 10,
+                "base: compression resistance": 1,
+                "shared text color": {
+                  "Red Component": 0.8600031733512878,
+                  "Color Space": "P3",
+                  "Blue Component": 0.6359096169471741,
+                  "Alpha Component": 1,
+                  "Green Component": 0.6414334774017334
+                }
+              },
+              "layout advanced configuration dictionary value": {
+                "remove empty components": false,
+                "font": ".AppleSystemUIFont 12",
+                "algorithm": 0,
+                "auto-rainbow style": 3
+              }
+            }
+          },
+          {
+            "class": "iTermStatusBarClockComponent",
+            "configuration": {
+              "knobs": {
+                "format": "dd/M h:mm",
+                "base: priority": 5,
+                "maxwidth": 1000000,
+                "minwidth": "0",
+                "base: compression resistance": 1,
+                "shared text color": {
+                  "Red Component": 0.8796347975730896,
+                  "Color Space": "P3",
+                  "Blue Component": 0.6595839858055115,
+                  "Alpha Component": 1,
+                  "Green Component": 0.8991932272911072
+                },
+                "localize": 1
+              },
+              "layout advanced configuration dictionary value": {
+                "remove empty components": false,
+                "font": ".AppleSystemUIFont 12",
+                "algorithm": 0,
+                "auto-rainbow style": 3
+              }
+            }
+          },
+          {
+            "class": "iTermStatusBarNetworkUtilizationComponent",
+            "configuration": {
+              "knobs": {
+                "base: priority": 5,
+                "shared text color": {
+                  "Red Component": 0.6883133053779602,
+                  "Color Space": "P3",
+                  "Blue Component": 0.6979729533195496,
+                  "Alpha Component": 1,
+                  "Green Component": 0.8927000164985657
+                }
+              },
+              "layout advanced configuration dictionary value": {
+                "remove empty components": false,
+                "font": ".AppleSystemUIFont 12",
+                "algorithm": 0,
+                "auto-rainbow style": 3
+              }
+            }
+          },
+          {
+            "class": "iTermStatusBarCPUUtilizationComponent",
+            "configuration": {
+              "knobs": {
+                "base: priority": 5,
+                "base: compression resistance": 1,
+                "shared text color": {
+                  "Red Component": 0.6702345013618469,
+                  "Color Space": "P3",
+                  "Blue Component": 0.8911065459251404,
+                  "Alpha Component": 1,
+                  "Green Component": 0.819938600063324
+                }
+              },
+              "layout advanced configuration dictionary value": {
+                "remove empty components": false,
+                "font": ".AppleSystemUIFont 12",
+                "algorithm": 0,
+                "auto-rainbow style": 3
+              }
+            }
+          },
+          {
+            "class": "iTermStatusBarMemoryUtilizationComponent",
+            "configuration": {
+              "knobs": {
+                "base: priority": 5,
+                "base: compression resistance": 1,
+                "shared text color": {
+                  "Red Component": 0.7130210995674133,
+                  "Color Space": "P3",
+                  "Blue Component": 0.8813615441322327,
+                  "Alpha Component": 1,
+                  "Green Component": 0.6336225271224976
+                }
+              },
+              "layout advanced configuration dictionary value": {
+                "remove empty components": false,
+                "font": ".AppleSystemUIFont 12",
+                "algorithm": 0,
+                "auto-rainbow style": 3
+              }
+            }
+          },
+          {
+            "class": "iTermStatusBarBatteryComponent",
+            "configuration": {
+              "knobs": {
+                "base: priority": 5,
+                "base: compression resistance": 1,
+                "shared text color": {
+                  "Red Component": 0.8600050806999207,
+                  "Color Space": "P3",
+                  "Blue Component": 0.7688186764717102,
+                  "Alpha Component": 1,
+                  "Green Component": 0.6414304971694946
+                }
+              },
+              "layout advanced configuration dictionary value": {
+                "remove empty components": false,
+                "font": ".AppleSystemUIFont 12",
+                "algorithm": 0,
+                "auto-rainbow style": 3
+              }
+            }
+          }
+        ],
+        "advanced configuration": {
+          "auto-rainbow style": 3,
+          "remove empty components": false,
+          "font": ".SFNS-Regular 12",
+          "draw separator between status bar and terminal": false,
+          "algorithm": 0
+        }
+      },
+      "Guid": "herdr-cmd-layer",
+      "Keyboard Map": {
+        "0xf728-0x80000": {
+          "Text": "d",
+          "Action": 10
+        },
+        "0xf702-0x280000": {
+          "Text": "b",
+          "Action": 10
+        },
+        "0xf70d-0x20000": {
+          "Text": "[21;2~",
+          "Action": 10
+        },
+        "0x7f-0x80000": {
+          "Text": "0x1b 0x7f",
+          "Action": 11
+        },
+        "0xf708-0x20000": {
+          "Text": "[15;2~",
+          "Action": 10
+        },
+        "0x33-0x40000": {
+          "Text": "0x1b",
+          "Action": 11
+        },
+        "0xf703-0x260000": {
+          "Text": "[1;6C",
+          "Action": 10
+        },
+        "0xf729-0x20000": {
+          "Text": "[1;2H",
+          "Action": 10
+        },
+        "0xf702-0x260000": {
+          "Text": "[1;6D",
+          "Action": 10
+        },
+        "0x38-0x40000": {
+          "Text": "0x7f",
+          "Action": 11
+        },
+        "0xf72b-0x40000": {
+          "Text": "[1;5F",
+          "Action": 10
+        },
+        "0xf70c-0x20000": {
+          "Text": "[20;2~",
+          "Action": 10
+        },
+        "0xf701-0x260000": {
+          "Text": "[1;6B",
+          "Action": 10
+        },
+        "0x32-0x40000": {
+          "Text": "0x00",
+          "Action": 11
+        },
+        "0xf707-0x20000": {
+          "Text": "[1;2S",
+          "Action": 10
+        },
+        "0xf703-0x240000": {
+          "Text": "[1;5C",
+          "Action": 10
+        },
+        "0xf700-0x260000": {
+          "Text": "[1;6A",
+          "Action": 10
+        },
+        "0xf702-0x240000": {
+          "Text": "[1;5D",
+          "Action": 10
+        },
+        "0xf703-0x300000": {
+          "Text": "0x5",
+          "Action": 11
+        },
+        "0x37-0x40000": {
+          "Text": "0x1f",
+          "Action": 11
+        },
+        "0x3-0x200000": {
+          "Text": "0xd",
+          "Action": 11
+        },
+        "0xf701-0x240000": {
+          "Text": "[1;5B",
+          "Action": 10
+        },
+        "0xf70b-0x20000": {
+          "Text": "[19;2~",
+          "Action": 10
+        },
+        "0xf703-0x220000": {
+          "Text": "[1;2C",
+          "Action": 10
+        },
+        "0xf702-0x300000": {
+          "Text": "0x1",
+          "Action": 11
+        },
+        "0xf739-0x0": {
+          "Text": "",
+          "Action": 13
+        },
+        "0xf728-0x0": {
+          "Text": "0x4",
+          "Action": 11
+        },
+        "0xf706-0x20000": {
+          "Text": "[1;2R",
+          "Action": 10
+        },
+        "0xf700-0x240000": {
+          "Text": "[1;5A",
+          "Action": 10
+        },
+        "0xf702-0x220000": {
+          "Text": "[1;2D",
+          "Action": 10
+        },
+        "0x36-0x40000": {
+          "Text": "0x1e",
+          "Action": 11
+        },
+        "0xf70f-0x20000": {
+          "Text": "[24;2~",
+          "Action": 10
+        },
+        "0xf701-0x220000": {
+          "Text": "[1;2B",
+          "Action": 10
+        },
+        "0xf70a-0x20000": {
+          "Text": "[18;2~",
+          "Action": 10
+        },
+        "0xf729-0x40000": {
+          "Text": "[1;5H",
+          "Action": 10
+        },
+        "0xf72b-0x20000": {
+          "Text": "[1;2F",
+          "Action": 10
+        },
+        "0xf700-0x220000": {
+          "Text": "[1;2A",
+          "Action": 10
+        },
+        "0x30-0x200000": {
+          "Text": "0",
+          "Action": 12
+        },
+        "0xf705-0x20000": {
+          "Text": "[1;2Q",
+          "Action": 10
+        },
+        "0x31-0x200000": {
+          "Text": "1",
+          "Action": 12
+        },
+        "0x33-0x200000": {
+          "Text": "3",
+          "Action": 12
+        },
+        "0x35-0x40000": {
+          "Text": "0x1d",
+          "Action": 11
+        },
+        "0x34-0x200000": {
+          "Text": "4",
+          "Action": 12
+        },
+        "0x32-0x200000": {
+          "Text": "2",
+          "Action": 12
+        },
+        "0x35-0x200000": {
+          "Text": "5",
+          "Action": 12
+        },
+        "0x36-0x200000": {
+          "Text": "6",
+          "Action": 12
+        },
+        "0x37-0x200000": {
+          "Text": "7",
+          "Action": 12
+        },
+        "0x2d-0x40000": {
+          "Text": "0x1f",
+          "Action": 11
+        },
+        "0x38-0x200000": {
+          "Text": "8",
+          "Action": 12
+        },
+        "0x2a-0x200000": {
+          "Text": "*",
+          "Action": 12
+        },
+        "0x39-0x200000": {
+          "Text": "9",
+          "Action": 12
+        },
+        "0x2b-0x200000": {
+          "Text": "+",
+          "Action": 12
+        },
+        "0xf70e-0x20000": {
+          "Text": "[23;2~",
+          "Action": 10
+        },
+        "0x2e-0x200000": {
+          "Text": ".",
+          "Action": 12
+        },
+        "0x2d-0x200000": {
+          "Text": "-",
+          "Action": 12
+        },
+        "0xf709-0x20000": {
+          "Text": "[17;2~",
+          "Action": 10
+        },
+        "0x7f-0x100000": {
+          "Text": "0x15",
+          "Action": 11
+        },
+        "0x2f-0x200000": {
+          "Text": "/",
+          "Action": 12
+        },
+        "0xf704-0x20000": {
+          "Text": "[1;2P",
+          "Action": 10
+        },
+        "0x34-0x40000": {
+          "Text": "0x1c",
+          "Action": 11
+        },
+        "0xf703-0x280000": {
+          "Text": "f",
+          "Action": 10
+        },
+        "0x74-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x74"
+        },
+        "0x77-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x77"
+        },
+        "0x72-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x72"
+        },
+        "0x6e-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x6e"
+        },
+        "0x70-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x70"
+        },
+        "0x78-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x78"
+        },
+        "0x73-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x73"
+        },
+        "0x66-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x66"
+        },
+        "0x65-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x65"
+        },
+        "0x79-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x79"
+        },
+        "0x62-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x62"
+        },
+        "0x67-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x67"
+        },
+        "0x6f-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x6f"
+        },
+        "0x69-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x69"
+        },
+        "0x6a-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x6a"
+        },
+        "0x6b-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x6b"
+        },
+        "0x6c-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x6c"
+        },
+        "0x61-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x61"
+        },
+        "0x2c-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x2c"
+        },
+        "0x3b-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x3b"
+        },
+        "0x74-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x54"
+        },
+        "0x54-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x54"
+        },
+        "0x77-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x57"
+        },
+        "0x57-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x57"
+        },
+        "0x72-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x52"
+        },
+        "0x52-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x52"
+        },
+        "0x6e-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x4e"
+        },
+        "0x4e-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x4e"
+        },
+        "0x70-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x50"
+        },
+        "0x50-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x50"
+        },
+        "0x67-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x47"
+        },
+        "0x47-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x47"
+        },
+        "0x6f-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x4f"
+        },
+        "0x4f-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x4f"
+        },
+        "0x78-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x58"
+        },
+        "0x58-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x58"
+        },
+        "0x69-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x49"
+        },
+        "0x49-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x49"
+        },
+        "0x6a-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x4a"
+        },
+        "0x4a-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x4a"
+        },
+        "0x6b-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x4b"
+        },
+        "0x4b-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x4b"
+        },
+        "0x6c-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x4c"
+        },
+        "0x4c-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x4c"
+        },
+        "0x61-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x41"
+        },
+        "0x41-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x41"
+        },
+        "0x64-0x100000": {
+          "Action": 11,
+          "Text": "0x00 0x76"
+        },
+        "0x64-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x73"
+        },
+        "0x44-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x73"
+        },
+        "0x26-0x40000": {
+          "Action": 11,
+          "Text": "0x00 0x31"
+        },
+        "0xe9-0x40000": {
+          "Action": 11,
+          "Text": "0x00 0x32"
+        },
+        "0x22-0x40000": {
+          "Action": 11,
+          "Text": "0x00 0x33"
+        },
+        "0x27-0x40000": {
+          "Action": 11,
+          "Text": "0x00 0x34"
+        },
+        "0x28-0x40000": {
+          "Action": 11,
+          "Text": "0x00 0x35"
+        },
+        "0xa7-0x40000": {
+          "Action": 11,
+          "Text": "0x00 0x36"
+        },
+        "0xe8-0x40000": {
+          "Action": 11,
+          "Text": "0x00 0x37"
+        },
+        "0x21-0x40000": {
+          "Action": 11,
+          "Text": "0x00 0x38"
+        },
+        "0xe7-0x40000": {
+          "Action": 11,
+          "Text": "0x00 0x39"
+        },
+        "0x3f-0x120000": {
+          "Action": 11,
+          "Text": "0x00 0x3f"
+        },
+        "0x9-0x40000": {
+          "Action": 11,
+          "Text": "0x00 0x6e"
+        },
+        "0x9-0x60000": {
+          "Action": 11,
+          "Text": "0x00 0x70"
+        },
+        "0x19-0x60000": {
+          "Action": 11,
+          "Text": "0x00 0x70"
+        },
+        "0x9-0x80000": {
+          "Action": 11,
+          "Text": "0x00 0x61"
+        },
+        "0x9-0xa0000": {
+          "Action": 11,
+          "Text": "0x00 0x41"
+        },
+        "0x19-0xa0000": {
+          "Action": 11,
+          "Text": "0x00 0x41"
+        },
+        "0x9-0xc0000": {
+          "Action": 11,
+          "Text": "0x00 0x4e"
+        },
+        "0x9-0xe0000": {
+          "Action": 11,
+          "Text": "0x00 0x50"
+        },
+        "0x19-0xe0000": {
+          "Action": 11,
+          "Text": "0x00 0x50"
+        },
+        "0xf702-0x380000": {
+          "Action": 11,
+          "Text": "0x00 0x1b 0x5b 0x44"
+        },
+        "0xf702-0x3a0000": {
+          "Action": 11,
+          "Text": "0x00 0x1b 0x5b 0x31 0x3b 0x32 0x44"
+        },
+        "0xf703-0x380000": {
+          "Action": 11,
+          "Text": "0x00 0x1b 0x5b 0x43"
+        },
+        "0xf703-0x3a0000": {
+          "Action": 11,
+          "Text": "0x00 0x1b 0x5b 0x31 0x3b 0x32 0x43"
+        },
+        "0xf700-0x380000": {
+          "Action": 11,
+          "Text": "0x00 0x1b 0x5b 0x41"
+        },
+        "0xf700-0x3a0000": {
+          "Action": 11,
+          "Text": "0x00 0x1b 0x5b 0x31 0x3b 0x32 0x41"
+        },
+        "0xf701-0x380000": {
+          "Action": 11,
+          "Text": "0x00 0x1b 0x5b 0x42"
+        },
+        "0xf701-0x3a0000": {
+          "Action": 11,
+          "Text": "0x00 0x1b 0x5b 0x31 0x3b 0x32 0x42"
+        },
+        "0x76-0x140000": {
+          "Action": 11,
+          "Text": "0x00 0x16"
+        },
+        "0x73-0x140000": {
+          "Action": 11,
+          "Text": "0x00 0x13"
+        },
+        "0x74-0x140000": {
+          "Action": 11,
+          "Text": "0x00 0x14"
+        },
+        "0x78-0x140000": {
+          "Action": 11,
+          "Text": "0x00 0x18"
+        },
+        "0x64-0x140000": {
+          "Action": 11,
+          "Text": "0x00 0x16"
+        },
+        "0x64-0x160000": {
+          "Action": 11,
+          "Text": "0x00 0x13"
+        },
+        "0x44-0x160000": {
+          "Action": 11,
+          "Text": "0x00 0x13"
+        },
+        "0x3c-0x100000": {
+          "Action": 37,
+          "Text": "8E0EBBCA-A018-4FCB-B506-F268B881C020"
+        }
+      },
+      "Show Status Bar": true
+    }
+  ]
+}

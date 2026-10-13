@@ -1,0 +1,175 @@
+#!/usr/bin/env -S python3 -I
+"""Write the iTerm2 dynamic profile "herdr".
+
+In this profile, cmd + key sends the herdr prefix (ctrl+space) + the same key.
+cmd+< (the key left of W on a French Mac keyboard) changes the current session to the Default
+profile. To come back, add a global key binding in iTerm2: Settings > Keys > Key Bindings,
+cmd+<, "Change Profile", "herdr". A profile key binding wins over a global key binding,
+so the 2 cmd+< do not collide. Do not use cmd+esc (it does not reach iTerm2) or
+cmd+@ (the iTerm2 hotkey that shows and hides iTerm2).
+
+The profile is dynamic and "Rewritable":
+- It gets all the settings that it does not set from the Default profile (colors, font...).
+  iTerm2 merges the 2 profiles when it loads the file: at start, or when the file changes.
+- When you change the profile in the iTerm2 settings, iTerm2 writes the change to OUT.
+  OUT keeps only the settings that are different from Default.
+- When you run this script again, it replaces only the cmd layer (the mappings that send the herdr
+  prefix, and cmd+<). It keeps your other changes.
+
+If you delete the "herdr" profile in the iTerm2 settings, iTerm2 also deletes the global key
+bindings that point to it. Add the cmd+< global key binding again after that.
+"""
+import json
+import os
+import plistlib
+
+PREFS = os.path.expanduser("~/Library/Preferences/com.googlecode.iterm2.plist")
+OUT = os.path.expanduser("~/Library/Application Support/iTerm2/DynamicProfiles/herdr.json")
+
+HERDR_GUID = "herdr-cmd-layer"
+
+PREFIX = "0x00"   # ctrl+space, the herdr prefix
+SEND_HEX = 11     # iTerm2 action "Send Hex Code"
+SET_PROFILE = 37  # iTerm2 action "Change Profile". The parameter is the profile Guid.
+WINDOW_NO_TITLE_BAR = 12  # iTerm2 "Window Type": no title bar. Only new windows use it.
+
+CMD = 0x100000
+SHIFT = 0x20000
+CTRL = 0x40000
+ALT = 0x80000
+ARROW = 0x200000  # iTerm2 adds this flag to the arrow keys
+TAB, BACKTAB = 0x09, 0x19  # macOS reports shift+tab as the back-tab character
+TOGGLE = "<"  # cmd+< changes to the Default profile
+
+# Keys that keep their macOS or iTerm2 action:
+# cmd+c, cmd+v, cmd+q, cmd+- / cmd+= / cmd+0 (font size), cmd+> (window cycle).
+LETTERS = "twrnpxsfeybgoijkla"  # i j k l = up left down right
+SHIFT_LETTERS = "twrnpgoxijkla"
+# iTerm2 split keys: cmd+d splits on the right (herdr v), cmd+shift+d splits below (herdr s).
+SPLITS = {"d": "v", "D": "s"}
+DIGITS = "123456789"
+# ctrl+& ... ctrl+ç select the herdr tabs 1..9. cmd + digit stays for the iTerm2 tabs: iTerm2 checks
+# its "Shortcut to choose a tab" (global, cmd by default) before the profile key map.
+AZERTY_DIGITS = "&é\"'(§è!ç"
+PUNCTUATION = ",;"
+# Tab cycles, like ctrl+tab in VS Code and Zen. Shift reverses the direction.
+TAB_CYCLES = [
+    (CTRL, "n", "p"),        # ctrl+tab: next / previous tab
+    (ALT, "a", "A"),         # alt+tab: next / previous agent
+    (CTRL | ALT, "N", "P"),  # ctrl+alt+tab: next / previous workspace
+]
+ARROWS = {0xF702: "D", 0xF703: "C", 0xF700: "A", 0xF701: "B"}  # left right up down
+# cmd+ctrl+v / s / t fork the agent into a new split (right, below) or a new tab, and cmd+ctrl+x
+# closes the pane and stops its background session: they send the prefix + ctrl+v / s / t / x
+# (herdr [[keys.command]] that run scripts/fork-agent and scripts/close-agent).
+FORKS = "vstx"
+
+
+def hex_bytes(text):
+    return " ".join("0x%02x" % b for b in text.encode())
+
+
+def send(text):
+    return {"Action": SEND_HEX, "Text": PREFIX + " " + hex_bytes(text)}
+
+
+def switch_to(guid):
+    return {"Action": SET_PROFILE, "Text": guid}
+
+
+def key(char, flags):
+    return "0x%x-0x%x" % (ord(char) if isinstance(char, str) else char, flags)
+
+
+def json_safe(value):
+    # JSON has no Infinity. iTerm2 stores "maxwidth = inf" for status bar components.
+    if isinstance(value, float) and value == float("inf"):
+        return 1e6
+    if isinstance(value, dict):
+        return {k: json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [json_safe(v) for v in value]
+    return value
+
+
+def is_layer_mapping(action, default_guid):
+    sends_prefix = action.get("Action") == SEND_HEX and action.get("Text", "").startswith(PREFIX + " ")
+    toggles = action.get("Action") == SET_PROFILE and action.get("Text") == default_guid
+    return sends_prefix or toggles
+
+
+with open(PREFS, "rb") as f:
+    prefs = plistlib.load(f)
+default = next(p for p in prefs["New Bookmarks"] if p["Guid"] == prefs["Default Bookmark Guid"])
+
+# Start from the current file, so that the changes made in the iTerm2 settings stay.
+profile = {}
+if os.path.exists(OUT):
+    with open(OUT) as f:
+        profile = next((p for p in json.load(f).get("Profiles", []) if p.get("Guid") == HERDR_GUID), {})
+
+# The cmd layer. Remove the old layer first, so that a key removed from the layer goes away.
+keymap = dict(default.get("Keyboard Map", {}))
+keymap.update({k: v for k, v in profile.get("Keyboard Map", {}).items()
+               if not is_layer_mapping(v, default["Guid"])})
+for c in LETTERS + PUNCTUATION:
+    keymap[key(c, CMD)] = send(c)
+for c in SHIFT_LETTERS:
+    # macOS reports cmd+shift+t as "T" or "t", depending on the context. Map both.
+    keymap[key(c, CMD | SHIFT)] = send(c.upper())
+    keymap[key(c.upper(), CMD | SHIFT)] = send(c.upper())
+keymap[key("d", CMD)] = send(SPLITS["d"])
+keymap[key("d", CMD | SHIFT)] = send(SPLITS["D"])
+keymap[key("D", CMD | SHIFT)] = send(SPLITS["D"])
+for c, digit in zip(AZERTY_DIGITS, DIGITS):
+    keymap[key(c, CTRL)] = send(digit)
+keymap[key("?", CMD | SHIFT)] = send("?")  # AZERTY: cmd+shift+,
+for flags, forward, backward in TAB_CYCLES:
+    keymap[key(TAB, flags)] = send(forward)
+    keymap[key(TAB, flags | SHIFT)] = send(backward)
+    keymap[key(BACKTAB, flags | SHIFT)] = send(backward)
+for code, final in ARROWS.items():
+    # cmd+alt+arrow selects a pane in iTerm2. Shift moves the pane.
+    keymap[key(code, CMD | ALT | ARROW)] = send("\x1b[" + final)
+    keymap[key(code, CMD | ALT | SHIFT | ARROW)] = send("\x1b[1;2" + final)
+for c in FORKS:
+    keymap[key(c, CMD | CTRL)] = {"Action": SEND_HEX, "Text": "%s 0x%02x" % (PREFIX, ord(c) & 0x1F)}
+# The same forks with the iTerm2 split keys: cmd+ctrl+d = fork on the right (like cmd+d),
+# cmd+ctrl+shift+d = fork below (like cmd+shift+d). macOS can keep cmd+ctrl+d for its dictionary.
+for c, flags, fork in (("d", CMD | CTRL, "v"), ("d", CMD | CTRL | SHIFT, "s"), ("D", CMD | CTRL | SHIFT, "s")):
+    keymap[key(c, flags)] = {"Action": SEND_HEX, "Text": "%s 0x%02x" % (PREFIX, ord(fork) & 0x1F)}
+keymap[key(TOGGLE, CMD)] = switch_to(default["Guid"])
+
+# Status bar: the Default components + the text "⌘ herdr". This text shows that the cmd keys go to herdr.
+# Only for a new file: after that, change the status bar in the iTerm2 settings.
+status_bar = json_safe(default.get("Status Bar Layout", {"components": [], "advanced configuration": {}}))
+status_bar["components"].insert(0, {
+    "class": "iTermStatusBarSwiftyStringComponent",  # "Interpolated String" in the iTerm2 UI
+    "configuration": {
+        "knobs": {
+            "expression": "⌘ herdr",
+            "base: priority": 10.0,
+            "base: compression resistance": 1,
+            "shared text color": {"Red Component": 0.74, "Green Component": 0.58, "Blue Component": 0.98,
+                                  "Alpha Component": 1.0, "Color Space": "sRGB"},  # Dracula purple
+        },
+        "layout advanced configuration dictionary value": status_bar.get("advanced configuration", {}),
+    },
+})
+profile.setdefault("Window Type", WINDOW_NO_TITLE_BAR)
+profile.setdefault("Show Status Bar", True)
+profile.setdefault("Status Bar Layout", status_bar)
+
+profile.update({
+    "Name": "herdr",
+    "Guid": HERDR_GUID,
+    "Dynamic Profile Parent GUID": default["Guid"],
+    "Rewritable": True,
+    "Custom Command": "Yes",
+    "Command": "/opt/homebrew/bin/herdr",
+    "Keyboard Map": keymap,
+})
+profile.pop("Dynamic Profile Parent Name", None)
+with open(OUT, "w") as f:
+    json.dump({"Profiles": [json_safe(profile)]}, f, indent=2, ensure_ascii=False, allow_nan=False)
+print("wrote %s (%d key mappings)" % (OUT, len(keymap)))

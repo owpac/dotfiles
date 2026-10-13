@@ -65,7 +65,7 @@
 {{- /* darwin overlay: macOS-only. Workspace is "shallow" so the dir entry
        is un-ignored without dragging in `Workspace/**` — that lets the
        work overlay below choose precisely which sub-trees to manage. */ -}}
-{{- $managed = concat $managed (list "Backup" ".config/macos-preferences" ".config/raycast/scripts" ".config/herdr") -}}
+{{- $managed = concat $managed (list "Backup" ".config/macos-preferences" ".config/raycast/scripts" ".config/herdr" "Library/Application Support/iTerm2/DynamicProfiles") -}}
 {{- $shallow = concat $shallow (list "Workspace") -}}
 {{- end -}}
 {{- end -}}

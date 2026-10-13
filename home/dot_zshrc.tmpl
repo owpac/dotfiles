@@ -49,6 +49,24 @@ if [[ -n "$VSCODE_RESOLVING_ENVIRONMENT" ]]; then
   CLAUDE_CODE_OAUTH_TOKEN=$(security find-generic-password -a "$USER" -s claude-code-oauth-token -w 2>/dev/null) \
     && export CLAUDE_CODE_OAUTH_TOKEN
 fi
+
+### herdr
+
+# In iTerm2, use the "herdr" profile while the herdr client runs. In this profile, cmd + key
+# sends the herdr prefix + the same key (see ~/.config/herdr/scripts/make-iterm-profile).
+# The CLI commands (herdr tab list, herdr pane split...) keep the current profile.
+if [[ "$TERM_PROGRAM" == iTerm.app ]] && (( $+commands[herdr] )); then
+  herdr() {
+    if [[ $# -eq 0 || "$1" == --session || "$1" == --remote || "$1 $2" == "session attach" ]]; then
+      printf '\e]1337;SetProfile=herdr\a'
+      command herdr "$@"
+      local ret=$?
+      printf '\e]1337;SetProfile=%s\a' "${ITERM_PROFILE:-Default}"
+      return $ret
+    fi
+    command herdr "$@"
+  }
+fi
 {{- end }}
 
 ### Aliases
