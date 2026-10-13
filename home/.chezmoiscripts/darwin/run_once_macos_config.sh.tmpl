@@ -426,8 +426,11 @@ sudo pmset -b displaysleep 10
 # Turn display off on power adapter after 20 minutes
 sudo pmset -c displaysleep 20
 
-# Require password immediately after screen saver or display sleep
-sysadminctl -screenLock immediate -password -
+# Require password immediately after screen saver or display sleep. sysadminctl asks for the
+# account password (never Touch ID), so skip it when the setting is already right.
+if ! sysadminctl -screenLock status 2>&1 | grep -q "screenLock delay is immediate"; then
+  sysadminctl -screenLock immediate -password -
+fi
 
 log_done 'Lock screen configured! 🎉'
 
