@@ -5,5 +5,5 @@ export PATH="${HOME}/.local/bin:${PATH}"
 {{ if and (not .is_minimum) (not .is_headless) -}}
 # Beads: every task lives in the home workspace (see ~/.config/ia/AGENTS.md).
 # bd uses BEADS_DIR before any workspace of the current repository.
-export BEADS_DIR="${HOME}/.local/share/tasks/.beads"
+export BEADS_DIR="${HOME}/{{ .agents.beads_dir }}"
 {{ end -}}

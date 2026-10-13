@@ -1,87 +1,18 @@
 {{- if and (not .is_minimum) (not .is_headless) -}}
 #!/usr/bin/env bash
 
-# Configure the coding agents (see ~/.config/ia/AGENTS.md):
-#   - Claude Code: engram, GitHub and Atlassian (work) MCP servers (user scope), owpac
-#     marketplace and plugins;
-#   - Codex: owpac marketplace and plugins (Codex reads Claude-format marketplaces);
+# Install what the agents do not install themselves:
+#   - Codex: copy the plugins of owpac that ~/.codex/config.toml enables into the cache of
+#     Codex, and remove the copies of the other plugins of owpac. Codex does not read a local
+#     marketplace in place. Claude Code does, so it needs nothing here. `pac upgrade agents`
+#     refreshes these copies after a pull.
 #   - Beads: the home workspace, which holds every task (pac agent init).
-# Both CLIs record these in their own state and settings files, so chezmoi runs the CLIs
-# instead of managing those files. Runs on every apply and is idempotent: it catches up as
-# soon as a tool gets installed, and skips a tool that is missing.
-# Plugins: refreshes the owpac marketplace, updates each installed owpac plugin whose version
-# changed in the marketplace (bump `version` in its plugin.json to ship a change), then
-# installs the missing ones of `plugins`. A restart of the agent loads an updated plugin.
+# Runs on every apply and is idempotent: it catches up as soon as a tool gets installed, and
+# skips a tool that is missing.
 
 set -eufo pipefail
 
 source {{ .chezmoi.workingTree }}/lib/logs.sh
-
-marketplace="owpac/prompts" # private repository: fetching it needs GitHub credentials
-plugins=(productivity rails setup beads) # same set for Claude Code and Codex; nas stays opt-in
-
-# --- Claude Code ------------------------------------------------------------------------
-if command -v claude >/dev/null 2>&1; then
-  # Register an MCP server in the user scope, or replace it when its definition changed.
-  # `claude mcp` has no JSON output, so the current definition comes from ~/.claude.json.
-  mcp_server() {
-    local name=$1 config=$2 current
-    current=$(jq -cS --arg name "$name" '.mcpServers[$name] // empty' "$HOME/.claude.json" 2>/dev/null || true)
-    [ "$current" = "$(jq -cS . <<<"$config")" ] && return
-    log_task "Registering the $name MCP server for Claude Code..."
-    [ -z "$current" ] || claude mcp remove --scope user "$name" >/dev/null
-    claude mcp add-json --scope user "$name" "$config" >/dev/null
-    log_done "$name MCP server registered for Claude Code"
-  }
-
-  if command -v engram >/dev/null 2>&1; then
-    mcp_server engram '{"type": "stdio", "command": "engram", "args": ["mcp", "--tools=agent"]}'
-  fi
-
-  # The headersHelper reads the token of gh at each connection: gh keeps it in the macOS
-  # keychain, so no token is written to ~/.claude.json. Absolute paths: Claude Code can
-  # start outside a login shell (VS Code, desktop app).
-  if command -v gh >/dev/null 2>&1; then
-    helper="$(command -v gh) auth token | $(command -v jq) -Rc '{Authorization: (\"Bearer \" + .)}'"
-    mcp_server github "$(jq -n --arg helper "$helper" \
-      '{type: "http", url: "https://api.githubcopilot.com/mcp/", headersHelper: $helper}')"
-  fi
-{{- if .is_work }}
-
-  mcp_server atlassian '{"type": "sse", "url": "https://mcp.atlassian.com/v1/sse"}'
-{{- end }}
-
-  if ! claude plugin marketplace list --json 2>/dev/null | jq -e 'any(.[]; .name == "owpac")' >/dev/null; then
-    log_task "Adding the owpac marketplace to Claude Code..."
-    claude plugin marketplace add "$marketplace" >/dev/null
-  fi
-
-  # Claude Code does not refresh a third-party marketplace on its own. The versions are
-  # compared first: `claude plugin update` takes a few seconds for each plugin.
-  claude plugin marketplace update owpac >/dev/null 2>&1 || true
-  root=$(claude plugin marketplace list --json 2>/dev/null | jq -r '.[] | select(.name == "owpac") | .installLocation' || true)
-  installed=$(claude plugin list --json 2>/dev/null | jq -r '.[] | select(.id | endswith("@owpac")) | "\(.id | rtrimstr("@owpac")) \(.version)"' || true)
-
-  while read -r p version; do
-    [ -n "$p" ] || continue
-    src=$(jq -r --arg p "$p" '.plugins[] | select(.name == $p) | .source' "$root/.claude-plugin/marketplace.json" 2>/dev/null || true)
-    latest=$(jq -r '.version // empty' "$root/$src/.claude-plugin/plugin.json" 2>/dev/null || true)
-    if [ -n "$latest" ] && [ "$latest" != "$version" ]; then
-      log_task "Updating Claude Code plugin $p@owpac ($version -> $latest)..."
-      if claude plugin update "$p@owpac" >/dev/null; then
-        log_done "$p@owpac updated: restart Claude Code to load it"
-      else
-        log_error "Could not update $p@owpac in Claude Code"
-      fi
-    fi
-  done <<<"$installed"
-
-  for p in "${plugins[@]}"; do
-    grep -q "^$p " <<<"$installed" && continue
-    log_task "Installing Claude Code plugin $p@owpac..."
-    claude plugin install "$p@owpac" >/dev/null || log_error "Could not install $p@owpac in Claude Code"
-  done
-fi
 
 # --- Codex (CLI on PATH, otherwise the one bundled with the VS Code extension) ----------
 set +f # the extension path needs globbing
@@ -89,35 +20,29 @@ codex=$(command -v codex || ls -d "$HOME"/.vscode/extensions/openai.chatgpt-*/bi
 set -f
 
 if [ -n "$codex" ]; then
-  if ! "$codex" plugin marketplace list 2>/dev/null | awk 'NR > 1 {print $1}' | grep -qx owpac; then
-    log_task "Adding the owpac marketplace to Codex..."
-    "$codex" plugin marketplace add "$marketplace" >/dev/null
-  fi
+  # The plugins of owpac that config.toml enables ([plugins."<plugin>@owpac"] enabled = true).
+  enabled=$(awk '
+    /^[[:space:]]*\[plugins\."[^"]+@owpac"\]/ { id = $0; sub(/^[[:space:]]*\[plugins\."/, "", id); sub(/"\].*$/, "", id); next }
+    /^[[:space:]]*\[/ { id = "" }
+    id != "" && /^[[:space:]]*enabled[[:space:]]*=[[:space:]]*true/ { print id }
+  ' "$HOME/.codex/config.toml")
+  installed=$("$codex" plugin list --json 2>/dev/null | jq -r '.installed[]? | select(.marketplaceName == "owpac") | .pluginId' || true)
 
-  # When the git snapshot of the marketplace changes, `marketplace upgrade` also updates its
-  # installed plugins. The versions before and after the upgrade show what changed.
-  codex_versions() { "$codex" plugin list --marketplace owpac --json 2>/dev/null | jq -r '.installed[]? | "\(.name) \(.version)"' || true; }
-  before=$(codex_versions)
-  "$codex" plugin marketplace upgrade owpac >/dev/null 2>&1 || true
-  installed=$(codex_versions)
+  for id in $enabled; do
+    grep -Fqx "$id" <<<"$installed" && continue
+    log_task "Installing Codex plugin $id..."
+    "$codex" plugin add "$id" >/dev/null || log_error "Could not install $id in Codex"
+  done
 
-  while read -r p version; do
-    [ -n "$p" ] || continue
-    old=$(awk -v p="$p" '$1 == p {print $2}' <<<"$before")
-    if [ -n "$old" ] && [ "$old" != "$version" ]; then
-      log_done "Codex plugin $p@owpac updated ($old -> $version): restart Codex to load it"
-    fi
-  done <<<"$installed"
-
-  for p in "${plugins[@]}"; do
-    grep -q "^$p " <<<"$installed" && continue
-    log_task "Installing Codex plugin $p@owpac..."
-    "$codex" plugin add "$p@owpac" >/dev/null || log_error "Could not install $p@owpac in Codex"
+  for id in $installed; do
+    grep -Fqx "$id" <<<"$enabled" && continue
+    log_task "Removing Codex plugin $id, which config.toml no longer enables..."
+    "$codex" plugin remove "$id" >/dev/null || log_error "Could not remove $id from Codex"
   done
 fi
 
 # --- Beads home workspace ---------------------------------------------------------------
-if command -v bd >/dev/null 2>&1 && [ -x "$HOME/.local/bin/pac" ] && [ ! -f "$HOME/.local/share/tasks/.beads/metadata.json" ]; then
+if command -v bd >/dev/null 2>&1 && [ -x "$HOME/.local/bin/pac" ] && [ ! -f {{ joinPath .chezmoi.homeDir .agents.beads_dir "metadata.json" | quote }} ]; then
   "$HOME/.local/bin/pac" agent init || log_error "Could not create the Beads home workspace"
 fi
 {{ end -}}

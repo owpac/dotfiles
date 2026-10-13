@@ -52,7 +52,7 @@ bd prime                # Refresh Beads context
 - Filter the tasks of a repository with `bd ready -l repo:<name>` or `bd list -l repo:<name>`.
 - Use `bd ready`, `bd update <id> --claim`, `bd note <id> "…"` for progress, and `bd close`. No markdown TODO lists.
 - Reference the Beads ID in related engram memories.
-- Your conversation itself is linked to the task automatically: a `PostToolUse` hook (`~/.config/ia/hooks/link-bd-session`) records `<tool>:<session_id>` as a `transcript` provenance, and adds the id to the task metadata `sessions.<tool>`, on every task you claim, note, comment, close or update. Do not record it yourself. The user finds and resumes it with `pac agent task <id>`.
+- Your conversation itself is linked to the task automatically: a `PostToolUse` hook of the plugin `beads` (`hooks/link-bd-session`) records `<tool>:<session_id>` as a `transcript` provenance, and adds the id to the task metadata `sessions.<tool>`, on every task you claim, note, comment, close or update. Do not record it yourself. The user finds and resumes it with `pac agent task <id>`.
 - When you start on a task that earlier sessions already worked on, recover their context first: `bd show <id>` (notes, comments) and `mem_search` on the task id.
 
 **Never** store patient data, personal data or secrets in engram or Beads.

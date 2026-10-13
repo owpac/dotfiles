@@ -1,46 +1,31 @@
-#!/bin/bash
-# Ensure the agent-setup entries exist in ~/.codex/config.toml without touching the
-# rest (Codex itself writes project trust levels here). Text-based on purpose: an
-# existing section is left as is, except [features], which gets `hooks = true`
-# when the key is missing.
-#   - [features] hooks = true    : enable Codex hooks (Beads context, session linking);
-#   - [mcp_servers.engram]       : shared memory, same server as Claude Code;
-#   - [shell_environment_policy] : BEADS_ACTOR=codex and BEADS_DIR (home workspace) for bd
-#     commands run by Codex;
-#   - [sandbox_workspace_write]  : let sandboxed bd commands reach the shared Dolt server
-#     (127.0.0.1:3308), and write ~/.beads and the home workspace (pac agent init);
-#     trade-off: sandboxed commands get network access.
-
-config=$(cat)
-
-has_section() { grep -qE "^\[$1\][[:space:]]*$" <<<"$config"; }
-append() {
-  if [ -n "$config" ]; then config+=$'\n\n'; fi
-  config+="$1"
-}
-
-if ! has_section 'features'; then
-  append $'[features]\nhooks = true'
-elif ! awk '/^\[features\][[:space:]]*$/ {f = 1; next} /^\[/ {f = 0} f && /^[[:space:]]*hooks[[:space:]]*=/ {found = 1} END {exit !found}' <<<"$config"; then
-  config=$(awk '{print} /^\[features\][[:space:]]*$/ {print "hooks = true"}' <<<"$config")
-fi
-
-if ! has_section 'mcp_servers\.engram'; then
-  append $'# Shared memory between Claude Code and Codex (engram). Project detected from the git remote.\n[mcp_servers.engram]\ncommand = "engram"\nargs = ["mcp", "--tools=agent"]'
-fi
-
-if ! has_section 'shell_environment_policy'; then
-  append "# Beads: agent name (actor of claims, notes and comments) and home workspace.
-[shell_environment_policy]
-set = { BEADS_ACTOR = \"codex\", BEADS_DIR = \"$HOME/.local/share/tasks/.beads\" }"
-fi
-
-if ! has_section 'sandbox_workspace_write'; then
-  append "# Beads in the Auto preset: shared Dolt server (127.0.0.1:3308), ~/.beads (locks, server state)
-# and the home workspace.
-[sandbox_workspace_write]
-network_access = true
-writable_roots = [\"$HOME/.beads\", \"$HOME/.local/share/tasks\"]"
-fi
-
-printf '%s\n' "$config"
+{{- /* chezmoi:modify-template */ -}}
+{{- /*
+  The keys that chezmoi sets in ~/.codex/config.toml. Codex also writes this file (for example
+  the trust levels of the projects): its other keys stay. chezmoi rewrites the file with its own
+  layout, so the comments go into this template. The Beads hooks come from the plugin
+  beads@owpac.
+    - shell_environment_policy.set: BEADS_ACTOR (agent name for bd) and BEADS_DIR (home
+      workspace) for the commands that Codex runs.
+    - sandbox_workspace_write: in the Auto preset, sandboxed bd commands can reach the shared
+      Dolt server (127.0.0.1:3308), and write ~/.beads and the home workspace. Trade-off:
+      sandboxed commands get network access.
+    - Plugins: the marketplace owpac is the runtime clone of owpac/prompts
+      (.chezmoiexternal.yaml.tmpl). chezmoi owns every plugin of owpac: it removes them, then
+      enables the plugins of .agents.plugins (.chezmoidata/agents.yaml) for Codex and for the
+      current mode. Codex copies each plugin into its cache: run_after_configure-agents.sh.tmpl
+      installs the copies.
+*/ -}}
+{{- $config := .chezmoi.stdin | fromToml -}}
+{{- $config = setValueAtPath "shell_environment_policy.set.BEADS_ACTOR" "codex" $config -}}
+{{- $config = setValueAtPath "shell_environment_policy.set.BEADS_DIR" (joinPath .chezmoi.homeDir .agents.beads_dir) $config -}}
+{{- $config = setValueAtPath "sandbox_workspace_write.network_access" true $config -}}
+{{- $config = setValueAtPath "sandbox_workspace_write.writable_roots" (list (joinPath .chezmoi.homeDir ".beads") (joinPath .chezmoi.homeDir (dir .agents.beads_dir))) $config -}}
+{{- $config = setValueAtPath "marketplaces.owpac" (dict "source_type" "local" "source" (joinPath .chezmoi.homeDir .agents.marketplaces_dir "owpac")) $config -}}
+{{- range $id, $_ := get $config "plugins" | default (dict) }}{{ if hasSuffix "@owpac" $id }}{{ $_ := unset $config.plugins $id }}{{ end }}{{ end -}}
+{{- range $name, $plugin := .agents.plugins }}
+{{-   $plugin = $plugin | default (dict) }}
+{{-   if and (has "codex" (get $plugin "agents" | default (list "claude" "codex"))) (or (not (get $plugin "work")) $.is_work) }}
+{{-     $config = setValueAtPath (printf "plugins.%s@owpac.enabled" $name) true $config }}
+{{-   end }}
+{{- end }}
+{{ toToml $config }}
