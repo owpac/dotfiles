@@ -47,7 +47,7 @@ app's schedule.
 
 | Path | Role |
 |---|---|
-| `home/.chezmoidata.yaml` → `macos_preferences_domains` | The list of tracked domains. Drives the import script. |
+| `home/.chezmoidata/macos-preferences.yaml` → `macos_preferences_domains` | The list of tracked domains. Drives the import script. |
 | `home/dot_config/macos-preferences/encrypted_<domain>.plist.age` | The encrypted snapshot (source). Applied to `~/.config/macos-preferences/<domain>.plist`. |
 | `home/.chezmoiscripts/darwin/run_onchange_after_import-macos-preferences.sh.tmpl` | Re-applies each snapshot with `defaults import`. |
 | `home/.chezmoiignore.tmpl` | Allowlists `.config/macos-preferences`. The live `Library/Preferences/*.plist` are **not** in the allowlist, so they are unmanaged. |
@@ -95,7 +95,7 @@ pac preferences save com.foo.Bar
 ```
 
 This exports the domain, adds the encrypted snapshot to the source, **and
-auto-registers the domain** in `home/.chezmoidata.yaml`. On the next
+auto-registers the domain** in `home/.chezmoidata/macos-preferences.yaml`. On the next
 `chezmoi apply` (here and on other machines after a pull) the import script
 applies it. Nothing to edit by hand.
 

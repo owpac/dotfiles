@@ -113,9 +113,9 @@ _domain_for() {
     return 1
 }
 
-_data_file() { printf '%s/.chezmoidata.yaml' "$(chezmoi source-path)"; }
+_data_file() { printf '%s/.chezmoidata/macos-preferences.yaml' "$(chezmoi source-path)"; }
 
-# Ensure a domain is listed under macos_preferences_domains in .chezmoidata.yaml
+# Ensure a domain is listed under macos_preferences_domains in .chezmoidata/macos-preferences.yaml
 # (the import script only re-applies domains from that list).
 _ensure_in_data() {
     local domain="$1" data="$2" tmp
@@ -131,7 +131,7 @@ _ensure_in_data() {
         { print }
         END { flush() }
     ' "$data" > "$tmp" && mv "$tmp" "$data"
-    log_task "Added '$domain' to .chezmoidata.yaml (macos_preferences_domains)"
+    log_task "Added '$domain' to .chezmoidata/macos-preferences.yaml (macos_preferences_domains)"
 }
 
 preferences_save() {
