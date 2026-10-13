@@ -50,8 +50,8 @@ defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 163 "$DI
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 175 "$DISABLED_SHORTCUT"
 # Fenêtre de l'application - ENABLED (ALT + CMD + DOWN)
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 33 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>65535</integer><integer>125</integer><integer>12058624</integer></array><key>type</key><string>standard</string></dict></dict>"
-# Afficher le bureau - ENABLED (ALT + CMD + B)
-defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 36 "<dict><key>enabled</key><true/><key>value</key><dict><key>parameters</key><array><integer>98</integer><integer>11</integer><integer>1572864</integer></array><key>type</key><string>standard</string></dict></dict>"
+# Afficher le bureau - DISABLED
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 36 "$DISABLED_SHORTCUT"
 # Activer ou désactiver Stage Manager - DISABLED
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 222 "$DISABLED_SHORTCUT"
 # Déplacer d'un Space vers la gauche - ENABLED (ALT + CMD + LEFT)
@@ -275,6 +275,10 @@ defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 232 "$DI
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 25 "$DISABLED_SHORTCUT"
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 26 "$DISABLED_SHORTCUT"
 defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 59 "$DISABLED_SHORTCUT"
+
+### Dictionary
+# Rechercher dans le dictionnaire - DISABLED (CTRL + CMD + D). herdr utilise cmd+ctrl+d dans iTerm2.
+defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add 70 "$DISABLED_SHORTCUT"
 
 ### Apps shortcuts
 # Afficher le menu d'aide - ENABLED (CMD + SHIFT + H)
