@@ -1,0 +1,20 @@
+{{- /* chezmoi:modify-template */ -}}
+{{- /*
+  chezmoi sets these keys in the user config of bd (~/.config/bd/config.yaml).
+
+  The metrics section contains only disabled: true, the value that `bd metrics off` writes.
+  Thus bd sends no usage metrics. bd also does not show its notice about these metrics. On a
+  new machine, chezmoi writes this file before bd starts for the first time (pac agent init).
+
+  bd writes the other metrics keys (endpoint, notice_shown) only when the metrics are on. Thus
+  chezmoi removes these keys. bd does not write them again.
+
+  With no-git-ops: true, bd does no git operation. Also, `bd prime` gives no git steps to the
+  agents. The agent above bd decides about the git operations, not bd.
+
+  The other keys of the file stay. chezmoi writes the file with its own layout.
+*/ -}}
+{{- $config := .chezmoi.stdin | fromYaml | default (dict) -}}
+{{- $config = setValueAtPath "metrics" (dict "disabled" true) $config -}}
+{{- $config = setValueAtPath "no-git-ops" true $config -}}
+{{ toYaml $config -}}
