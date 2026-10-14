@@ -2,6 +2,9 @@
 #!/usr/bin/env bash
 
 # Install what the agents do not install themselves:
+#   - Marketplace owpac: chezmoi clones it once and never pulls it (`pac upgrade agents`
+#     does). When the dotfiles enable a plugin that the clone does not have yet, pull the
+#     clone first, or Claude Code and Codex do not find the plugin.
 #   - Codex: copy the plugins of owpac that ~/.codex/config.toml enables into the cache of
 #     Codex, and remove the copies of the other plugins of owpac. Codex does not read a local
 #     marketplace in place. Claude Code does, so it needs nothing here. `pac upgrade agents`
@@ -13,6 +16,19 @@
 set -eufo pipefail
 
 source {{ .chezmoi.workingTree }}/lib/logs.sh
+
+# --- Marketplace owpac -------------------------------------------------------------------
+marketplace={{ joinPath .chezmoi.homeDir .agents.marketplaces_dir "owpac" | quote }}
+manifest="$marketplace/.claude-plugin/marketplace.json"
+if [ -f "$manifest" ]; then
+  known=$(jq -r '.plugins[].name' "$manifest")
+  for plugin in{{ range $name, $_ := .agents.plugins }} {{ $name }}{{ end }}; do
+    grep -Fqx "$plugin" <<<"$known" && continue
+    log_task "Pulling the marketplace owpac: it does not have the plugin $plugin yet..."
+    git -C "$marketplace" pull --ff-only --quiet || log_error "Could not pull $marketplace"
+    break
+  done
+fi
 
 # --- Codex (CLI on PATH only) ------------------------------------------------------------
 if command -v codex >/dev/null 2>&1; then
