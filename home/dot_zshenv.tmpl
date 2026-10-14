@@ -1,4 +1,8 @@
 export PATH="${HOME}/.local/bin:${PATH}"
+{{ if not .is_minimum -}}
+# uv uses the Python of mise, and never downloads its own Python.
+export UV_PYTHON_PREFERENCE=only-system
+{{ end -}}
 {{ if and .is_work (stat "/opt/homebrew/bin/gh") -}}
 {{- /* export HOMEBREW_GITHUB_API_TOKEN="$(/opt/homebrew/bin/gh auth token 2>/dev/null)" */ -}}
 {{ end -}}

@@ -16,4 +16,9 @@ fi
 log_task "Installing latest Python via mise..."
 mise use --global python@latest
 log_done "python ready: $(mise current python)"
+
+# uv installs the CLI tools of owpac (bootstrap-tools) with the Python of mise.
+log_task "Installing latest uv via mise..."
+mise use --global uv@latest
+log_done "uv ready: $(mise current uv)"
 {{- end -}}
