@@ -36,13 +36,12 @@
 -}}
 
 {{- else if .is_headless -}}
-{{- /* ──── headless: homelab NAS — shell + ssh essentials + kompose ──── */ -}}
+{{- /* ──── headless: homelab NAS — shell + ssh essentials ──── */ -}}
 {{- $managed = list
     ".zshrc" ".zshenv" ".zprofile"
     ".p10k.zsh" ".oh-my-zsh"
     ".gitconfig"
     ".ssh/authorized_keys" ".ssh/config" ".ssh/mbp_ed25519.pub"
-    ".local/bin/kompose"
 -}}
 
 {{- else -}}
@@ -54,7 +53,6 @@
     ".aerospace.toml"
     ".claude"
     ".ssh"
-    ".local/bin/kompose"
     ".local/share/agent-marketplaces"
     ".config/ia"
     ".codex/AGENTS.md" ".codex/config.toml"
@@ -101,6 +99,3 @@
 !{{ $acc }}
 {{- end }}
 {{ end -}}
-
-# Regenerated locally post-install — never sourced from the repo.
-.local/bin/completions/_kompose

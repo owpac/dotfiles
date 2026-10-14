@@ -25,11 +25,6 @@ completions="$HOME/.local/bin/completions"
 mkdir -p "$completions"
 
 for tool in "${tools[@]}"; do
-    # The old installation of kompose used pipx: remove it, with its virtual environment.
-    if command -v pipx >/dev/null 2>&1 && pipx list --short 2>/dev/null | grep -q "^$tool "; then
-        log_task "Removing the pipx installation of $tool..."
-        pipx uninstall "$tool" >/dev/null
-    fi
     log_task "Installing $tool with uv..."
     # --force replaces an executable that uv did not install (the bash pac of the dotfiles).
     mise exec -- uv tool install --force --quiet "git+https://github.com/owpac/$tool.git"
