@@ -10,6 +10,7 @@ agents:
   # or doctolib): enable them by hand on each machine, with /plugin.
   plugins:
     productivity: {}
+    python: {}
     rails: {}
     setup: {}
     beads: {}
