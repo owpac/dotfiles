@@ -51,8 +51,7 @@ app's schedule.
 | `home/dot_config/macos-preferences/encrypted_<domain>.plist.age` | The encrypted snapshot (source). Applied to `~/.config/macos-preferences/<domain>.plist`. |
 | `home/.chezmoiscripts/darwin/run_onchange_after_import-macos-preferences.sh.tmpl` | Re-applies each snapshot with `defaults import`. |
 | `home/.chezmoiignore.tmpl` | Allowlists `.config/macos-preferences`. The live `Library/Preferences/*.plist` are **not** in the allowlist, so they are unmanaged. |
-| `home/dot_local/bin/executable_pac` (`pac preferences …`) | The CLI to list / save / remove tracked preferences. |
-| `home/dot_local/bin/completions/_pac` | zsh completion (subcommands + slug/domain). |
+| `pac preferences …` ([owpac/pac](https://github.com/owpac/pac)) | The CLI to list / save / remove tracked preferences. `bootstrap-tools` installs it with uv, and writes its zsh completion (subcommands + slug/domain). |
 
 ## The import script
 
