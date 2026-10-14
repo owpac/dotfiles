@@ -2,7 +2,8 @@
 #!/usr/bin/env bash
 # Installs the CLI tools of owpac with uv, from their private GitHub repositories, then writes
 # their zsh completions. git changes https://github.com/owpac/ to SSH (.gitconfig), so the
-# 1Password SSH agent gives the access: no GitHub token.
+# 1Password SSH agent gives the access: no GitHub token. On the NAS, ssh forwards this agent
+# (ForwardAgent).
 # chezmoi runs the after scripts in alphabetical order: this script runs after bootstrap-mise
 # (which installs uv) and before configure-agents (which runs `pac agent init`).
 # `pac upgrade tools` upgrades these tools afterwards.
@@ -11,8 +12,11 @@ set -eufo pipefail
 
 source {{ .chezmoi.workingTree }}/lib/logs.sh
 
-# pac upgrades each machine.
+# pac upgrades each machine. kompose manages the Docker services of the NAS (headless).
 tools=(pac)
+{{- if .is_headless }}
+tools+=(kompose)
+{{- end }}
 
 # On the first apply, bootstrap-mise installs uv in this same run: PATH does not have it yet,
 # but `mise exec` finds it.
@@ -21,6 +25,11 @@ completions="$HOME/.local/bin/completions"
 mkdir -p "$completions"
 
 for tool in "${tools[@]}"; do
+    # The old installation of kompose used pipx: remove it, with its virtual environment.
+    if command -v pipx >/dev/null 2>&1 && pipx list --short 2>/dev/null | grep -q "^$tool "; then
+        log_task "Removing the pipx installation of $tool..."
+        pipx uninstall "$tool" >/dev/null
+    fi
     log_task "Installing $tool with uv..."
     # --force replaces an executable that uv did not install (the bash pac of the dotfiles).
     mise exec -- uv tool install --force --quiet "git+https://github.com/owpac/$tool.git"
