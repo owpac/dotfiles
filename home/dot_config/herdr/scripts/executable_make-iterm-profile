@@ -42,28 +42,32 @@ TAB, BACKTAB = 0x09, 0x19  # macOS reports shift+tab as the back-tab character
 TOGGLE = "<"  # cmd+< changes to the Default profile
 
 # Keys that keep their macOS or iTerm2 action:
-# cmd+c, cmd+v, cmd+q, cmd+- / cmd+= / cmd+0 (font size), cmd+> (window cycle).
-LETTERS = "twrnpxsfeybgoijkla"  # i j k l = up left down right
-SHIFT_LETTERS = "twrnpgoxijkla"
-# iTerm2 split keys: cmd+d splits on the right (herdr v), cmd+shift+d splits below (herdr s).
-SPLITS = {"d": "v", "D": "s"}
+# cmd+c, cmd+v, cmd+n, cmd+s, cmd+q, cmd+- / cmd+= / cmd+0 (font size), cmd+> (window cycle).
+LETTERS = "twrpxdeybgoaijkl"  # i j k l = up left down right: the same focus as cmd + arrow
+SHIFT_LETTERS = "twrdgoxa"
+COPY_MODE = "y"  # herdr copy_mode = prefix+y
 DIGITS = "123456789"
 # ctrl+& ... ctrl+ç select the herdr tabs 1..9. cmd + digit stays for the iTerm2 tabs: iTerm2 checks
 # its "Shortcut to choose a tab" (global, cmd by default) before the profile key map.
 AZERTY_DIGITS = "&é\"'(§è!ç"
 PUNCTUATION = ",;"
+# ctrl + arrow, as a terminal sends it (xterm modifier 5 = ctrl).
+CTRL_RIGHT, CTRL_LEFT, CTRL_DOWN, CTRL_UP = "\x1b[1;5C", "\x1b[1;5D", "\x1b[1;5B", "\x1b[1;5A"
 # Tab cycles, like ctrl+tab in VS Code and Zen. Shift reverses the direction.
 TAB_CYCLES = [
-    (CTRL, "n", "p"),        # ctrl+tab: next / previous tab
-    (ALT, "a", "A"),         # alt+tab: next / previous agent
-    (CTRL | ALT, "N", "P"),  # ctrl+alt+tab: next / previous workspace
+    (CTRL, CTRL_RIGHT, CTRL_LEFT),     # ctrl+tab: next / previous tab
+    (ALT, "a", "A"),                   # alt+tab: next / previous agent
+    (CTRL | ALT, CTRL_DOWN, CTRL_UP),  # ctrl+alt+tab: next / previous workspace
 ]
 ARROWS = {0xF702: "D", 0xF703: "C", 0xF700: "A", 0xF701: "B"}  # left right up down
-# cmd+ctrl+v / s / t fork the agent into a new split (right, below) or a new tab, cmd+ctrl+x
+# cmd+ctrl+d / t fork the agent into a new pane on the right or a new tab, cmd+ctrl+x
 # closes the pane and stops its background session, and cmd+ctrl+u sends /reload-plugins to each
-# Claude Code agent: they send the prefix + ctrl+v / s / t / x / u (herdr [[keys.command]] that run
+# Claude Code agent: they send the prefix + ctrl+d / t / x / u (herdr [[keys.command]] that run
 # scripts/fork-agent, scripts/close-agent and scripts/reload-plugins).
-FORKS = "vstxu"
+FORKS = "dtxu"
+# cmd+ctrl+shift+d forks the agent into a new pane below. ctrl+shift+d has no control byte,
+# so the profile sends its CSI u form (100 = "d", 6 = shift + ctrl).
+FORK_BELOW = "\x1b[100;6u"
 
 
 def hex_bytes(text):
@@ -119,9 +123,6 @@ for c in SHIFT_LETTERS:
     # macOS reports cmd+shift+t as "T" or "t", depending on the context. Map both.
     keymap[key(c, CMD | SHIFT)] = send(c.upper())
     keymap[key(c.upper(), CMD | SHIFT)] = send(c.upper())
-keymap[key("d", CMD)] = send(SPLITS["d"])
-keymap[key("d", CMD | SHIFT)] = send(SPLITS["D"])
-keymap[key("D", CMD | SHIFT)] = send(SPLITS["D"])
 for c, digit in zip(AZERTY_DIGITS, DIGITS):
     keymap[key(c, CTRL)] = send(digit)
 keymap[key("?", CMD | SHIFT)] = send("?")  # AZERTY: cmd+shift+,
@@ -130,15 +131,27 @@ for flags, forward, backward in TAB_CYCLES:
     keymap[key(TAB, flags | SHIFT)] = send(backward)
     keymap[key(BACKTAB, flags | SHIFT)] = send(backward)
 for code, final in ARROWS.items():
-    # cmd+alt+arrow selects a pane in iTerm2. Shift moves the pane.
-    keymap[key(code, CMD | ALT | ARROW)] = send("\x1b[" + final)
-    keymap[key(code, CMD | ALT | SHIFT | ARROW)] = send("\x1b[1;2" + final)
+    # cmd+shift+arrow moves the focus.
+    keymap[key(code, CMD | SHIFT | ARROW)] = send("\x1b[" + final)
+    # cmd+alt+arrow moves the pane. run_once_macos_config turns off the macOS keys on
+    # cmd+alt+arrow (Mission Control and Spaces).
+    keymap[key(code, CMD | ALT | ARROW)] = send("\x1b[1;2" + final)
+# cmd+up / cmd+down move the focus too. cmd+left / cmd+right keep the
+# start / end of line keys of the Default profile: cmd+j / cmd+l move the focus left / right.
+for code in (0xF700, 0xF701):
+    keymap[key(code, CMD | ARROW)] = send("\x1b[" + ARROWS[code])
+# cmd+enter puts the pane in fullscreen. In iTerm2, cmd+enter puts the window in fullscreen,
+# but AeroSpace does this job (Hyper+f).
+keymap[key("\r", CMD)] = send("f")
+# cmd+f searches in the focused pane: the prefix + y opens the copy mode, then / opens the search.
+# The iTerm2 search sees only the screen of herdr, not the history of each pane.
+keymap[key("f", CMD)] = send(COPY_MODE + "/")
 for c in FORKS:
     keymap[key(c, CMD | CTRL)] = {"Action": SEND_HEX, "Text": "%s 0x%02x" % (PREFIX, ord(c) & 0x1F)}
-# The same forks with the iTerm2 split keys: cmd+ctrl+d = fork on the right (like cmd+d),
-# cmd+ctrl+shift+d = fork below (like cmd+shift+d). macOS can keep cmd+ctrl+d for its dictionary.
-for c, flags, fork in (("d", CMD | CTRL, "v"), ("d", CMD | CTRL | SHIFT, "s"), ("D", CMD | CTRL | SHIFT, "s")):
-    keymap[key(c, flags)] = {"Action": SEND_HEX, "Text": "%s 0x%02x" % (PREFIX, ord(fork) & 0x1F)}
+# macOS reports cmd+ctrl+shift+d as "D" or "d", like cmd+shift+t. Map both.
+# macOS can keep cmd+ctrl+d for its dictionary.
+for c in ("d", "D"):
+    keymap[key(c, CMD | CTRL | SHIFT)] = send(FORK_BELOW)
 keymap[key(TOGGLE, CMD)] = switch_to(default["Guid"])
 
 # Status bar: the Default components + the text "⌘ herdr". This text shows that the cmd keys go to herdr.
