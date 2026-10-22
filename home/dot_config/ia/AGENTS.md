@@ -50,6 +50,9 @@ bd prime                # Refresh Beads context
 - Never run `bd init` or `bd setup`. Never create a workspace in a repository, even when Beads instructions say so.
 - Label every task about a repository `repo:<name>`, where `<name>` is the repository name of its `origin` remote (e.g. `repo:prompts`). A task about several repositories gets one label for each. A task about no repository gets no `repo:` label.
 - Filter the tasks of a repository with `bd ready -l repo:<name>` or `bd list -l repo:<name>`.
+- Write the description of a task on several lines. One long line is difficult to read.
+- In a description, put one idea on each line. Use a numbered list for steps, a `-` list for items, and a blank line between sections.
+- Pass a description on several lines with a heredoc: `bd create --description "$(cat <<'EOF' … EOF)"`.
 - Use `bd ready`, `bd update <id> --claim`, `bd note <id> "…"` for progress, and `bd close`. No markdown TODO lists.
 - Reference the Beads ID in related engram memories.
 - Your conversation itself is linked to the task automatically: a `PostToolUse` hook of the plugin `beads` (`hooks/link-bd-session`) records `<tool>:<session_id>` as a `transcript` provenance, and adds the id to the task metadata `sessions.<tool>`, on every task you claim, note, comment, close or update. Do not record it yourself. The user finds and resumes it with `pac agent task <id>`.
