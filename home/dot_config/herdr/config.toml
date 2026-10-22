@@ -148,5 +148,5 @@ type = "shell"
 command = "\"$HOME/.config/herdr/scripts/reload-plugins\""
 
 [theme]
-name = "catppuccin"
+name = "dracula"
 auto_switch = false
