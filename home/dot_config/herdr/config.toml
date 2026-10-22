@@ -22,6 +22,9 @@ delivery = "terminal"
 position = "top-right"
 
 [ui.toast.clipboard]
+# No popup after a mouse copy. The copy stays on (ui.copy_on_select = true, pbcopy on macOS).
+# copy_on_select = false makes Cmd+C copy, but iTerm2 takes Cmd+C for its own Copy menu.
+enabled = false
 position = "top-right"
 
 # Keybindings
