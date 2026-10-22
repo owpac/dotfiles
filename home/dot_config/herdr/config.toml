@@ -39,6 +39,8 @@ position = "top-right"
 #        cmd+alt+arrow = move the pane (herdr: prefix+shift+arrow). run_once_macos_config turns off
 #        the macOS keys on cmd+alt+arrow (Mission Control and Spaces).
 #        cmd+enter = fullscreen pane (herdr: prefix+f). AeroSpace puts a window in fullscreen (Hyper+f).
+#      The iTerm2 panes use the same keys (global key bindings, snapshot of `pac preferences`):
+#      cmd+shift+arrow = "Select Split Pane", cmd+alt+arrow = "Swap With Split Pane".
 #      Resize mode: prefix+minus or prefix+=, then the arrows or h j k l (herdr fixes h j k l).
 #   2. Splits use the iTerm2 keys: d splits on the right and shift+d splits below. x closes.
 #   3. Tabs use the browser and VS Code keys: t, w, r, 1..9.
