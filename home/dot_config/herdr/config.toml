@@ -29,7 +29,7 @@ position = "top-right"
 
 # Keybindings
 #
-# All actions use the prefix (ctrl+space), then one key. The keys follow 4 rules:
+# All actions use the prefix (ctrl+space), then one key. The keys follow 5 rules:
 #   1. In the iTerm2 "herdr" profile, the pane keys use cmd. AeroSpace uses Hyper (cmd+ctrl+alt)
 #      for the windows, so the 2 sets of keys do not collide.
 #        cmd+shift+arrow = focus (herdr: prefix+arrow).
@@ -47,6 +47,7 @@ position = "top-right"
 #   4. ctrl + arrow selects a tab or a workspace, in the direction of the screen layout:
 #      ctrl+right / ctrl+left = next / previous tab (the tab bar is horizontal).
 #      ctrl+down / ctrl+up = next / previous workspace (the sidebar list is vertical).
+#   5. p opens herdr-bar, like cmd+p (quick open) in VS Code.
 #
 # In the iTerm2 "herdr" profile, cmd + key sends the prefix + the same key.
 # Exceptions: cmd+c, cmd+v, cmd+n, cmd+s and cmd+q stay macOS keys.
@@ -159,6 +160,14 @@ command = "\"$HOME/.config/herdr/scripts/close-agent\""
 key = "prefix+ctrl+u"                 # u = update the plugins
 type = "shell"
 command = "\"$HOME/.config/herdr/scripts/reload-plugins\""
+
+# The herdr-bar plugin (github:jeffarese/herdr-bar) finds a tab, a pane or an agent and goes to it.
+# iTerm2 herdr profile: cmd+p, like the quick open of VS Code.
+[[keys.command]]
+key = "prefix+p"
+type = "plugin_action"
+command = "herdr-bar.open"
+description = "command bar"
 
 [theme]
 name = "dracula"
