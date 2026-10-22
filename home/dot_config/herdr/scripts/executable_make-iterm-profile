@@ -59,10 +59,11 @@ TAB_CYCLES = [
     (CTRL | ALT, "N", "P"),  # ctrl+alt+tab: next / previous workspace
 ]
 ARROWS = {0xF702: "D", 0xF703: "C", 0xF700: "A", 0xF701: "B"}  # left right up down
-# cmd+ctrl+v / s / t fork the agent into a new split (right, below) or a new tab, and cmd+ctrl+x
-# closes the pane and stops its background session: they send the prefix + ctrl+v / s / t / x
-# (herdr [[keys.command]] that run scripts/fork-agent and scripts/close-agent).
-FORKS = "vstx"
+# cmd+ctrl+v / s / t fork the agent into a new split (right, below) or a new tab, cmd+ctrl+x
+# closes the pane and stops its background session, and cmd+ctrl+u sends /reload-plugins to each
+# Claude Code agent: they send the prefix + ctrl+v / s / t / x / u (herdr [[keys.command]] that run
+# scripts/fork-agent, scripts/close-agent and scripts/reload-plugins).
+FORKS = "vstxu"
 
 
 def hex_bytes(text):

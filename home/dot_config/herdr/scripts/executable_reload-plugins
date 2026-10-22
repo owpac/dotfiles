@@ -1,0 +1,50 @@
+#!/bin/sh
+# Send /reload-plugins to each Claude Code agent of herdr. The agents then apply the plugin changes
+# (for example after `pac upgrade agents`) without a restart.
+# If an agent is working, Claude Code runs the command after the current reply.
+# herdr refuses an agent that waits for an approval or a question: the notification lists these panes.
+# A reload does not start a new session, so the SessionStart hooks do not run.
+# Usage: reload-plugins
+# With DRY_RUN=1, print the commands and messages, and do not run them.
+set -eu
+
+PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+herdr="${HERDR_BIN_PATH:-herdr}"
+
+notify() {
+  if [ "${DRY_RUN:-}" = 1 ]; then
+    echo "message: $1" >&2
+    return
+  fi
+  "$herdr" notification show "reload-plugins" --body "$1" --position top-right >/dev/null 2>&1 || true
+}
+
+run() {
+  if [ "${DRY_RUN:-}" = 1 ]; then
+    printf '%s\n' "$*" >&2
+  else
+    "$@"
+  fi
+}
+
+panes=$("$herdr" agent list | jq -r '.result.agents[] | select(.agent == "claude") | .pane_id')
+if [ -z "$panes" ]; then
+  notify "No Claude Code agent in herdr."
+  exit 0
+fi
+
+reloaded=0
+refused=""
+for pane in $panes; do
+  if run "$herdr" agent prompt "$pane" /reload-plugins >/dev/null; then
+    reloaded=$((reloaded + 1))
+  else
+    refused="$refused $pane"
+  fi
+done
+
+if [ -n "$refused" ]; then
+  notify "/reload-plugins sent to $reloaded Claude Code agents. Refused (approval or question):$refused"
+else
+  notify "/reload-plugins sent to $reloaded Claude Code agents."
+fi

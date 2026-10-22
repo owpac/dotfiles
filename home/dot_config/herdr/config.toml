@@ -136,6 +136,14 @@ key = "prefix+ctrl+x"                 # close the pane and stop its background C
 type = "shell"
 command = "\"$HOME/.config/herdr/scripts/close-agent\""
 
+# Send /reload-plugins to each Claude Code agent, for example after `pac upgrade agents`.
+# iTerm2 herdr profile: cmd+ctrl+u. A new version of Claude Code needs a restart instead:
+# `herdr server stop`, then `herdr` resumes each agent with `claude --resume <id>`.
+[[keys.command]]
+key = "prefix+ctrl+u"                 # u = update the plugins
+type = "shell"
+command = "\"$HOME/.config/herdr/scripts/reload-plugins\""
+
 [theme]
 name = "catppuccin"
 auto_switch = false
