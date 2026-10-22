@@ -69,6 +69,7 @@ This rule is mandatory for each text. It is not a preference, and it does not de
 - Write one idea in each sentence. Do not write more than 20 words in an instruction, or more than 25 words in a description.
 - Use the active voice and simple tenses. Use the passive voice only when the agent is unknown.
 - Use the imperative for instructions. Do not write "you must" or "vous devez" before an instruction.
+- In French, address the user with "tu" in your replies. In a document, keep the convention of the document.
 - Use "must" for an obligation and "can" for a possibility. Do not use "should", "may" or "would" (English).
 - Use one word for one meaning, and the same word for the same thing.
 - Do not use jargon, slang or Latin abbreviations ("e.g.", "i.e.", "etc.").
