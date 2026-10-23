@@ -67,8 +67,8 @@ Each machine selects its setup on 3 axes:
   - `config.<role>.toml`: the setup of a role, and the list of its modules.
   - `miserc.toml`: the settings that mise reads before the config files. `auto_env = false` keeps the platform environments of mise off, so a module can have the name `macos`.
   - `tasks/`: the task `modules`, which writes the roles and the modules of this machine. `mise bootstrap` runs the setup scripts of the modules (`modules/<module>/tasks/`) at the end (task `bootstrap`).
-  - `lib/`: the shell functions of the tasks.
 - `modules/<module>/`: one folder for each module. mise links each file of a module into `~/.config/mise/conf.d/<module>/`, except `home/` and `data/`. `mise.<module>.toml` declares the dotfile group of the module, its templates, its packages and its tasks. `home/` holds the files of the group, at their path in the home directory: `modules/herdr/home/.config/herdr/config.toml` goes to `~/.config/herdr/config.toml`. mise links a plain file, and renders a template ([Tera](https://mise.jdx.dev/templates.html)). `tasks/` holds the setup scripts of the module, and `data/` the files that they read, such as the snapshots of the macOS preferences and the backups of the module `macos`, encrypted with age.
+- `lib/`: the shell functions of the tasks. A task follows its link to find this folder.
 
 ### Daily use
 

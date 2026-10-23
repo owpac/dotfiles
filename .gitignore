@@ -139,6 +139,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+# This repository keeps the shell functions of its tasks in lib/.
+!/lib/
 lib64/
 parts/
 sdist/
