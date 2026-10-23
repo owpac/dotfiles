@@ -51,8 +51,8 @@ Each machine selects its setup on 3 axes:
 | Role (`vars.roles`) | Modules | Content |
 | ------------------- | ------- | ------- |
 | `minimal` | `zsh`, `git` | The shell and git. For containers, Codespaces and other ephemeral environments. |
-| `server` | `zsh`, `git`, `ssh`, `nas` | The NAS: the shell, SSH and the CLI tools of owpac. |
-| `workstation` | `zsh`, `git`, `macos`, `ssh`, `secrets`, `aerospace`, `agents`, `herdr`, `raycast`, `iterm2` | A Mac: packages, macOS preferences, coding agents and the full shell. |
+| `server` | `zsh`, `git`, `ssh`, `nas`, `pac`, `kompose` | The NAS: the shell, SSH and the CLI tools of owpac. |
+| `workstation` | `zsh`, `git`, `macos`, `ssh`, `secrets`, `pac`, `aerospace`, `agents`, `herdr`, `raycast`, `iterm2` | A Mac: packages, macOS preferences, coding agents and the full shell. |
 | `workstation work` | the modules of `workstation`, and `doctolib` | A Mac for work: the role `workstation`, plus the work tools and secrets. |
 
 `vars.modules_base` in `mise/config.toml` lists the modules of each machine. mise saves the roles of the machine (`vars.roles`) in its state directory. The task `modules` writes the roles and their modules into `~/.config/mise/miserc.local.toml`. The roles and this file stay on the machine, outside this repository.
@@ -82,7 +82,7 @@ Each machine selects its setup on 3 axes:
 - A template needs an entry in its group, for example `"~/.zshrc" = { mode = "template" }` under `[dotfile_groups.zsh.entries]` in `modules/zsh/mise.zsh.toml`. `mise dot add` ignores `--mode template` in a group.
 - A new module: create `modules/<module>/mise.<module>.toml` with its group: `[dotfile_groups.<module>]` and `root = "<module>/home"`. Move its files into `modules/<module>/home/`. Add the module to the list of a role (`vars.modules_<role>` in `mise/config.<role>.toml`), then run `mise run --skip-tools update`. The other machines get the module at their next `mise run --skip-tools update`.
 - A package of a module: add it to the file of the module. Add `os = "macos"` or `os = "linux"` if the package exists on one system only. `mise bootstrap packages use --global` writes into `mise/config.toml`.
-- Turn off a module on one machine: `mise vars modules_off="<module> <module>"`, then run `mise run --skip-tools update`. mise does not read the file of the module any more, so its packages and its tasks also go away from the setup. Do not edit `miserc.local.toml`: the task `modules` writes it again.
+- Turn off a module on one machine: `mise vars modules_off="<module> <module>"`, then run `mise run --skip-tools update`. mise does not read the file of the module any more, so its packages and its tasks also go away from the setup. For example, a machine without access to the private repositories of owpac turns off `pac` and `kompose`. Do not edit `miserc.local.toml`: the task `modules` writes it again.
 - Remove a dotfile: remove its source, then run `mise dot apply --prune`. Remove a whole group from this machine: `mise dot unapply --group <group>`. To remove a module, also remove its folder and its name in the lists of the roles. If the module has a task, also remove this task from the task `bootstrap` (`mise/config.workstation.toml`).
 - Add a file to `mise/` or to a module, for example `modules/<module>/mise.<module>.toml`: run `mise dot apply` to create its link. mise reads the file after this command.
 - `mise use --global <tool>` and `mise bootstrap packages use --global <package>` write into this repository, through the link. Then commit the change.

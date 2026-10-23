@@ -55,7 +55,7 @@ app's schedule.
 | `modules/macos/data/macos-preferences/<domain>.plist.age` | The encrypted snapshot (source). The task decrypts it to `~/.config/macos-preferences/<domain>.plist`. |
 | `modules/macos/tasks/macos-preferences` | Decrypts each snapshot, and re-applies it with `defaults import`. `mise bootstrap` runs it (task `bootstrap`). |
 | `modules/macos/data/macos-preferences.yaml` | The keys that `pac preferences save` removes, and the list of domains that pac keeps. The task does not read this list: it imports each `.plist.age` file. |
-| `pac preferences …` ([owpac/pac](https://github.com/owpac/pac)) | The CLI to list / save / remove tracked preferences. mise installs it (`mise/config.workstation.toml`), and writes its zsh completion (subcommands + slug/domain). |
+| `pac preferences …` ([owpac/pac](https://github.com/owpac/pac)) | The CLI to list / save / remove tracked preferences. mise installs it (`modules/pac/mise.pac.toml`), and writes its zsh completion (subcommands + slug/domain). |
 
 ## The import task
 

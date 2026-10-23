@@ -1,0 +1,21 @@
+# The module kompose: the CLI that manages the Docker services of the NAS (owpac/kompose). mise
+# installs it as the module pac installs pac: see modules/pac/mise.pac.toml for the private
+# repository and the SSH alias `owpac`.
+# A machine without access to this repository turns off the module: mise vars modules_off="kompose"
+
+[tools]
+# The same versions as the module pac: the Python tools of mise use the link python/3.15.
+python = "3.15"
+uv = "latest"
+# postinstall writes the zsh completion of each new version.
+"pypi:git+ssh://git@owpac/owpac/kompose.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && kompose --completion zsh > "$HOME/.local/bin/completions/_kompose"' }
+
+# A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
+# tool. So reinstall kompose if it does not start.
+[bootstrap.hooks.post-tools]
+run = '''
+if ! mise exec -- kompose --version >/dev/null 2>&1; then
+  echo "Reinstalling kompose on the Python of mise..."
+  mise install --force "pypi:git+ssh://git@owpac/owpac/kompose.git"
+fi
+'''

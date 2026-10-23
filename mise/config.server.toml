@@ -1,32 +1,5 @@
-# The role server: the NAS. The CLI tools of owpac.
+# The role server: the NAS.
 
 # The modules of this role. The task modules adds them to the modules of config.toml.
 [vars]
-modules_server = "ssh nas"
-
-[tools]
-# Python stays on one minor version. mise installs the Python tools below with the link
-# python/3.15. A new patch version keeps their venv, but a new minor version breaks it. The hook
-# post-tools then reinstalls the tools.
-python = "3.15"
-uv = "latest"
-# The CLI tools of owpac, from their private GitHub repositories. mise installs each tool with
-# uv, in its own venv. `latest` is the last commit of the default branch: `mise upgrade` installs
-# a new commit. The host `owpac` is an SSH alias of github.com (modules/ssh/home/.ssh/config).
-# With the real host name, mise calls the GitHub API, and this API needs a token for a private
-# repository.
-# On the NAS, ssh forwards the 1Password agent of the Mac (ForwardAgent).
-# postinstall writes the zsh completion of each new version.
-"pypi:git+ssh://git@owpac/owpac/pac.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && pac --completion zsh > "$HOME/.local/bin/completions/_pac"' }
-"pypi:git+ssh://git@owpac/owpac/kompose.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && kompose --completion zsh > "$HOME/.local/bin/completions/_kompose"' }
-
-# A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
-# tool. So reinstall each Python tool that does not start.
-[bootstrap.hooks.post-tools]
-run = '''
-for tool in pac kompose; do
-  mise exec -- "$tool" --version >/dev/null 2>&1 && continue
-  echo "Reinstalling $tool on the Python of mise..."
-  mise install --force "pypi:git+ssh://git@owpac/owpac/$tool.git"
-done
-'''
+modules_server = "ssh nas pac kompose"

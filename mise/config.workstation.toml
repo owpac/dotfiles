@@ -1,20 +1,14 @@
-# The role workstation: a Mac, in the personal mode and in the work mode. The tools, the packages
-# without a module, the hooks and the task bootstrap. The module macos holds the setup of macOS.
+# The role workstation: a Mac, in the personal mode and in the work mode. The tools and the
+# packages without a module, and the task bootstrap. The module macos holds the setup of macOS.
 
 # The modules of this role. The task modules adds them to the modules of config.toml.
 [vars]
-modules_workstation = "macos ssh secrets aerospace agents herdr raycast iterm2"
+modules_workstation = "macos ssh secrets pac aerospace agents herdr raycast iterm2"
 
+# Python and uv come with the module pac.
 [tools]
-# Python stays on one minor version. mise installs the Python tools below with the link
-# python/3.15. A new patch version keeps their venv, but a new minor version breaks it. The hook
-# post-tools then reinstalls the tools.
-python = "3.15"
-uv = "latest"
 node = "latest"
 hk = "latest"
-# pac upgrades each machine. See config.server.toml for the SSH alias `owpac`.
-"pypi:git+ssh://git@owpac/owpac/pac.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && pac --completion zsh > "$HOME/.local/bin/completions/_pac"' }
 
 # mise installs the Homebrew packages itself, in /opt/homebrew. Homebrew can stay on the machine:
 # mise sees the packages that Homebrew installed. A cask that mise installs is not visible to
@@ -58,15 +52,6 @@ hk = "latest"
 
 [dotfiles]
 "~/Workspace" = { permissions = "0700" }
-
-# A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
-# tool. So reinstall pac if it does not start.
-[bootstrap.hooks.post-tools]
-run = '''
-mise exec -- pac --version >/dev/null 2>&1 && exit 0
-echo "Reinstalling pac on the Python of mise..."
-mise install --force "pypi:git+ssh://git@owpac/owpac/pac.git"
-'''
 
 # The setup that the sections above do not cover: the scripts in the tasks/ folders of the
 # modules. mise bootstrap runs this task after the other steps, one script after the other.
