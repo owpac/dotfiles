@@ -73,16 +73,16 @@ Each machine selects its setup on 3 axes:
 ### Daily use
 
 - `mise bootstrap`: apply the setup. Add `--dry-run` to see the changes first.
-- `mise run update`: pull this repository, write the roles and the modules of this machine (task `modules`), run `mise bootstrap --update`, then remove the files that a group does not deploy any more (`mise dot apply --prune`). This task replaces `chezmoi update`.
-- Change the roles of this machine: `mise vars roles="workstation work"`, then run `mise run update`.
+- `mise run --skip-tools update`: pull this repository, write the roles and the modules of this machine (task `modules`), run `mise bootstrap --update`, then remove the files that a group does not deploy any more (`mise dot apply --prune`). This task replaces `chezmoi update`. Before a task, mise installs all the tools of the config. If one install fails, the task stops before its first step, for example for a private tool without SSH agent. The task needs no tool, so `--skip-tools` removes this risk.
+- Change the roles of this machine: `mise vars roles="workstation work"`, then run `mise run --skip-tools update`.
 - `mise bootstrap status` and `mise dot status`: see what differs from the config.
 - `mise dot diff`: see the content changes of the dotfiles.
 - Edit a linked dotfile in place: the change goes into this repository. Edit a template in `modules/<module>/home/`, then run `mise dot apply`.
 - `mise dot add --group <group> <file>`: move a file into `modules/<group>/home/`, and link it. A group needs no entry for a plain file. Do not use `mise dot add` for a secret: mise copies the content in clear text.
 - A template needs an entry in its group, for example `"~/.zshrc" = { mode = "template" }` under `[dotfile_groups.zsh.entries]` in `modules/zsh/mise.zsh.toml`. `mise dot add` ignores `--mode template` in a group.
-- A new module: create `modules/<module>/mise.<module>.toml` with its group: `[dotfile_groups.<module>]` and `root = "<module>/home"`. Move its files into `modules/<module>/home/`. Add the module to the list of a role (`vars.modules_<role>` in `mise/config.<role>.toml`), then run `mise run update`. The other machines get the module at their next `mise run update`.
+- A new module: create `modules/<module>/mise.<module>.toml` with its group: `[dotfile_groups.<module>]` and `root = "<module>/home"`. Move its files into `modules/<module>/home/`. Add the module to the list of a role (`vars.modules_<role>` in `mise/config.<role>.toml`), then run `mise run --skip-tools update`. The other machines get the module at their next `mise run --skip-tools update`.
 - A package of a module: add it to the file of the module. Add `os = "macos"` or `os = "linux"` if the package exists on one system only. `mise bootstrap packages use --global` writes into `mise/config.toml`.
-- Turn off a module on one machine: `mise vars modules_off="<module> <module>"`, then run `mise run update`. mise does not read the file of the module any more, so its packages and its tasks also go away from the setup. Do not edit `miserc.local.toml`: the task `modules` writes it again.
+- Turn off a module on one machine: `mise vars modules_off="<module> <module>"`, then run `mise run --skip-tools update`. mise does not read the file of the module any more, so its packages and its tasks also go away from the setup. Do not edit `miserc.local.toml`: the task `modules` writes it again.
 - Remove a dotfile: remove its source, then run `mise dot apply --prune`. Remove a whole group from this machine: `mise dot unapply --group <group>`. To remove a module, also remove its folder and its name in the lists of the roles. If the module has a task, also remove this task from the task `bootstrap` (`mise/config.workstation.toml`).
 - Add a file to `mise/` or to a module, for example `modules/<module>/mise.<module>.toml`: run `mise dot apply` to create its link. mise reads the file after this command.
 - `mise use --global <tool>` and `mise bootstrap packages use --global <package>` write into this repository, through the link. Then commit the change.

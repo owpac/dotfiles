@@ -14,7 +14,8 @@
 # The machine saves its roles (vars.roles). The task modules writes the roles and the modules
 # into ~/.config/mise/miserc.local.toml, for example env = ["workstation", "zsh", "git", "ssh"].
 # This file stays outside this repository: do not edit it, the task writes it again.
-# Change the roles of a machine: mise vars roles="workstation work", then run `mise run update`.
+# Change the roles of a machine: mise vars roles="workstation work", then run
+# `mise run --skip-tools update`.
 #
 # A folder of modules/, at the root of this repository, holds a module. mise.<module>.toml
 # declares its dotfile group, its templates, its packages, its merges and its tasks. home/ holds
@@ -31,10 +32,10 @@
 #   - Add a file to a group: mise dot add --group <group> <file>
 #   - Remove a file: remove its source, then run `mise dot apply --prune`.
 #   - Add a module: add its folder, with its group in mise.<module>.toml and its files in home/.
-#     Add the module to the list of a role, then run `mise run update` on each machine.
+#     Add the module to the list of a role, then run `mise run --skip-tools update` on each machine.
 #
 # Apply the setup: mise bootstrap
-# Pull this repository, then apply it: mise run update
+# Pull this repository, then apply it: mise run --skip-tools update
 # See the changes first: mise bootstrap --dry-run, mise dot diff, mise bootstrap status
 
 [settings]
@@ -82,10 +83,11 @@ modules_off = { default = "" }
 # 2 folder names.
 "~/.config/mise/conf.d" = { source = "~/.dotfiles/modules", mode = "symlink-each", exclude = ["*/home", "*/data"] }
 
-# The equivalent of `chezmoi update`. The task modules writes the roles and the modules, from the
-# config that the pull brought. The task needs no tool: MISE_TASK_RUN_AUTO_INSTALL=0 keeps
-# `mise run` from installing the missing tools first, an install that can fail (a private tool
-# without SSH agent). mise exports MISE_ENV to this task: `env -u MISE_ENV` makes the next
+# The equivalent of `chezmoi update`: mise run --skip-tools update. Before a task, mise installs
+# all the tools of the config. If one install fails, the task stops before its first step, for
+# example for a private tool without SSH agent. This task and the task modules need no tool, so
+# --skip-tools removes this risk. The task modules writes the roles and the modules, from the
+# config that the pull brought. mise exports MISE_ENV to this task: `env -u MISE_ENV` makes the next
 # commands read the new list. The last command removes the files that a group does not deploy
 # any more, for example after the pull removed a module. It asks before it removes a file.
 [tasks.update]
@@ -93,7 +95,7 @@ description = "Pull this repository, then apply it"
 raw = true
 run = [
   "git -C ~/.dotfiles pull --ff-only",
-  "MISE_TASK_RUN_AUTO_INSTALL=0 mise run modules",
+  "mise run --skip-tools modules",
   "env -u MISE_ENV mise bootstrap --update",
   "env -u MISE_ENV mise dot apply --prune",
 ]

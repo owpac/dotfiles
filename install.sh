@@ -128,7 +128,7 @@ if [ ! -f "${miserc}" ]; then
     roles="workstation"
   fi
   MISE_CONFIG_DIR="${DOTFILES_DIR}/mise" mise vars roles="${roles}"
-  MISE_CONFIG_DIR="${DOTFILES_DIR}/mise" mise run modules
+  MISE_CONFIG_DIR="${DOTFILES_DIR}/mise" mise run --skip-tools modules
   log_done "Roles of this machine: ${roles}"
 fi
 
