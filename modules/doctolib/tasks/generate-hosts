@@ -5,8 +5,8 @@
 # Doctolib stay out of the public repository. The task reads the list, then replaces /etc/hosts
 # with sudo: the header of macOS, then one line 127.0.0.1 for each domain. Run it by hand:
 #   mise run generate-hosts
-# Change the list of the domains in clear with:
-#   fnox edit -c ~/.config/fnox/config.toml
+# Change the list of the domains:
+#   mise run edit-secret --profile doctolib DOCTOLIB_HOSTS
 
 set -eufo pipefail
 
