@@ -93,15 +93,15 @@ modules_off = { default = "" }
 # all the tools of the config. If one install fails, the task stops before its first step, for
 # example for a private tool without SSH agent. This task and the task modules need no tool, so
 # --skip-tools removes this risk. The task modules writes the roles and the modules, from the
-# config that the pull brought. mise exports MISE_ENV to this task: `env -u MISE_ENV` makes the next
-# commands read the new list. The last command removes the files that a group does not deploy
-# any more, for example after the pull removed a module. It asks before it removes a file.
+# config that the pull brought. mise exports MISE_ENV to this task: `env -u MISE_ENV` makes
+# bootstrap read the new list. --prune-dotfiles removes the files that a group does not deploy any
+# more, for example after the pull removed a module. bootstrap removes them after the dotfiles and
+# before the tools, so a tool that fails does not stop this step. It asks before it removes a file.
 [tasks.update]
 description = "Pull this repository, then apply it"
 raw = true
 run = [
   "git -C ~/.dotfiles pull --ff-only",
   "mise run --skip-tools modules",
-  "env -u MISE_ENV mise bootstrap --update",
-  "env -u MISE_ENV mise dot apply --prune",
+  "env -u MISE_ENV mise bootstrap --update --prune-dotfiles",
 ]

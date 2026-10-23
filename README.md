@@ -73,7 +73,7 @@ Each machine selects its setup on 3 axes:
 ### Daily use
 
 - `mise bootstrap`: apply the setup. Add `--dry-run` to see the changes first.
-- `mise run --skip-tools update`: pull this repository, write the roles and the modules of this machine (task `modules`), run `mise bootstrap --update`, then remove the files that a group does not deploy any more (`mise dot apply --prune`). This task replaces `chezmoi update`. Before a task, mise installs all the tools of the config. If one install fails, the task stops before its first step, for example for a private tool without SSH agent. The task needs no tool, so `--skip-tools` removes this risk.
+- `mise run --skip-tools update`: pull this repository, write the roles and the modules of this machine (task `modules`), then run `mise bootstrap --update --prune-dotfiles`. `--prune-dotfiles` removes the files that a group does not deploy any more, after the dotfiles and before the tools. This task replaces `chezmoi update`. Before a task, mise installs all the tools of the config. If one install fails, the task stops before its first step, for example for a private tool without SSH agent. The task needs no tool, so `--skip-tools` removes this risk.
 - Change the roles of this machine: `mise vars roles="workstation work"`, then run `mise run --skip-tools update`.
 - `mise bootstrap status` and `mise dot status`: see what differs from the config.
 - `mise dot diff`: see the content changes of the dotfiles.
