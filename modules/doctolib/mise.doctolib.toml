@@ -1,5 +1,6 @@
 # The module doctolib: the setup of Doctolib, for the role work. PostgreSQL 15, the profile of
-# fnox, the task generate-hosts, and the files of Doctolib (home/).
+# fnox, the task generate-hosts, and the files of Doctolib (home/). The private parts of this
+# setup are secrets of fnox, in the profile doctolib: ES_API_KEY, WORKRC, NPMRC and DOCTOLIB_HOSTS.
 
 # The prefix of PostgreSQL 15 of Homebrew (package of config.work.toml).
 [vars]
@@ -23,13 +24,12 @@ includes = ["tasks"]
 
 [dotfile_groups.doctolib]
 root = "doctolib/home"
-# The templates decrypt the .age files. mise does not link them.
-exclude = ["*.age"]
 
 [dotfile_groups.doctolib.entries]
 "~/.ssh/doctolib_ed25519.pub" = { mode = "template", remove_empty = true, permissions = "0600" }
 "~/Workspace/doctolib/.gitconfig" = { mode = "template" }
-# Secrets: the sources are encrypted with age (home/*.age). Before the first run writes the age
-# identity, the templates render empty, and mise does not write the files.
+# The templates read their content in fnox (profile doctolib), so the details of Doctolib stay out
+# of the public repository. Before fnox and its key exist, they render empty, and mise does not
+# write the files.
 "~/.npmrc" = { mode = "template", remove_empty = true, permissions = "0600" }
 "~/.workrc" = { mode = "template", remove_empty = true, permissions = "0600" }

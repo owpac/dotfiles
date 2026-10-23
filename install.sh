@@ -156,6 +156,10 @@ if grep -q workstation "${miserc}"; then
   read -r _
   log_task "Running 'mise bootstrap' again for the keys and the secrets..."
   mise bootstrap --yes
+  # mise renders the templates of a run before it writes the files of this run. The templates that
+  # read fnox (~/.workrc, ~/.npmrc) need the age key and age.toml, which the run above wrote.
+  log_task "Writing the files that read fnox..."
+  mise dot apply --yes
 fi
 
 # update the remote URL to SSH
