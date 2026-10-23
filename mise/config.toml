@@ -48,6 +48,12 @@ dotfiles.root = "~/.dotfiles/modules"
 # it tracks in place. This repository and git do this work, so the history stays off, and mise dot
 # status does not show its empty sections.
 history.enabled = false
+# mise skips the versions that are younger than 3 days (default: 24h). The delay limits the risk of
+# a compromised release. It applies when mise resolves `latest` or a prefix such as "3.15", to the
+# dependencies of the npm and pypi tools, and to mise self-update. It does not apply to an exact
+# version, to a version without a release date (pac and kompose from git), or to the packages of
+# mise bootstrap (Homebrew, apt).
+minimum_release_age = "3d"
 
 [vars]
 # The answers of each machine. mise asks for them once (mise vars prompt, or
