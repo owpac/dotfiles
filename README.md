@@ -87,6 +87,8 @@ Each machine selects its setup on 3 axes:
 - Remove a dotfile: remove its source, then run `mise dot apply --prune`. Remove a whole group from this machine: `mise dot unapply --group <group>`. To remove a module, also remove its folder and its name in the lists of the roles. If the module has a task, also remove this task from the task `bootstrap` (`mise/config.workstation.toml`).
 - Add a file to `mise/` or to a module, for example `modules/<module>/mise.<module>.toml`: run `mise dot apply` to create its link. mise reads the file after this command.
 - `mise use --global <tool>` and `mise bootstrap packages use --global <package>` write into this repository, through the link. Then commit the change.
+- A secret: `fnox set <NAME> --global --provider age`. fnox asks for the value, encrypts it with age, and writes it into `modules/secrets/home/.config/fnox/config.toml`, through the link. The provider comes from the template `age.toml`: mise reads its public key in 1Password, so this repository does not hold it. For a secret of Doctolib, add `--profile doctolib`: the module `doctolib` activates this profile (`FNOX_PROFILE`).
+- A command with the secrets: `fnox exec -- <command>`. No secret enters the interactive shell (`env = "exec"`).
 
 ### Convenience script
 

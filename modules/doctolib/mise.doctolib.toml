@@ -1,5 +1,10 @@
 # The module doctolib: the files of Doctolib, for the role work.
 
+# The secrets of Doctolib are in the profile doctolib of the global config of fnox (module
+# secrets). fnox exec reads them only when this profile is active.
+[env]
+FNOX_PROFILE = "doctolib"
+
 [dotfile_groups.doctolib]
 root = "doctolib/home"
 # The templates decrypt the .age files. mise does not link them.
