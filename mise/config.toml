@@ -73,9 +73,10 @@ modules_off = { default = "" }
 # before the first run.
 "~/.config/mise" = { source = "~/.dotfiles/mise", mode = "symlink-each" }
 # The modules: one link for each file of modules/ in ~/.config/mise/conf.d, where mise reads the
-# config of a module. The groups deploy the files of modules/*/home, so these files get no link
-# there. A folder of files must have the name home: the exclusion uses this name.
-"~/.config/mise/conf.d" = { source = "~/.dotfiles/modules", mode = "symlink-each", exclude = ["*/home"] }
+# config of a module. The groups deploy the files of modules/*/home, and the tasks read the files
+# of modules/*/data in this repository, so these files get no link there. The exclusion uses these
+# 2 folder names.
+"~/.config/mise/conf.d" = { source = "~/.dotfiles/modules", mode = "symlink-each", exclude = ["*/home", "*/data"] }
 
 # The equivalent of `chezmoi update`. The task modules writes the roles and the modules, from the
 # config that the pull brought. The task needs no tool: MISE_TASK_RUN_AUTO_INSTALL=0 keeps

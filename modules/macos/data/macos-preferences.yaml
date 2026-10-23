@@ -1,4 +1,4 @@
-# macOS app preferences, tracked as encrypted snapshots under data/macos-preferences/
+# macOS app preferences, tracked as encrypted snapshots under modules/macos/data/macos-preferences/
 # (see docs/macos-preferences.md).
 
 # Keys that the apps change on their own: window positions, panels, update checks, versions,

@@ -2,7 +2,7 @@
 #MISE description="Import the encrypted snapshots of the macOS app preferences"
 #
 # Re-apply the preferences of the macOS apps from the encrypted snapshots in
-# data/macos-preferences/<domain>.plist.age, with `defaults import` (this command goes
+# modules/macos/data/macos-preferences/<domain>.plist.age, with `defaults import` (this command goes
 # through cfprefsd, unlike an edit of the live plist). The task tracks one stable snapshot for each
 # domain, instead of the live ~/Library/Preferences/<domain>.plist, which changes all the time.
 #
@@ -19,8 +19,8 @@ set -eufo pipefail
 source "$(dirname "$0")/../../../lib/logs.sh"
 
 # mise runs this task through its link in ~/.config/mise/conf.d/macos/tasks. Follow the link to find
-# this repository.
-repo="$(cd "$(dirname "$(readlink -f "$0")")/../../.." && pwd)"
+# the folder of the module.
+module="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 identity=$(mise vars age_identity)
 snapshots="$HOME/.config/macos-preferences"
 state="$HOME/.local/state/macos-preferences"
@@ -31,7 +31,7 @@ if [ ! -f "$identity" ]; then
 fi
 
 mkdir -p "$snapshots" "$state"
-for encrypted in "$repo"/data/macos-preferences/*.plist.age; do
+for encrypted in "$module"/data/macos-preferences/*.plist.age; do
   domain=$(basename "$encrypted" .plist.age)
   snapshot="$snapshots/$domain.plist"
   tmp=$(mktemp "$snapshots/.$domain.XXXXXX")
