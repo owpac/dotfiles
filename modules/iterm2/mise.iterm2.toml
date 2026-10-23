@@ -1,0 +1,9 @@
+# iTerm2, on the workstations. mise copies the profile of herdr into the dynamic profiles of
+# iTerm2.
+
+[bootstrap.packages]
+"brew-cask:iterm2" = "latest"
+
+[dotfile_groups.iterm2]
+root = "iterm2/home"
+mode = "copy"

@@ -1,0 +1,14 @@
+# The module doctolib: the files of Doctolib, for the role work.
+
+[dotfile_groups.doctolib]
+root = "doctolib/home"
+# The templates decrypt the .age files. mise does not link them.
+exclude = ["*.age"]
+
+[dotfile_groups.doctolib.entries]
+"~/.ssh/doctolib_ed25519.pub" = { mode = "template", remove_empty = true, permissions = "0600" }
+"~/Workspace/doctolib/.gitconfig" = { mode = "template" }
+# Secrets: the sources are encrypted with age (home/*.age). Before the first run writes the age
+# identity, the templates render empty, and mise does not write the files.
+"~/.npmrc" = { mode = "template", remove_empty = true, permissions = "0600" }
+"~/.workrc" = { mode = "template", remove_empty = true, permissions = "0600" }

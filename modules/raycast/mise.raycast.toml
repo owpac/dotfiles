@@ -1,0 +1,8 @@
+# Raycast, on the workstations. Raycast can add its own files in its directory: mise links each
+# file of the group, and leaves the other files alone.
+
+[bootstrap.packages]
+"brew-cask:raycast" = "latest"
+
+[dotfile_groups.raycast]
+root = "raycast/home"

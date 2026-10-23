@@ -1,0 +1,94 @@
+# Global config of mise. mise links each file of mise/ into ~/.config/mise (entry "~/.config/mise"
+# below), so each mise command reads this config, from any directory. `mise use --global` and
+# `mise bootstrap packages use --global` write their changes here, through the link.
+#
+# This file applies to each machine. A machine selects its setup on 3 axes:
+#   - Roles: the type of machine. minimal (containers, Codespaces), server (the NAS),
+#     workstation (a Mac) and work (a Mac for Doctolib, with workstation). A role is a config
+#     environment: config.<role>.toml holds its setup and lists its modules (vars.modules_<role>).
+#   - Modules: the blocks of setup that a machine turns on as a whole, for example herdr or agents.
+#     A module is a config environment too: modules/<module>/mise.<module>.toml holds all its setup.
+#     vars.modules_base lists the modules of each machine.
+#   - Systems: macos or linux. A module keeps its system variants: `os` on an entry, `os()` in a
+#     template. miserc.toml sets auto_env = false: mise adds no platform environment.
+# The machine saves its roles (vars.roles). The task modules writes the roles and the modules
+# into ~/.config/mise/miserc.local.toml, for example env = ["workstation", "zsh", "git", "ssh"].
+# This file stays outside this repository: do not edit it, the task writes it again.
+# Change the roles of a machine: mise vars roles="workstation work", then run `mise run update`.
+#
+# A folder of modules/, at the root of this repository, holds a module. mise.<module>.toml
+# declares its dotfile group, its templates, its packages, its merges and its tasks. home/ holds
+# the files of the group, at their path in the home directory. mise links each file
+# (modules/herdr/home/.config/herdr/config.toml to ~/.config/herdr/config.toml), and renders the
+# templates that the group lists. tasks/ holds the setup scripts of the module. mise reads a
+# module through its links in ~/.config/mise/conf.d (entry "~/.config/mise/conf.d" below).
+# A module keeps its role variants: "work" in mise_env in a template, env = "work" on a package,
+# variants = [{ profile = "work" }] on a whole file. A role and a module never have the same name.
+#
+# How to change the dotfiles:
+#   - Edit a link in place: the change goes into this repository.
+#   - Edit a template in home/, then run `mise dot apply`.
+#   - Add a file to a group: mise dot add --group <group> <file>
+#   - Remove a file: remove its source, then run `mise dot apply --prune`.
+#   - Add a module: add its folder, with its group in mise.<module>.toml and its files in home/.
+#     Add the module to the list of a role, then run `mise run update` on each machine.
+#
+# Apply the setup: mise bootstrap
+# Pull this repository, then apply it: mise run update
+# See the changes first: mise bootstrap --dry-run, mise dot diff, mise bootstrap status
+
+[settings]
+idiomatic_version_file_enable_tools = ["ruby", "node", "terraform"]
+# The root of the dotfile groups: the group zsh reads modules/zsh/home. A [dotfiles] entry with a
+# source needs the full path of the source. mise reads this file through a link, so a relative
+# source starts in ~/.config/mise, not in this repository.
+dotfiles.root = "~/.dotfiles/modules"
+
+[vars]
+# The answers of each machine. mise asks for them once (mise vars prompt, or
+# mise bootstrap --prompt-vars) and keeps them in its state directory, outside this repository.
+full_name = { default = "", prompt = "Full name" }
+# The GitHub noreply address keeps the real email out of the public commits. It is public, and
+# it rejects the incoming mail.
+email = { default = "29702840+owpac@users.noreply.github.com", prompt = "Email" }
+email_work = { default = "29702840+owpac@users.noreply.github.com", prompt = "Work email" }
+
+# The age identity that decrypts the .age files of this repository. 1Password holds it.
+age_identity = { default = "{{ env.HOME }}/.ssh/encryption_ed25519" }
+
+# The roles of this machine, separated by spaces: minimal, server, workstation, work. install.sh
+# saves the answer, and `mise vars roles="workstation work"` changes it. A saved answer replaces a
+# default, not a fixed value: so this var and modules_off have a default.
+roles = { default = "minimal", prompt = "Roles (minimal, server, workstation, work), separated by spaces" }
+# The modules of each machine. Each file of a role adds its modules (vars.modules_<role>).
+modules_base = "zsh git"
+# The modules that this machine turns off, separated by spaces: mise vars modules_off="raycast"
+modules_off = { default = "" }
+
+[dotfiles]
+# The config of mise itself: one link for each file of mise/. The local files of this machine
+# (miserc.local.toml, config.local.toml) stay next to the links, outside this repository. mise
+# reads a new file of mise/ after `mise dot apply` creates its link. On a new machine, the links
+# do not exist yet: install.sh creates the links of ~/.config/mise and ~/.config/mise/conf.d
+# before the first run.
+"~/.config/mise" = { source = "~/.dotfiles/mise", mode = "symlink-each" }
+# The modules: one link for each file of modules/ in ~/.config/mise/conf.d, where mise reads the
+# config of a module. The groups deploy the files of modules/*/home, so these files get no link
+# there. A folder of files must have the name home: the exclusion uses this name.
+"~/.config/mise/conf.d" = { source = "~/.dotfiles/modules", mode = "symlink-each", exclude = ["*/home"] }
+
+# The equivalent of `chezmoi update`. The task modules writes the roles and the modules, from the
+# config that the pull brought. The task needs no tool: MISE_TASK_RUN_AUTO_INSTALL=0 keeps
+# `mise run` from installing the missing tools first, an install that can fail (a private tool
+# without SSH agent). mise exports MISE_ENV to this task: `env -u MISE_ENV` makes the next
+# commands read the new list. The last command removes the files that a group does not deploy
+# any more, for example after the pull removed a module. It asks before it removes a file.
+[tasks.update]
+description = "Pull this repository, then apply it"
+raw = true
+run = [
+  "git -C ~/.dotfiles pull --ff-only",
+  "MISE_TASK_RUN_AUTO_INSTALL=0 mise run modules",
+  "env -u MISE_ENV mise bootstrap --update",
+  "env -u MISE_ENV mise dot apply --prune",
+]

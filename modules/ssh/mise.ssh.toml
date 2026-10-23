@@ -1,0 +1,12 @@
+# The module ssh: the config and the public key of the Mac, on the NAS and on the workstations. The
+# module nas adds the authorized keys, and the module secrets adds the encryption key.
+
+[dotfiles]
+"~/.ssh" = { permissions = "0700" }
+
+[dotfile_groups.ssh]
+root = "ssh/home"
+
+[dotfile_groups.ssh.entries]
+"~/.ssh/config" = { mode = "template", permissions = "0600" }
+"~/.ssh/mbp_ed25519.pub" = { mode = "template", remove_empty = true, permissions = "0600" }

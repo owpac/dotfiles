@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#MISE description="Write the roles and the modules of this machine into miserc.local.toml"
+#
+# mise selects the config environments before it reads the config, and an environment cannot
+# select other environments. This task writes the selection instead:
+#   1. It reads the roles of this machine (vars.roles).
+#   2. It takes vars.modules_base, then the list vars.modules_<role> of each role file.
+#   3. It removes the modules of vars.modules_off.
+#   4. It writes env = [roles, modules] into ~/.config/mise/miserc.local.toml.
+# The next mise command reads the new list. The task update runs this task after the pull.
+# install.sh runs it on a new machine.
+# mise exports MISE_ENV to its tasks: a command after this task needs `env -u MISE_ENV` to read
+# the new list.
+
+set -eufo pipefail
+
+source "$(dirname "$0")/../lib/logs.sh"
+
+roles=$(mise vars roles)
+off=" $(mise vars modules_off) "
+# A role file declares its list, so read the lists with the roles selected.
+selected=$(echo "$roles" | xargs | tr ' ' ',')
+
+envs=""
+add() { # add <name>: add a name to envs once
+  case ", $envs, " in *", \"$1\", "*) return ;; esac
+  envs="${envs:+$envs, }\"$1\""
+}
+for role in $roles; do
+  add "$role"
+done
+modules=$(MISE_ENV="$selected" mise vars modules_base)
+for role in $roles; do
+  list=$(MISE_ENV="$selected" mise vars "modules_${role}" 2>/dev/null) || error "Unknown role $role: config.$role.toml must declare vars.modules_$role"
+  modules="$modules $list"
+done
+for module in $modules; do
+  case "$off" in *" $module "*) continue ;; esac
+  add "$module"
+done
+
+miserc="$HOME/.config/mise/miserc.local.toml"
+line="env = [$envs]"
+if [ "$(grep '^env = ' "$miserc" 2>/dev/null || true)" != "$line" ]; then
+  mkdir -p "$(dirname "$miserc")"
+  printf '# The task modules writes this file. Change vars.roles or vars.modules_off.\n%s\n' "$line" > "$miserc"
+  log_done "Roles and modules of this machine: $line"
+fi

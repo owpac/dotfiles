@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+#MISE description="Apply the macOS settings that mise does not declare (once per version of this file)"
+#MISE raw=true
+#
+# The Dock folders, the lock screen and the resolution of the main screen. mise has no declaration
+# for these settings, and the commands need sudo or reset the Dock. So the task runs only when
+# this file changed since its last run, as a run_once script of chezmoi did. The state file keeps
+# the hash of the last run. To run the task again: rm ~/.local/state/dotfiles/macos-setup.sha256
+
+set -eufo pipefail
+
+source "$(dirname "$0")/../../../lib/logs.sh"
+
+state="$HOME/.local/state/dotfiles/macos-setup.sha256"
+hash=$(shasum -a 256 "$0" | cut -d' ' -f1)
+if [ "$(cat "$state" 2>/dev/null || true)" = "$hash" ]; then
+  exit 0
+fi
+
+# Ask for sudo password upfront and keep it alive for the duration of the script
+sudo -v
+
+###############################################################################
+# Dock                                                                        #
+###############################################################################
+
+log_task 'Configuring Dock folders...'
+
+# mise applies the other Dock preferences (mise.macos.toml). The Dock adds keys to each folder
+# tile, so a value declared in mise always differs: the folders stay in this script.
+
+# Remove all default persistent others
+defaults write com.apple.dock persistent-others -array
+
+# Add custom persistent others
+# displayas:
+# 0 = pile
+# 1 = dossier
+# arrangement:
+# 1 = tri par nom
+# 2 = date d’ajout
+# 3 = date de modification
+# 4 = date de création
+# 5 = type
+# showas:
+# 0 = auto
+# 1 = éventail (fan)
+# 2 = grille
+# 3 = liste
+
+# Add home directory folder to Dock
+defaults write com.apple.dock persistent-others -array-add "
+<dict>
+  <key>tile-data</key>
+  <dict>
+    <key>file-data</key>
+    <dict>
+      <key>_CFURLString</key>
+      <string>file://$HOME/</string>
+      <key>_CFURLStringType</key>
+      <integer>15</integer>
+    </dict>
+    <key>arrangement</key>
+    <integer>1</integer> <!-- tri par nom -->
+    <key>displayas</key>
+    <integer>1</integer> <!-- afficher comme dossier -->
+    <key>showas</key>
+    <integer>2</integer> <!-- affichage grille -->
+  </dict>
+  <key>tile-type</key>
+  <string>directory-tile</string>
+</dict>"
+
+# Add Downloads folder to Dock
+defaults write com.apple.dock persistent-others -array-add "
+<dict>
+  <key>tile-data</key>
+  <dict>
+    <key>file-data</key>
+    <dict>
+      <key>_CFURLString</key>
+      <string>file://$HOME/Downloads/</string>
+      <key>_CFURLStringType</key>
+      <integer>15</integer>
+    </dict>
+    <key>arrangement</key>
+    <integer>2</integer> <!-- tri par date dajout -->
+    <key>displayas</key>
+    <integer>0</integer> <!-- afficher comme pile -->
+    <key>showas</key>
+    <integer>1</integer> <!-- affichage éventail -->
+  </dict>
+  <key>tile-type</key>
+  <string>directory-tile</string>
+</dict>"
+
+killall Dock
+
+log_done 'Dock folders configured! 🎉'
+
+###############################################################################
+# Lock Screen                                                                #
+###############################################################################
+
+log_task 'Configuring lock screen...'
+
+# Turn display off on battery after 10 minutes
+sudo pmset -b displaysleep 10
+
+# Turn display off on power adapter after 20 minutes
+sudo pmset -c displaysleep 20
+
+# Require password immediately after screen saver or display sleep. sysadminctl asks for the
+# account password (never Touch ID), so skip it when the setting is already right.
+if ! sysadminctl -screenLock status 2>&1 | grep -q "screenLock delay is immediate"; then
+  sysadminctl -screenLock immediate -password -
+fi
+
+log_done 'Lock screen configured! 🎉'
+
+###############################################################################
+# Screen                                                                      #
+###############################################################################
+
+log_task 'Detecting main screen...'
+
+# Fetch the main screen ID with displayplacer
+OUTPUT=$(displayplacer list)
+SCREEN_ID=""
+CURRENT_ID=""
+
+# Loop through the output to find the main screen ID
+while IFS= read -r line; do
+  if [[ "$line" =~ Persistent\ screen\ id:\ (.*) ]]; then
+    CURRENT_ID="${BASH_REMATCH[1]}"
+  fi
+
+  if [[ "$line" =~ main\ display ]]; then
+    SCREEN_ID="$CURRENT_ID"
+  fi
+done <<<"$OUTPUT"
+
+
+if [ -z "$SCREEN_ID" ]; then
+  error "No main screen found. Please check your displayplacer installation."
+fi
+
+BEST_RES=""
+BEST_WIDTH=0
+BEST_HEIGHT=0
+BEST_HZ=0
+
+inside_block=0
+while IFS= read -r line; do
+  if [[ "$line" =~ Persistent\ screen\ id:\ $SCREEN_ID ]]; then
+    inside_block=1
+  elif [[ "$inside_block" -eq 1 && "$line" =~ ^$ ]]; then
+    inside_block=0
+  elif [[ "$inside_block" -eq 1 && "$line" =~ res:([0-9]+)x([0-9]+)\ hz:([0-9]+).*scaling:on ]]; then
+    width=${BASH_REMATCH[1]}
+    height=${BASH_REMATCH[2]}
+    hz=${BASH_REMATCH[3]}
+    # Comparaison pour trouver la plus grande résolution et fréquence
+    if ((width > BEST_WIDTH || (width == BEST_WIDTH && height > BEST_HEIGHT) || (width == BEST_WIDTH && height == BEST_HEIGHT && hz > BEST_HZ))); then
+      BEST_WIDTH=$width
+      BEST_HEIGHT=$height
+      BEST_HZ=$hz
+      BEST_RES="${width}x${height}"
+    fi
+  fi
+done <<<"$OUTPUT"
+
+if [ -z "$BEST_RES" ]; then
+    error "No resolution with scaling:on found."
+fi
+
+# Set the best resolution
+log_task "Updating main screen resolution to $BEST_RES at ${BEST_HZ}Hz..."
+displayplacer "id:$SCREEN_ID res:$BEST_RES hz:$BEST_HZ scaling:on"
+
+log_done "Main screen resolution updated to $BEST_RES at ${BEST_HZ}Hz! 🎉"
+
+mkdir -p "$(dirname "$state")"
+echo "$hash" > "$state"

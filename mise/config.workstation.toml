@@ -1,0 +1,83 @@
+# The role workstation: a Mac, in the personal mode and in the work mode. The tools, the packages
+# without a module, the hooks and the task bootstrap. The module macos holds the setup of macOS.
+
+# The modules of this role. The task modules adds them to the modules of config.toml.
+[vars]
+modules_workstation = "macos ssh secrets aerospace agents herdr raycast iterm2"
+
+[tools]
+# Python stays on one minor version. mise installs the Python tools below with the link
+# python/3.15. A new patch version keeps their venv, but a new minor version breaks it. The hook
+# post-tools then reinstalls the tools.
+python = "3.15"
+uv = "latest"
+node = "latest"
+hk = "latest"
+# pac upgrades each machine. See config.server.toml for the SSH alias `owpac`.
+"pypi:git+ssh://git@owpac/owpac/pac.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && pac --completion zsh > "$HOME/.local/bin/completions/_pac"' }
+
+# mise installs the Homebrew packages itself, in /opt/homebrew. Homebrew can stay on the machine:
+# mise sees the packages that Homebrew installed. A cask that mise installs is not visible to
+# `brew upgrade`: `mise bootstrap packages upgrade` upgrades it.
+# The packages of a module are in the file of the module.
+[bootstrap.packages]
+"brew:colima" = "latest"
+"brew:displayplacer" = "latest"
+"brew:docker" = "latest"
+"brew:docker-compose" = "latest"
+"brew:fzf" = "latest"
+"brew:git" = "latest"
+"brew:gh" = "latest"
+"brew:htop" = "latest"
+"brew:mas" = "latest"
+"brew:mise" = "latest"
+"brew:mole" = "latest"
+"brew:mtr" = "latest"
+"brew:nmap" = "latest"
+# npm comes with node. Homebrew installs node for its alias npm. mise also installs node
+# ([tools]): check if this package is still useful.
+"brew:node" = "latest"
+"brew:tree" = "latest"
+"brew:zoxide" = "latest"
+"brew-cask:1password" = "latest"
+"brew-cask:1password-cli" = "latest"
+"brew-cask:appcleaner" = "latest"
+"brew-cask:discord" = "latest"
+"brew-cask:elgato-stream-deck" = "latest"
+"brew-cask:elgato-wave-link" = "latest"
+"brew-cask:firefox" = "latest"
+"brew-cask:font-jetbrains-mono-nerd-font" = "latest"
+"brew-cask:obsidian" = "latest"
+"brew-cask:readdle-spark" = "latest"
+"brew-cask:rectangle" = "latest"
+"brew-cask:signal" = "latest"
+"brew-cask:spotify" = "latest"
+"brew-cask:thaw" = "latest"
+"brew-cask:visual-studio-code" = "latest"
+"brew-cask:zen" = "latest"
+
+[dotfiles]
+"~/Workspace" = { permissions = "0700" }
+
+# A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
+# tool. So reinstall pac if it does not start.
+[bootstrap.hooks.post-tools]
+run = '''
+mise exec -- pac --version >/dev/null 2>&1 && exit 0
+echo "Reinstalling pac on the Python of mise..."
+mise install --force "pypi:git+ssh://git@owpac/owpac/pac.git"
+'''
+
+# The setup that the sections above do not cover: the scripts in the tasks/ folders of the
+# modules. mise bootstrap runs this task after the other steps, one script after the other.
+# mise loads the task of a module only when the machine selects the module: the loop skips the
+# tasks that mise does not find.
+[tasks.bootstrap]
+description = "Run the setup scripts of a workstation"
+raw = true
+run = '''
+for task in agents herdr-plugins macos-setup macos-preferences backups claude-token; do
+  mise tasks info "$task" >/dev/null 2>&1 || continue
+  mise run "$task" || exit 1
+done
+'''

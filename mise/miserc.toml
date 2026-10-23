@@ -1,0 +1,9 @@
+# The settings that mise reads before the config files. mise links this file into
+# ~/.config/mise, next to miserc.local.toml: the task modules writes the roles and the modules of
+# this machine into this local file.
+#
+# auto_env = false: mise adds no platform environment (unix, macos, linux, macos-arm64). So a file
+# named after a platform, such as modules/macos/mise.macos.toml, loads only when the machine
+# selects the module of the same name. mise 2027.6.0 turns auto_env on by default: this line
+# keeps the current behavior, and stops the warning of mise about platform files.
+auto_env = false

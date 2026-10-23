@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#MISE description="Install the herdr plugins"
+#
+# Install the herdr plugins. mise bootstrap runs this task each time (task bootstrap), after the
+# packages: herdr is then installed.
+# herdr writes its plugin files itself: ~/.config/herdr/plugins.json and ~/.config/herdr/plugins/
+# (git checkout, compiled binary, locks, absolute paths). Thus mise does not manage these files.
+# This task holds only the list of the plugins. A plugin that is already installed keeps its
+# version: `herdr plugin update` updates it.
+
+set -eufo pipefail
+
+source "$(dirname "$0")/../../../lib/logs.sh"
+
+command -v herdr >/dev/null 2>&1 || exit 0
+
+# <plugin id> <GitHub owner/repo> <git ref>
+plugins=(
+  "herdr-bar jeffarese/herdr-bar c49cc31cc62e0be18e79637262a572b5dd97f28a" # prefix+p (cmd+p)
+)
+
+installed=$(herdr plugin list)
+for plugin in "${plugins[@]}"; do
+  read -r id repo ref <<< "$plugin"
+  grep -q "^- $id " <<< "$installed" && continue
+  log_task "Installing the herdr plugin $id..."
+  herdr plugin install "$repo" --ref "$ref" --yes
+  log_done "herdr plugin $id installed"
+done

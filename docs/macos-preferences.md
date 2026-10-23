@@ -1,21 +1,26 @@
 # Tracking macOS app preferences
 
 How this repo backs up and restores macOS application settings (Terminal,
-iTerm2, Rectangle, Open Island, …) without the usual `chezmoi status` noise.
+iTerm2, Rectangle, Open Island, …) without the noise of a tracked live plist.
+
+> [!CAUTION]
+> `pac preferences save` and `pac preferences remove` still call chezmoi. Update pac before you
+> use them with the layout of mise: pac must encrypt a snapshot with
+> `age -e -i ~/.ssh/encryption_ed25519 -o data/macos-preferences/<domain>.plist.age`, and
+> must find this repository in `~/.dotfiles`.
 
 ## The problem
 
 The obvious approach — track the live plist directly:
 
 ```
-~/Library/Preferences/com.apple.Terminal.plist  ->  chezmoi source
+~/Library/Preferences/com.apple.Terminal.plist  ->  dotfiles repository
 ```
 
 …doesn't work well. Apps rewrite their plist **constantly** (window position,
 "last opened", Sparkle update timestamps, ephemeral UI state), so the tracked
-file is *always* dirty. `chezmoi status` shows a permanent `MM`, and every
-`chezmoi re-add` captures noise. chezmoi is one-way (source → target); a file
-the app keeps rewriting diverges forever.
+file always differs. The status of the dotfiles always shows a change, and each
+capture also saves the noise. A file that the app keeps rewriting diverges forever.
 
 ## The approach
 
@@ -26,20 +31,20 @@ way — unlike editing `~/Library/Preferences` directly).
 ```
                               pac preferences save
   live domain  ── defaults export ──►  ~/.config/macos-preferences/<domain>.plist
-  (cfprefsd)                                   │ chezmoi re-add (encrypt)
+  (cfprefsd)                                   │ age -e (encrypt)
                                                ▼
-                        dot_config/macos-preferences/encrypted_<domain>.plist.age   (repo)
-                                               │ chezmoi apply
+                        data/macos-preferences/<domain>.plist.age   (repo)
+                                               │ task macos-preferences: age -d
                                                ▼
-                              ~/.config/macos-preferences/<domain>.plist            (stable mirror)
-                                               │ run_onchange: defaults import
+                              ~/.config/macos-preferences/<domain>.plist    (stable mirror)
+                                               │ task macos-preferences: defaults import
                                                ▼
   live domain  ◄──────────────────────  applied back into the app's defaults
 ```
 
 The live `~/Library/Preferences/<domain>.plist` is **never tracked**, so it
-never appears in `chezmoi status`. The snapshot lives under
-`~/.config/macos-preferences/`, where nothing but chezmoi writes — so it stays
+never appears in the status of the dotfiles. The snapshot lives under
+`~/.config/macos-preferences/`, where only the task and pac write, so it stays
 clean too. You capture changes explicitly (`pac preferences save`), not on the
 app's schedule.
 
@@ -47,40 +52,33 @@ app's schedule.
 
 | Path | Role |
 |---|---|
-| `home/.chezmoidata/macos-preferences.yaml` → `macos_preferences_domains` | The list of tracked domains. Drives the import script. |
-| `home/dot_config/macos-preferences/encrypted_<domain>.plist.age` | The encrypted snapshot (source). Applied to `~/.config/macos-preferences/<domain>.plist`. |
-| `home/.chezmoiscripts/darwin/run_onchange_after_import-macos-preferences.sh.tmpl` | Re-applies each snapshot with `defaults import`. |
-| `home/.chezmoiignore.tmpl` | Allowlists `.config/macos-preferences`. The live `Library/Preferences/*.plist` are **not** in the allowlist, so they are unmanaged. |
-| `pac preferences …` ([owpac/pac](https://github.com/owpac/pac)) | The CLI to list / save / remove tracked preferences. `bootstrap-tools` installs it with uv, and writes its zsh completion (subcommands + slug/domain). |
+| `data/macos-preferences/<domain>.plist.age` | The encrypted snapshot (source). The task decrypts it to `~/.config/macos-preferences/<domain>.plist`. |
+| `modules/macos/tasks/macos-preferences` | Decrypts each snapshot, and re-applies it with `defaults import`. `mise bootstrap` runs it (task `bootstrap`). |
+| `data/macos-preferences.yaml` | The keys that `pac preferences save` removes, and the list of domains that pac keeps. The task does not read this list: it imports each `.plist.age` file. |
+| `pac preferences …` ([owpac/pac](https://github.com/owpac/pac)) | The CLI to list / save / remove tracked preferences. mise installs it (`mise/config.workstation.toml`), and writes its zsh completion (subcommands + slug/domain). |
 
-## The import script
+## The import task
 
-`run_onchange_after_import-macos-preferences.sh.tmpl` is a chezmoi
-`run_onchange_after_` script (runs after files are applied, on macOS, non-minimum):
+`modules/macos/tasks/macos-preferences` runs at each `mise bootstrap`, on a workstation:
 
-- It embeds a **sha256 of each snapshot's *decrypted* content**, so chezmoi re-runs it
-  *only* when the real content of a snapshot changes. It does not re-run on every apply,
-  or when age re-encryption alone produces a different ciphertext.
+- It decrypts each snapshot, and writes `~/.config/macos-preferences/<domain>.plist` only
+  when the content changed.
 - It imports **only the snapshots that changed since their last import**.
   `~/.local/state/macos-preferences/<domain>.sha256` keeps the hash of the last import of
-  each domain. So a new snapshot of one app does not reset the other apps, and a change to
-  the script itself imports nothing.
-- On a new machine, there is no state yet, so the script imports every snapshot.
+  each domain. So a new snapshot of one app does not reset the other apps. A new
+  ciphertext of the same content (age re-encryption) imports nothing.
+- On a new machine, there is no state yet, so the task imports every snapshot.
 
 ```sh
-import() {   # domain, sha256 of the decrypted snapshot
-  [ "$(cat "$state/$domain.sha256" 2>/dev/null || true)" = "$hash" ] && return 0
-  defaults import "$domain" "$HOME/.config/macos-preferences/$domain.plist"
-  echo "$hash" > "$state/$domain.sha256"
-}
-{{ range .macos_preferences_domains -}}
-import "{{ . }}" "{{ include (printf "dot_config/macos-preferences/encrypted_%s.plist.age" .) | decrypt | sha256sum }}"
-{{ end -}}
+hash=$(shasum -a 256 "$snapshot" | cut -d' ' -f1)
+[ "$(cat "$state/$domain.sha256" 2>/dev/null || true)" = "$hash" ] && continue
+defaults import "$domain" "$snapshot"
+echo "$hash" > "$state/$domain.sha256"
 ```
 
 To import a snapshot again by hand, run
-`defaults import "<domain>" ~/.config/macos-preferences/<domain>.plist`. chezmoi does not
-re-run the script for that: the content of the script does not change.
+`defaults import "<domain>" ~/.config/macos-preferences/<domain>.plist`, or remove
+`~/.local/state/macos-preferences/<domain>.sha256` and run `mise run macos-preferences`.
 
 ## Keys that the apps change on their own
 
@@ -90,7 +88,7 @@ Apps also write keys that are not settings: window positions (`NSWindow Frame *`
 without a real change of settings.
 
 `pac preferences save` removes them from each snapshot before it adds the snapshot. The
-patterns are in `home/.chezmoidata/macos-preferences.yaml` → `macos_preferences_ignored_keys`
+patterns are in `data/macos-preferences.yaml` → `macos_preferences_ignored_keys`
 (shell patterns, for every domain). The snapshot is an XML plist with sorted keys. So a
 snapshot changes only when a real setting changes, and the other machines re-import an app
 only after a real change.
@@ -105,7 +103,7 @@ only after a real change.
   `pac preferences save <app>`.
 - iTerm2 copies each dynamic profile into `New Bookmarks`. `pac preferences save` removes
   these copies, because the files in `~/Library/Application Support/iTerm2/DynamicProfiles`
-  (managed by chezmoi) are the source of these profiles.
+  (a dotfile of mise) are the source of these profiles.
 
 ## Usage — `pac preferences`
 
@@ -120,7 +118,7 @@ pac preferences remove <name...>     # stop tracking (keeps the app's live prefs
   with or without a trailing `.plist`).
 - `save` with no args re-captures every already-tracked app.
 - After any `save`/`remove`, review and commit the source repo:
-  `chezmoi cd` → `git add -p && git commit`.
+  `cd ~/.dotfiles` → `git add -p && git commit`.
 
 ### Add a new app
 
@@ -128,10 +126,9 @@ pac preferences remove <name...>     # stop tracking (keeps the app's live prefs
 pac preferences save com.foo.Bar
 ```
 
-This exports the domain, adds the encrypted snapshot to the source, **and
-auto-registers the domain** in `home/.chezmoidata/macos-preferences.yaml`. On the next
-`chezmoi apply` (here and on other machines after a pull) the import script
-applies it. Nothing to edit by hand.
+This exports the domain, and adds the encrypted snapshot to the repository. On the next
+`mise bootstrap` (here, and on the other machines after a pull), the task imports it.
+Nothing to edit by hand.
 
 ### Stop tracking an app
 

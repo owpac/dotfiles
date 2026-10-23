@@ -1,0 +1,12 @@
+# The keys that mise sets in the user config of bd (~/.config/bd/config.yaml), with a merge entry
+# of modules/agents/mise.agents.toml. The other keys of the file stay.
+#
+# metrics.disabled: true is the value that `bd metrics off` writes. Thus bd sends no usage metrics,
+# and does not show its notice about these metrics. On a new machine, mise writes this file before
+# bd starts for the first time (pac agent init, in the task agents).
+#
+# With no-git-ops: true, bd does no git operation. Also, `bd prime` gives no git steps to the
+# agents. The agent above bd decides about the git operations, not bd.
+metrics:
+  disabled: true
+no-git-ops: true

@@ -1,0 +1,36 @@
+# The role work: a workstation for Doctolib, with the role workstation. The tools and the
+# packages of Doctolib.
+
+# The modules of this role. The task modules adds them to the modules of the role workstation.
+[vars]
+modules_work = "doctolib"
+
+[tools]
+ruby = "3.3.6"
+terraform = "1.8.0"
+teleport-ent = "15.4.2"
+java = "openjdk-21.0.2"
+
+[bootstrap.packages]
+"brew:awscli" = "latest"
+"brew:aws-iam-authenticator" = "latest"
+"brew:aws-vault" = "latest"
+"brew:coreutils" = "latest"
+"brew:cmake" = "latest"
+"brew:gnupg" = "latest"
+"brew:gnu-sed" = "latest"
+"brew:graphviz" = "latest"
+"brew:jq" = "latest"
+"brew:kubernetes-cli" = "latest"
+"brew:libsodium" = "latest"
+"brew:libyaml" = "latest"
+"brew:openssl@3" = "latest"
+"brew:postgresql@15" = "latest"
+"brew:rust" = "latest"
+"brew:yq" = "latest"
+"brew:watchman" = "latest"
+"brew-cask:mutedeck" = "latest"
+
+# mise adds these apps to the login items of the module macos.
+[bootstrap.macos.login_items]
+apps = ["/Applications/MuteDeck/MuteDeck.app"]

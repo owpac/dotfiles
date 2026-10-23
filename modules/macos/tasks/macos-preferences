@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+#MISE description="Import the encrypted snapshots of the macOS app preferences"
+#
+# Re-apply the preferences of the macOS apps from the encrypted snapshots in
+# data/macos-preferences/<domain>.plist.age, with `defaults import` (this command goes
+# through cfprefsd, unlike an edit of the live plist). The task tracks one stable snapshot for each
+# domain, instead of the live ~/Library/Preferences/<domain>.plist, which changes all the time.
+#
+# The task decrypts each snapshot to ~/.config/macos-preferences/<domain>.plist, where
+# `pac preferences save` writes a new snapshot. Then it imports only the snapshots that changed
+# since their last import: ~/.local/state/macos-preferences/<domain>.sha256 keeps the hash of the
+# last import. So a new snapshot of one app does not reset the other apps. On a new machine, the
+# task imports every snapshot. mise bootstrap runs this task each time (task bootstrap).
+#
+# Capture a change after you edit the settings of an app: pac preferences save [name...]
+
+set -eufo pipefail
+
+source "$(dirname "$0")/../../../lib/logs.sh"
+
+# mise runs this task through its link in ~/.config/mise/conf.d/macos/tasks. Follow the link to find
+# this repository.
+repo="$(cd "$(dirname "$(readlink -f "$0")")/../../.." && pwd)"
+identity=$(mise vars age_identity)
+snapshots="$HOME/.config/macos-preferences"
+state="$HOME/.local/state/macos-preferences"
+
+if [ ! -f "$identity" ]; then
+  log_task "No age identity in $identity yet: run mise bootstrap again to import the app preferences"
+  exit 0
+fi
+
+mkdir -p "$snapshots" "$state"
+for encrypted in "$repo"/data/macos-preferences/*.plist.age; do
+  domain=$(basename "$encrypted" .plist.age)
+  snapshot="$snapshots/$domain.plist"
+  tmp=$(mktemp "$snapshots/.$domain.XXXXXX")
+  age -d -i "$identity" -o "$tmp" "$encrypted"
+  chmod 644 "$tmp"
+  if cmp -s "$tmp" "$snapshot"; then rm -f "$tmp"; else mv "$tmp" "$snapshot"; fi
+
+  hash=$(shasum -a 256 "$snapshot" | cut -d' ' -f1)
+  [ "$(cat "$state/$domain.sha256" 2>/dev/null || true)" = "$hash" ] && continue
+  defaults import "$domain" "$snapshot"
+  echo "$hash" > "$state/$domain.sha256"
+  log_done "$domain preferences imported (restart the app to pick up the changes)"
+done

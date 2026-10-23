@@ -1,0 +1,7 @@
+# The module git, on each machine (modules_base in config.toml).
+
+[dotfile_groups.git]
+root = "git/home"
+
+[dotfile_groups.git.entries]
+"~/.gitconfig" = { mode = "template" }

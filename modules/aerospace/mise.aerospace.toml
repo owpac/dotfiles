@@ -1,0 +1,10 @@
+# AeroSpace, the tiling window manager of the workstations.
+
+[bootstrap.packages]
+"brew-cask:nikitabobko/tap/aerospace" = "latest"
+
+[dotfile_groups.aerospace]
+root = "aerospace/home"
+
+[dotfile_groups.aerospace.entries]
+"~/.aerospace.toml" = { mode = "template" }

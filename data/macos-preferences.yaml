@@ -1,0 +1,32 @@
+# macOS app preferences, tracked as encrypted snapshots under data/macos-preferences/
+# (see docs/macos-preferences.md).
+
+# Keys that the apps change on their own: window positions, panels, update checks, versions,
+# dates and the local state of iTerm2 (its NoSync* keys). `pac preferences save` removes
+# them from the snapshots, so a snapshot changes only when a real setting changes. Shell
+# patterns (fnmatch), for every domain. Top-level keys only: `defaults import` replaces each
+# top-level value whole, so a nested key cannot be removed. `defaults import` keeps the
+# ignored keys on the machine.
+# pac also removes the copies of the iTerm2 dynamic profiles from "New Bookmarks": their files
+# in ~/Library/Application Support/iTerm2/DynamicProfiles are the source.
+macos_preferences_ignored_keys:
+  - "NSWindow Frame *"
+  - "NSStatusItem Preferred Position *"
+  - "NSNav*"
+  - "NSOSPLastRootDirectory"
+  - "SULastCheckTime"
+  - "SUHasLaunchedBefore"
+  - "NoSync*"
+  - "iTerm Version"
+  - "lastVersion"
+  - "LastTerminalStartTime"
+  - "DefaultProfilesVersion"
+  - "ProfileCurrentVersion"
+
+# Domains that pac tracks. `pac preferences save <domain>` adds a domain at the end of this list.
+# The task macos-preferences does not read this list: it imports each .plist.age file.
+macos_preferences_domains:
+  - com.apple.Terminal
+  - com.googlecode.iterm2
+  - com.knollsoft.Rectangle
+  - app.openisland.OpenIsland

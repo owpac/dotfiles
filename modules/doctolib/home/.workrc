@@ -1,0 +1,7 @@
+{#- Decrypts .workrc.age with the age identity ~/.ssh/encryption_ed25519. On a new machine, the first
+    run of mise bootstrap writes this identity: until then, the template renders empty and mise
+    does not write .workrc (remove_empty). Encrypt a new version with:
+    age -e -i ~/.ssh/encryption_ed25519 -a -o .workrc.age <file> -#}
+{%- if vars.age_identity is file -%}
+{{ exec(command="age -d -i " ~ (vars.age_identity | quote) ~ " ~/.dotfiles/modules/doctolib/home/.workrc.age") }}
+{% endif -%}

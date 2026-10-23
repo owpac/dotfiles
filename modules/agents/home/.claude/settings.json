@@ -1,0 +1,37 @@
+{#- The keys that mise sets in ~/.claude/settings.json (merge entry of mise.agents.toml).
+  Claude Code also writes this file: its other keys stay. The Beads hooks come from the plugin
+  beads@owpac.
+    - env: BEADS_ACTOR is the agent name for the claims, notes and comments of bd. BEADS_DIR is
+      the home workspace, also when Claude Code does not start from a shell that read ~/.zshenv.
+    - Plugins: the marketplace owpac is the runtime clone of owpac/prompts (task agents).
+      Claude Code reads its plugins in place. mise enables the plugins of vars.agent_plugins, and
+      of vars.agent_plugins_work in the work mode. A merge entry does not remove a key: to remove
+      a plugin, set it to false here, or remove it with /plugin. -#}
+{%- set plugins = vars.agent_plugins | split(pat=" ") -%}
+{%- if "work" in (mise_env | default(value=[])) and vars.agent_plugins_work -%}
+{%- set plugins = [...plugins, ...(vars.agent_plugins_work | split(pat=" "))] -%}
+{%- endif -%}
+{
+  "model": "opus",
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  },
+  "env": {
+    "BEADS_ACTOR": "claude",
+    "BEADS_DIR": "{{ env.HOME }}/{{ vars.beads_dir }}"
+  },
+  "extraKnownMarketplaces": {
+    "owpac": {
+      "source": {
+        "source": "directory",
+        "path": "{{ env.HOME }}/{{ vars.marketplaces_dir }}/owpac"
+      }
+    }
+  },
+  "enabledPlugins": {
+{%- for plugin in plugins %}
+    "{{ plugin }}@owpac": true{% if not loop.last %},{% endif %}
+{%- endfor %}
+  }
+}

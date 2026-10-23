@@ -1,0 +1,51 @@
+{%- set envs = mise_env | default(value=[]) -%}
+[core]
+  editor = {% if "/opt/homebrew/bin/code" is file %}code --wait{% else %}vim{% endif %}
+[user]
+  name = owpac
+  email = {{ vars.email }}
+{%- if "workstation" in envs and exec(command="command -v op || true") %}
+  signingkey = {{ exec(command="op read 'op://Personal/sign_ed25519/public key'") }}
+{%- endif %}
+
+[push]
+  autoSetupRemote = true
+[pull]
+  rebase = false
+[fetch]
+  prune = true
+
+[url "git@github.com:owpac/"]
+	insteadOf = https://github.com/owpac/
+
+{% if "workstation" in envs -%}
+[commit]
+  gpgsign = true
+[gpg]
+  format = ssh
+[gpg "ssh"]
+  program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+{%- endif %}
+
+{% if "/opt/homebrew/bin/code" is file -%}
+[diff]
+  tool = vscode
+[difftool "vscode"]
+  cmd = code --wait --diff $LOCAL $REMOTE
+
+[merge]
+  tool = vscode
+[mergetool "vscode"]
+  cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+{%- endif %}
+
+{% if "work" in envs -%}
+[includeIf "gitdir:~/Workspace/doctolib/"]
+  path = ~/Workspace/doctolib/.gitconfig
+
+[url "git@doctolib:doctolib/"]
+	insteadOf = git@github.com:doctolib/
+
+[url "git@doctolib:doctolib/"]
+	insteadOf = https://github.com/doctolib/
+{%- endif -%}

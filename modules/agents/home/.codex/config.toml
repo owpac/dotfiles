@@ -1,0 +1,31 @@
+{#- The keys that mise sets in ~/.codex/config.toml (merge entry of mise.agents.toml).
+  Codex also writes this file (for example the trust levels of the projects): its other keys and
+  its comments stay. The Beads hooks come from the plugin beads@owpac.
+    - shell_environment_policy.set: BEADS_ACTOR (agent name for bd) and BEADS_DIR (home
+      workspace) for the commands that Codex runs.
+    - sandbox_workspace_write: in the Auto preset, sandboxed bd commands can reach the shared Dolt
+      server (127.0.0.1:3308), and write ~/.beads and the home workspace. Trade-off: sandboxed
+      commands get network access.
+    - Plugins: the marketplace owpac is the runtime clone of owpac/prompts (task agents).
+      mise enables the plugins of vars.agent_plugins, and of vars.agent_plugins_work in the work
+      mode. Codex copies each plugin into its cache: the task agents installs the copies. A merge
+      entry does not remove a key: to remove a plugin, set enabled = false here. -#}
+{%- set plugins = vars.agent_plugins | split(pat=" ") -%}
+{%- if "work" in (mise_env | default(value=[])) and vars.agent_plugins_work -%}
+{%- set plugins = [...plugins, ...(vars.agent_plugins_work | split(pat=" "))] -%}
+{%- endif -%}
+[shell_environment_policy.set]
+BEADS_ACTOR = "codex"
+BEADS_DIR = "{{ env.HOME }}/{{ vars.beads_dir }}"
+
+[sandbox_workspace_write]
+network_access = true
+writable_roots = ["{{ env.HOME }}/.beads", "{{ env.HOME }}/{{ vars.beads_dir | dirname }}"]
+
+[marketplaces.owpac]
+source_type = "local"
+source = "{{ env.HOME }}/{{ vars.marketplaces_dir }}/owpac"
+{% for plugin in plugins %}
+[plugins."{{ plugin }}@owpac"]
+enabled = true
+{% endfor -%}

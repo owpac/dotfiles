@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#MISE description="Decrypt the app backups into ~/Backup"
+#
+# The backups of the apps that have no preferences file (Raycast, Stream Deck, Wave Link) are
+# encrypted in data/backups/<file>.age. The task decrypts each backup into ~/Backup/<file>, and
+# writes a file only when its content changed. Import a backup with its app.
+# mise bootstrap runs this task each time (task bootstrap).
+# Add a backup: age -e -i ~/.ssh/encryption_ed25519 -o "data/backups/<file>.age" "<file>"
+
+set -eufo pipefail
+
+source "$(dirname "$0")/../../../lib/logs.sh"
+
+# mise runs this task through its link in ~/.config/mise/conf.d/macos/tasks. Follow the link to find
+# this repository.
+repo="$(cd "$(dirname "$(readlink -f "$0")")/../../.." && pwd)"
+identity=$(mise vars age_identity)
+backups="$HOME/Backup"
+
+if [ ! -f "$identity" ]; then
+  log_task "No age identity in $identity yet: run mise bootstrap again to decrypt the backups"
+  exit 0
+fi
+
+mkdir -p "$backups"
+chmod 700 "$backups"
+for encrypted in "$repo"/data/backups/*.age; do
+  name=$(basename "$encrypted" .age)
+  tmp=$(mktemp "$backups/.backup.XXXXXX")
+  age -d -i "$identity" -o "$tmp" "$encrypted"
+  chmod 644 "$tmp"
+  if cmp -s "$tmp" "$backups/$name"; then
+    rm -f "$tmp"
+  else
+    mv "$tmp" "$backups/$name"
+    log_done "Backup decrypted: ~/Backup/$name"
+  fi
+done

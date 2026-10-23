@@ -1,0 +1,45 @@
+# The module agents: the coding agents Claude Code, Codex and Beads. Their variables, packages,
+# dotfiles and tasks. home/ holds the files of the group agents, and tasks/ the setup scripts.
+
+[vars]
+# The paths are relative to the home directory. Every task of Beads lives in this workspace.
+beads_dir = ".local/share/tasks/.beads"
+# The runtime clones of the plugin marketplaces (task agents). `pac upgrade agents` pulls them.
+# Claude Code and Codex use them as local marketplaces.
+marketplaces_dir = ".local/share/agent-marketplaces"
+# The plugins of the marketplace owpac, separated by spaces. Both agents get them.
+agent_plugins = "productivity python rails setup beads engram"
+# The plugins of the marketplace owpac for the work mode only.
+agent_plugins_work = ""
+
+[bootstrap.packages]
+"brew:beads" = "latest"
+"brew:gentleman-programming/tap/engram" = "latest"
+
+# Claude Code, Codex and bd also write settings.json, config.toml and config.yaml, so mise merges
+# the keys of owpac into them. A merge entry must be in [dotfiles]: a group deploys whole files
+# only. Each source needs its full path: a relative source starts in ~/.config/mise/conf.d/agents.
+# The group agents excludes these sources, so it does not link them.
+# mise dot add sorts the entries of a table: keep them sorted, and keep the comments above it.
+[dotfiles]
+"~/.claude" = { permissions = "0700" }
+"~/.claude/settings.json/owpac" = { source = "~/.dotfiles/modules/agents/home/.claude/settings.json", merge = true, template = "tera" }
+"~/.codex/config.toml/owpac" = { source = "~/.dotfiles/modules/agents/home/.codex/config.toml", merge = true, template = "tera" }
+"~/.config/bd/config.yaml" = { permissions = "0600" }
+"~/.config/bd/config.yaml/owpac" = { source = "~/.dotfiles/modules/agents/home/.config/bd/config.yaml", merge = true }
+
+[dotfile_groups.agents]
+root = "agents/home"
+exclude = [".claude/settings.json", ".codex/config.toml", ".config/bd/config.yaml"]
+
+[dotfile_groups.agents.entries]
+# Codex reads the shared instructions in ~/.codex/AGENTS.md, a second link to the same source. An
+# entry with a source in the group removes this source from the files that the group links, so
+# ~/.config/ia/AGENTS.md needs its own entry.
+"~/.config/ia/AGENTS.md" = {}
+"~/.codex/AGENTS.md" = { source = ".config/ia/AGENTS.md" }
+"~/.beads/redirect" = { mode = "template" }
+
+# The tasks agents and claude-token. A relative path starts in this folder.
+[task_config]
+includes = ["tasks"]

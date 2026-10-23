@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Installs mise, clones this repository into ~/.dotfiles, selects the mode of this machine, then
+# runs mise bootstrap. mise links the files of mise/ into ~/.config/mise.
+
 # -e: exit on error
 # -u: exit on unset variables
 set -eu
@@ -40,104 +43,122 @@ error() {
   exit 1
 }
 
-install_hombrew() {
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  eval "$(/opt/homebrew/bin/brew shellenv)"
-}
-
-install_chezmoi() {
-  bin_dir="${HOME}/.local/bin"
-  chezmoi="${bin_dir}/chezmoi"
-  log_task "Installing 'chezmoi‘ in '${chezmoi}'..."
-  if [ "$(command -v curl)" ]; then
-    chezmoi_install_script="$(curl -fsSL https://get.chezmoi.io)"
-  elif [ "$(command -v wget)" ]; then
-    chezmoi_install_script="$(wget -qO- https://get.chezmoi.io)"
-  else
-    error "To install chezmoi, you must have curl or wget."
-  fi
-  sh -c "${chezmoi_install_script}" -- -b "${bin_dir}"
-}
-
-install_based_on_os() {
-  package_name="$1"
-
-  if [ "$(uname)" = "Darwin" ]; then
-
-    if [ ! "$(command -v brew)" ]; then
-      log_task "Installing 'Homebrew'..."
-      install_hombrew
-      brew_prefix="$(brew --prefix)"
-    fi
-
-    log_task "Installing '$package_name'..."
-    brew install "$package_name"
-
-  elif [ "$(uname)" = "Linux" ]; then
-
-    if [ ! "$(command -v apt)" ]; then
-      error "Apt is not available."
-    fi
-
-    if [ "$package_name" = "chezmoi" ]; then
-      log_task "Installing '$package_name'..."
-      install_chezmoi
-      return # exit from the function because we just installed chezmoi
-    fi
-
-    log_task "Upgrading packages..."
-    sudo apt update
-    log_task "Installing '$package_name'..."
-    sudo apt install -y "$package_name"
-  else
-    error "Unsupported operating system."
-  fi
-}
-
-install() {
-  package_name="$1"
-
-  if [ ! "$(command -v $package_name)" ]; then
-    install_based_on_os "$package_name"
-  else
-    log_done "'$package_name' already installed! 📦"
-  fi
-}
-
-# install dependencies
-install "git"
-install "chezmoi"
-
 # set default values
 DOTFILES_USER=${DOTFILES_USER:-"owpac"}
 DOTFILES_HTTPS_URL=${DOTFILES_HTTPS_URL:-"https://github.com/${DOTFILES_USER}/dotfiles.git"}
 DOTFILES_SSH_URL=${DOTFILES_SSH_URL:-"git@github.com:${DOTFILES_USER}/dotfiles.git"}
-DOTFILES_DIR=${DOTFILES_DIR:-"${HOME}/.dotfiles"}
+# mise/config.toml expects these paths (dotfiles.root and the entry "~/.config/mise").
+DOTFILES_DIR="${HOME}/.dotfiles"
+MISE_DIR="${HOME}/.config/mise"
 
-# use HTTPS clone URL to avoid SSH key setup without 1Password
-if [ -d "$DOTFILES_DIR" ]; then
-  log_task "'$DOTFILES_DIR' already exists. Pulling latest changes..."
-  cd "$DOTFILES_DIR"
-  git pull
+# --- mise and git -----------------------------------------------------------------------
+# On macOS, Homebrew installs mise and git. Homebrew stays on the machine, and mise sees the
+# packages that Homebrew installed. On Linux, the script of mise installs mise in ~/.local/bin.
+if [ "$(uname)" = "Darwin" ]; then
+  if [ ! -x /opt/homebrew/bin/brew ]; then
+    log_task "Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
+  eval "$(/opt/homebrew/bin/brew shellenv)"
+  for package in git mise; do
+    command -v "$package" >/dev/null 2>&1 || brew install "$package"
+  done
+elif [ "$(uname)" = "Linux" ]; then
+  command -v git >/dev/null 2>&1 || error "Install git first."
+  if ! command -v mise >/dev/null 2>&1; then
+    log_task "Installing mise in ~/.local/bin..."
+    curl -fsSL https://mise.run | sh
+    export PATH="${HOME}/.local/bin:${PATH}"
+  fi
 else
-  git clone $DOTFILES_HTTPS_URL $DOTFILES_DIR
-  cd "$DOTFILES_DIR"
+  error "Unsupported operating system."
+fi
+log_done "mise $(mise --version) ready"
+
+# --- Repository -------------------------------------------------------------------------
+# Use the HTTPS URL for the clone: the SSH key comes from 1Password, which is not set up yet.
+if [ -d "${DOTFILES_DIR}/.git" ]; then
+  log_task "'${DOTFILES_DIR}' already exists. Pulling latest changes..."
+  git -C "${DOTFILES_DIR}" pull --ff-only
+else
+  if [ -e "${DOTFILES_DIR}" ]; then
+    backup="${DOTFILES_DIR}.$(date +%Y%m%d%H%M%S)"
+    log_task "Moving the current '${DOTFILES_DIR}' to '${backup}'..."
+    mv "${DOTFILES_DIR}" "${backup}"
+  fi
+  git clone "${DOTFILES_HTTPS_URL}" "${DOTFILES_DIR}"
 fi
 
-log_task "Running 'chezmoi init --source $DOTFILES_DIR'"
-chezmoi init --source $DOTFILES_DIR
+# --- Config directory of mise -----------------------------------------------------------
+# mise links each file of mise/ into ~/.config/mise. A config that mise did not link goes to a
+# backup.
+if [ -e "${MISE_DIR}/config.toml" ] && [ ! -L "${MISE_DIR}/config.toml" ]; then
+  backup="${MISE_DIR}.$(date +%Y%m%d%H%M%S)"
+  log_task "Moving the current mise config to '${backup}'..."
+  mv "${MISE_DIR}" "${backup}"
+fi
+mkdir -p "${MISE_DIR}"
 
-log_task "Running 'chezmoi apply --force'"
-chezmoi apply --force
+# --- Roles of this machine --------------------------------------------------------------
+# The roles select the setup of this machine (see mise/config.toml): minimal, server,
+# workstation and work. mise saves the roles in its state directory (vars.roles). The
+# task modules writes the roles and their modules into ~/.config/mise/miserc.local.toml. Both
+# stay on this machine, outside this repository.
+miserc="${MISE_DIR}/miserc.local.toml"
+if [ ! -f "${miserc}" ]; then
+  if [ -n "${REMOTE_CONTAINERS:-}${CODESPACES:-}${VSCODE_REMOTE_CONTAINERS_SESSION:-}${GITPOD_HOST:-}" ]; then
+    roles="minimal"
+  elif [ -n "${SSH_CLIENT:-}" ]; then
+    roles="server"
+  elif [ -t 0 ]; then
+    printf "🙋 Should install in minimal mode? [y/N] "
+    read -r answer
+    case "${answer}" in
+      [yY]*) roles="minimal" ;;
+      *)
+        printf "🙋 What profile do you want? [personal/work] "
+        read -r profile
+        case "${profile}" in
+          work) roles="workstation work" ;;
+          *) roles="workstation" ;;
+        esac
+        ;;
+    esac
+  else
+    roles="workstation"
+  fi
+  MISE_CONFIG_DIR="${DOTFILES_DIR}/mise" mise vars roles="${roles}"
+  MISE_CONFIG_DIR="${DOTFILES_DIR}/mise" mise run modules
+  log_done "Roles of this machine: ${roles}"
+fi
 
-# re-init to pick up encryption config now that the key is in place, then apply secrets
-log_task "Re-running 'chezmoi init' to enable encryption config..."
-chezmoi init --source $DOTFILES_DIR --force
+# --- Links of the config of mise --------------------------------------------------------
+# mise reads the modules through their links in ~/.config/mise/conf.d, and these links do not
+# exist yet. Create the links of ~/.config/mise and ~/.config/mise/conf.d first, from the config
+# in this repository. mise bootstrap then reads the whole config: the roles and their modules.
+log_task "Linking the config of mise..."
+MISE_CONFIG_DIR="${DOTFILES_DIR}/mise" mise dot apply --yes "${MISE_DIR}" "${MISE_DIR}/conf.d"
 
-log_task "Running 'chezmoi apply --force' to decrypt secrets..."
-chezmoi apply --force
+# --- Bootstrap --------------------------------------------------------------------------
+# The first run installs the packages, 1Password among them. The keys from 1Password and the
+# files encrypted with age need a second run, after the sign-in to 1Password. On a workstation,
+# the templates that read 1Password stop the dotfiles of the first run: mise then writes no
+# dotfile. The second run writes them.
+log_task "Running 'mise bootstrap'..."
+if ! mise bootstrap --prompt-vars --yes; then
+  grep -q workstation "${miserc}" || error "mise bootstrap failed."
+  log_task "The first run stopped before the keys from 1Password. The second run writes them."
+fi
+
+if grep -q workstation "${miserc}"; then
+  log_task "Open 1Password, sign in, and turn on 'Integrate with 1Password CLI' (Settings > Developer)."
+  printf "🙋 Press Enter when 1Password is ready. "
+  read -r _
+  log_task "Running 'mise bootstrap' again for the keys and the secrets..."
+  mise bootstrap --yes
+fi
 
 # update the remote URL to SSH
-git remote set-url origin $DOTFILES_SSH_URL
+git -C "${DOTFILES_DIR}" remote set-url origin "${DOTFILES_SSH_URL}"
 
 log_done "Configuration successfully applied! 🎉"

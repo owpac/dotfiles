@@ -1,0 +1,20 @@
+# The module zsh, on each machine (modules_base in config.toml): Oh My Zsh, Powerlevel10k and
+# the files of the shell.
+
+[dotfile_groups.zsh]
+root = "zsh/home"
+
+[dotfile_groups.zsh.entries]
+"~/.zshrc" = { mode = "template" }
+"~/.zshenv" = { mode = "template" }
+"~/.zprofile" = { mode = "template" }
+
+# mise clones a missing repository, and does not move an existing checkout.
+# `mise bootstrap --update` pulls each checkout. The plugin autoupdate of Oh My Zsh also pulls
+# the plugins.
+[bootstrap.repos]
+"~/.oh-my-zsh" = { url = "https://github.com/ohmyzsh/ohmyzsh.git" }
+"~/.oh-my-zsh/custom/themes/powerlevel10k" = { url = "https://github.com/romkatv/powerlevel10k.git" }
+"~/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" = { url = "https://github.com/zsh-users/zsh-syntax-highlighting.git" }
+"~/.oh-my-zsh/custom/plugins/zsh-autosuggestions" = { url = "https://github.com/zsh-users/zsh-autosuggestions.git" }
+"~/.oh-my-zsh/custom/plugins/autoupdate" = { url = "https://github.com/TamCore/autoupdate-oh-my-zsh-plugins" }
