@@ -43,6 +43,10 @@ idiomatic_version_file_enable_tools = ["ruby", "node", "terraform"]
 # source needs the full path of the source. mise reads this file through a link, so a relative
 # source starts in ~/.config/mise, not in this repository.
 dotfiles.root = "~/.dotfiles/modules"
+# The history of mise (mode track, mise dot save, history-watch) keeps versions of the files that
+# it tracks in place. This repository and git do this work, so the history stays off, and mise dot
+# status does not show its empty sections.
+history.enabled = false
 
 [vars]
 # The answers of each machine. mise asks for them once (mise vars prompt, or
