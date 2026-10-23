@@ -10,9 +10,9 @@ modules_workstation = "macos ssh secrets pac aerospace agents herdr raycast iter
 node = "latest"
 hk = "latest"
 
-# mise installs the Homebrew packages itself, in /opt/homebrew. Homebrew can stay on the machine:
-# mise sees the packages that Homebrew installed. A cask that mise installs is not visible to
-# `brew upgrade`: `mise bootstrap packages upgrade` upgrades it.
+# mise installs the Homebrew formulae itself, in /opt/homebrew, with the receipts of Homebrew:
+# `brew upgrade` sees them. mise sees the packages that Homebrew installed. Homebrew installs the
+# casks (hook pre-packages below), so `brew upgrade` also sees them.
 # The packages of a module are in the file of the module.
 [bootstrap.packages]
 "brew:colima" = "latest"
@@ -49,6 +49,27 @@ hk = "latest"
 "brew-cask:thaw" = "latest"
 "brew-cask:visual-studio-code" = "latest"
 "brew-cask:zen" = "latest"
+
+# A cask that mise installs gets no metadata of Homebrew, so `brew upgrade` does not see it. This
+# hook runs before the step packages. It installs with Homebrew each declared cask that is missing,
+# in all the config files. The step packages then finds the cask, and leaves it to Homebrew.
+# Add a cask by hand in a config file, then run mise bootstrap: `mise bootstrap packages use`
+# installs the cask with mise. jq comes with macOS.
+[bootstrap.hooks.pre-packages]
+run = '''
+brew=$(command -v brew || echo /opt/homebrew/bin/brew)
+if [ -x "$brew" ] && command -v jq >/dev/null 2>&1; then
+  if status=$(mise bootstrap packages status --json); then
+    casks=$(printf '%s' "$status" | jq -r '."brew-cask".packages[]? | select(.state == "missing") | .package')
+    if [ -n "$casks" ]; then
+      echo "Installing the casks with Homebrew:" $casks
+      "$brew" install --cask $casks
+    fi
+  else
+    echo "No status of the packages: mise can install a missing cask without Homebrew." >&2
+  fi
+fi
+'''
 
 [dotfiles]
 "~/Workspace" = { permissions = "0700" }
