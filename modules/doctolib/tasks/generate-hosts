@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+#MISE description="Write /etc/hosts with the local domains of the dev environment of Doctolib"
+#
+# The list of the domains is in hosts.sh.age, encrypted with age: the details of Doctolib stay out
+# of the public repository. The task decrypts the list, then replaces /etc/hosts with sudo: the
+# header of macOS, then one line 127.0.0.1 for each domain. Run it by hand:
+#   mise run generate-hosts
+# Change the list of the domains:
+#   1. age -d -i ~/.ssh/encryption_ed25519 -o /tmp/hosts.sh hosts.sh.age
+#   2. Edit /tmp/hosts.sh.
+#   3. age -e -R ~/.ssh/encryption_ed25519.pub -o hosts.sh.age /tmp/hosts.sh
+#   4. rm /tmp/hosts.sh
+
+set -eufo pipefail
+
+source "$(dirname "$0")/../../../lib/logs.sh"
+
+# mise runs this task through its link in ~/.config/mise/conf.d/doctolib/tasks. Follow the link to
+# find the folder of the module.
+module="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+identity=$(mise vars age_identity)
+[ -f "$identity" ] || error "No age identity in $identity yet: run mise bootstrap first"
+
+# Defines subdomains, environments, extensions and extra_urls. The bash of macOS (3.2) cannot
+# source a process substitution, so eval reads the decrypted list.
+eval "$(age -d -i "$identity" "$module/hosts.sh.age")"
+
+{
+  cat <<'EOF'
+##
+# Host Database
+#
+# localhost is used to configure the loopback interface
+# when the system is booting.  Do not change this entry.
+##
+127.0.0.1	localhost
+255.255.255.255	broadcasthost
+::1             localhost
+EOF
+  for subdomain in "${subdomains[@]}"; do
+    for environment in "${environments[@]}"; do
+      for extension in "${extensions[@]}"; do
+        echo "127.0.0.1 ${subdomain}-${environment}.doctolib.${extension}"
+      done
+    done
+  done
+  for extra_url in "${extra_urls[@]}"; do
+    echo "127.0.0.1 ${extra_url}"
+  done
+} | sudo tee /etc/hosts >/dev/null
+
+log_done "/etc/hosts updated"

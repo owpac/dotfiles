@@ -1,9 +1,25 @@
-# The module doctolib: the files of Doctolib, for the role work.
+# The module doctolib: the setup of Doctolib, for the role work. PostgreSQL 15, the profile of
+# fnox, the task generate-hosts, and the files of Doctolib (home/).
 
+# The prefix of PostgreSQL 15 of Homebrew (package of config.work.toml).
+[vars]
+postgresql_prefix = "{{ env.HOMEBREW_PREFIX | default(value='/opt/homebrew') }}/opt/postgresql@15"
+
+[env]
 # The secrets of Doctolib are in the profile doctolib of the global config of fnox (module
 # secrets). fnox exec reads them only when this profile is active.
-[env]
 FNOX_PROFILE = "doctolib"
+# PostgreSQL 15, for the Rails apps of Doctolib: its commands, and its files for the native gems.
+# The gem pg finds pg_config with BUNDLE_BUILD__PG.
+_.path = ["{{ vars.postgresql_prefix }}/bin"]
+LDFLAGS = "-L{{ vars.postgresql_prefix }}/lib"
+CPPFLAGS = "-I{{ vars.postgresql_prefix }}/include"
+PKG_CONFIG_PATH = "{{ vars.postgresql_prefix }}/lib/pkgconfig"
+BUNDLE_BUILD__PG = "--with-pg-config={{ vars.postgresql_prefix }}/bin/pg_config"
+
+# The task generate-hosts writes /etc/hosts. A relative path starts in this folder.
+[task_config]
+includes = ["tasks"]
 
 [dotfile_groups.doctolib]
 root = "doctolib/home"

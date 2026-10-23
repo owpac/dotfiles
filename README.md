@@ -89,6 +89,7 @@ Each machine selects its setup on 3 axes:
 - `mise use --global <tool>` and `mise bootstrap packages use --global <package>` write into this repository, through the link. Then commit the change.
 - A secret: `fnox set <NAME> --global --provider age`. fnox asks for the value, encrypts it with age, and writes it into `modules/secrets/home/.config/fnox/config.toml`, through the link. The provider comes from the template `age.toml`: mise reads its public key in 1Password, so this repository does not hold it. For a secret of Doctolib, add `--profile doctolib`: the module `doctolib` activates this profile (`FNOX_PROFILE`).
 - A command with the secrets: `fnox exec -- <command>`. No secret enters the interactive shell (`env = "exec"`).
+- Role `work`: `mise run generate-hosts` writes the local domains of Doctolib into `/etc/hosts`. The shell function `artifacts-login` (in `~/.workrc`) gets a new CodeArtifact token. `ES_API_KEY` is a secret of fnox (profile `doctolib`): run a command that needs it with `fnox exec`.
 
 ### Convenience script
 
