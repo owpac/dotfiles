@@ -17,6 +17,10 @@ tools=(pac)
 {{- if .is_headless }}
 tools+=(kompose)
 {{- end }}
+{{- if eq .chezmoi.hostname "raspberrypi" }}
+# craft manages the Minecraft server of the Pi.
+tools+=(craft)
+{{- end }}
 
 # On the first apply, bootstrap-mise installs uv in this same run: PATH does not have it yet,
 # but `mise exec` finds it.
