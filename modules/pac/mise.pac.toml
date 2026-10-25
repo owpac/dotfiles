@@ -1,9 +1,7 @@
 # The module pac: the CLI that upgrades each machine (owpac/pac). mise installs it with uv, in its
-# own venv, from its private GitHub repository. `latest` is the last commit of the default branch:
-# `mise upgrade` installs a new commit. The host `owpac` is an SSH alias of github.com
-# (modules/ssh/home/.ssh/config). With the real host name, mise calls the GitHub API, and this API
-# needs a token for a private repository. On the NAS, ssh forwards the 1Password agent of the Mac
-# (ForwardAgent).
+# own venv, from its private GitHub repository. mise 2026.10.19 or later lists a private
+# repository with `git ls-remote` over SSH, so no GitHub token is necessary. On the NAS, ssh
+# forwards the 1Password agent of the Mac (ForwardAgent).
 # A machine without access to this repository turns off the module: mise vars modules_off="pac"
 
 [tools]
@@ -12,15 +10,11 @@
 # reinstalls the tool. The module kompose declares the same versions.
 python = "3.15"
 uv = "latest"
-# postinstall writes the zsh completion of each new version.
-"pypi:git+ssh://git@owpac/owpac/pac.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && pac --completion zsh > "$HOME/.local/bin/completions/_pac"' }
+# On github.com, `latest` is the last tag, and this repository has no tag. The hook below installs
+# the new commits. postinstall writes the zsh completion of each new version.
+"pypi:git+ssh://git@github.com/owpac/pac.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && pac --completion zsh > "$HOME/.local/bin/completions/_pac"' }
 
-# A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
-# tool. So reinstall pac if it does not start. mise runs the hooks of each config file.
+# Reinstall pac if it does not start, or if its default branch has a new commit
+# (lib/update-git-tool.sh). mise runs the hooks of each config file.
 [bootstrap.hooks.post-tools]
-run = '''
-if ! mise exec -- pac --version >/dev/null 2>&1; then
-  echo "Reinstalling pac on the Python of mise..."
-  mise install --force "pypi:git+ssh://git@owpac/owpac/pac.git"
-fi
-'''
+run = '"$HOME/.dotfiles/lib/update-git-tool.sh" "pypi:git+ssh://git@github.com/owpac/pac.git" pac'
