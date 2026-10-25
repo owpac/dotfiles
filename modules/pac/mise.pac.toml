@@ -1,7 +1,7 @@
 # The module pac: the CLI that upgrades each machine (owpac/pac). mise installs it with uv, in its
 # own venv, from its private GitHub repository. mise 2026.10.19 or later lists a private
-# repository with `git ls-remote` over SSH, so no GitHub token is necessary. On the NAS, ssh
-# forwards the 1Password agent of the Mac (ForwardAgent).
+# repository with `git ls-remote` over SSH, so no GitHub token is necessary. On a server (the
+# NAS, the Pi), ssh forwards the 1Password agent of the Mac (ForwardAgent).
 # A machine without access to this repository turns off the module: mise vars modules_off="pac"
 
 [tools]

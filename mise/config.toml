@@ -3,9 +3,10 @@
 # `mise bootstrap packages use --global` write their changes here, through the link.
 #
 # This file applies to each machine. A machine selects its setup on 3 axes:
-#   - Roles: the type of machine. minimal (containers, Codespaces), server (the NAS),
-#     workstation (a Mac) and work (a Mac for Doctolib, with workstation). A role is a config
-#     environment: config.<role>.toml holds its setup and lists its modules (vars.modules_<role>).
+#   - Roles: the type of machine. minimal (containers, Codespaces), server (the NAS and the
+#     Raspberry Pi), workstation (a Mac) and work (a Mac for Doctolib, with workstation). A role is
+#     a config environment: config.<role>.toml holds its setup and lists its modules
+#     (vars.modules_<role>).
 #   - Modules: the blocks of setup that a machine turns on as a whole, for example herdr or agents.
 #     A module is a config environment too: modules/<module>/mise.<module>.toml holds all its setup.
 #     vars.modules_base lists the modules of each machine.

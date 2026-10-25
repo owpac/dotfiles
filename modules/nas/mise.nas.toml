@@ -1,7 +1,0 @@
-# The module nas: the authorized keys of SSH on the NAS.
-
-[dotfile_groups.nas]
-root = "nas/home"
-
-[dotfile_groups.nas.entries]
-"~/.ssh/authorized_keys" = { mode = "template", permissions = "0600" }

@@ -1,5 +1,5 @@
-# The role server: the NAS.
+# The role server: a server of the homelab, the NAS and the Raspberry Pi. They have the same setup.
 
 # The modules of this role. The task modules adds them to the modules of config.toml.
 [vars]
-modules_server = "ssh nas pac kompose"
+modules_server = "ssh sshd pac kompose craft"

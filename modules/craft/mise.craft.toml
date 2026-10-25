@@ -1,0 +1,23 @@
+# The module craft: the CLI that manages the Minecraft server of the homelab (owpac/craft).
+# mise installs it as the module pac installs pac: see modules/pac/mise.pac.toml for the private
+# repository.
+# A machine without access to this repository turns off the module: mise vars modules_off="craft"
+
+[tools]
+# The same versions as the module pac: the Python tools of mise use the link python/3.15.
+python = "3.15"
+uv = "latest"
+# On github.com, `latest` is the last tag. The workflow tag.yml of the repository tags each push on
+# main, so `mise upgrade` installs each push. postinstall writes the zsh completion of each new
+# version.
+"pypi:git+ssh://git@github.com/owpac/craft.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && craft --completion zsh > "$HOME/.local/bin/completions/_craft"' }
+
+# A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
+# tool. So reinstall craft if it does not start.
+[bootstrap.hooks.post-tools]
+run = '''
+if ! mise exec -- craft --version >/dev/null 2>&1; then
+  echo "Reinstalling craft on the Python of mise..."
+  mise install --force "pypi:git+ssh://git@github.com/owpac/craft.git"
+fi
+'''

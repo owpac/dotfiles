@@ -101,12 +101,15 @@ mkdir -p "${MISE_DIR}"
 
 # --- Roles of this machine --------------------------------------------------------------
 # The roles select the setup of this machine (see mise/config.toml): minimal, server,
-# workstation and work. mise saves the roles in its state directory (vars.roles). The
+# workstation and work. DOTFILES_ROLES gives them without a question, for example
+# DOTFILES_ROLES="workstation work". mise saves the roles in its state directory (vars.roles). The
 # task modules writes the roles and their modules into ~/.config/mise/miserc.local.toml. Both
 # stay on this machine, outside this repository.
 miserc="${MISE_DIR}/miserc.local.toml"
 if [ ! -f "${miserc}" ]; then
-  if [ -n "${REMOTE_CONTAINERS:-}${CODESPACES:-}${VSCODE_REMOTE_CONTAINERS_SESSION:-}${GITPOD_HOST:-}" ]; then
+  if [ -n "${DOTFILES_ROLES:-}" ]; then
+    roles="${DOTFILES_ROLES}"
+  elif [ -n "${REMOTE_CONTAINERS:-}${CODESPACES:-}${VSCODE_REMOTE_CONTAINERS_SESSION:-}${GITPOD_HOST:-}" ]; then
     roles="minimal"
   elif [ -n "${SSH_CLIENT:-}" ]; then
     roles="server"

@@ -1,5 +1,5 @@
-# The module ssh: the config and the public key of the Mac, on the NAS and on the workstations. The
-# module nas adds the authorized keys, and the module secrets adds the encryption key.
+# The module ssh: the config and the public key of the Mac, on the servers and on the workstations.
+# The module sshd adds the authorized keys, and the module secrets adds the encryption key.
 
 [dotfiles]
 "~/.ssh" = { permissions = "0700" }

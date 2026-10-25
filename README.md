@@ -51,14 +51,14 @@ Each machine selects its setup on 3 axes:
 | Role (`vars.roles`) | Modules | Content |
 | ------------------- | ------- | ------- |
 | `minimal` | `zsh`, `git` | The shell and git. For containers, Codespaces and other ephemeral environments. |
-| `server` | `zsh`, `git`, `ssh`, `nas`, `pac`, `kompose` | The NAS: the shell, SSH and the CLI tools of owpac. |
+| `server` | `zsh`, `git`, `ssh`, `sshd`, `pac`, `kompose`, `craft` | A server of the homelab (the NAS, the Raspberry Pi): the shell, SSH, the authorized keys and the CLI tools of owpac. |
 | `workstation` | `zsh`, `git`, `macos`, `ssh`, `secrets`, `pac`, `aerospace`, `agents`, `herdr`, `raycast`, `iterm2` | A Mac: packages, macOS preferences, coding agents and the full shell. |
 | `workstation work` | the modules of `workstation`, and `doctolib` | A Mac for work: the role `workstation`, plus the work tools and secrets. |
 
 `vars.modules_base` in `mise/config.toml` lists the modules of each machine. mise saves the roles of the machine (`vars.roles`) in its state directory. The task `modules` writes the roles and their modules into `~/.config/mise/miserc.local.toml`. The roles and this file stay on the machine, outside this repository.
 
 > [!NOTE]
-> The install script selects the role `minimal` in a Dev Container or a Codespace, and the role `server` when `SSH_CLIENT` is set. Otherwise, it asks for the mode. Then it saves the roles, and runs the task `modules`.
+> The install script selects the role `minimal` in a Dev Container or a Codespace, and the role `server` when `SSH_CLIENT` is set. Otherwise, it asks for the mode. `DOTFILES_ROLES` gives the roles without a question, for example `DOTFILES_ROLES="workstation work"`. Then it saves the roles, and runs the task `modules`.
 
 ### Layout
 
