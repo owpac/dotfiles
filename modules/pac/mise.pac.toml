@@ -10,11 +10,17 @@
 # reinstalls the tool. The module kompose declares the same versions.
 python = "3.15"
 uv = "latest"
-# On github.com, `latest` is the last tag, and this repository has no tag. The hook below installs
-# the new commits. postinstall writes the zsh completion of each new version.
+# On github.com, `latest` is the last tag. The workflow tag.yml of the repository tags each push on
+# main, so `mise upgrade` installs each push. postinstall writes the zsh completion of each new
+# version.
 "pypi:git+ssh://git@github.com/owpac/pac.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && pac --completion zsh > "$HOME/.local/bin/completions/_pac"' }
 
-# Reinstall pac if it does not start, or if its default branch has a new commit
-# (lib/update-git-tool.sh). mise runs the hooks of each config file.
+# A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
+# tool. So reinstall pac if it does not start. mise runs the hooks of each config file.
 [bootstrap.hooks.post-tools]
-run = '"$HOME/.dotfiles/lib/update-git-tool.sh" "pypi:git+ssh://git@github.com/owpac/pac.git" pac'
+run = '''
+if ! mise exec -- pac --version >/dev/null 2>&1; then
+  echo "Reinstalling pac on the Python of mise..."
+  mise install --force "pypi:git+ssh://git@github.com/owpac/pac.git"
+fi
+'''

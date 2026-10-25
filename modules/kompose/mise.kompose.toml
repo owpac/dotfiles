@@ -7,11 +7,17 @@
 # The same versions as the module pac: the Python tools of mise use the link python/3.15.
 python = "3.15"
 uv = "latest"
-# This repository has no tag: the hook below installs the new commits. postinstall writes the zsh
-# completion of each new version.
+# On github.com, `latest` is the last tag. The workflow tag.yml of the repository tags each push on
+# main, so `mise upgrade` installs each push. postinstall writes the zsh completion of each new
+# version.
 "pypi:git+ssh://git@github.com/owpac/kompose.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && kompose --completion zsh > "$HOME/.local/bin/completions/_kompose"' }
 
-# Reinstall kompose if it does not start, or if its default branch has a new commit
-# (lib/update-git-tool.sh).
+# A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
+# tool. So reinstall kompose if it does not start.
 [bootstrap.hooks.post-tools]
-run = '"$HOME/.dotfiles/lib/update-git-tool.sh" "pypi:git+ssh://git@github.com/owpac/kompose.git" kompose'
+run = '''
+if ! mise exec -- kompose --version >/dev/null 2>&1; then
+  echo "Reinstalling kompose on the Python of mise..."
+  mise install --force "pypi:git+ssh://git@github.com/owpac/kompose.git"
+fi
+'''
