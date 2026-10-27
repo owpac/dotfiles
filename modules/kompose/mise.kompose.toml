@@ -3,6 +3,12 @@
 # repository.
 # A machine without access to this repository turns off the module: mise vars modules_off="kompose"
 
+# A git tag has no release date, so mise cannot check the delay of minimum_release_age, and it
+# shows a warning at each install. The tags of this repository come from its own workflow, so
+# the tool skips the delay. Its dependencies from PyPI also skip it.
+[settings]
+minimum_release_age_excludes = ["pypi:git+ssh://git@github.com/owpac/kompose.git"]
+
 [tools]
 # The same versions as the module pac: the Python tools of mise use the link python/3.15.
 python = "3.15"
