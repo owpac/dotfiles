@@ -8,7 +8,10 @@
 # Add a backup:
 #   age -e -i ~/.ssh/encryption_ed25519 -o "modules/macos/data/backups/<file>.age" "<file>"
 
-set -eufo pipefail
+# This task lists files with a glob, so it keeps the globs on (no -f). nullglob gives no file
+# when the folder is empty.
+set -euo pipefail
+shopt -s nullglob
 
 # lib/ is at the root of this repository: follow the link of this task to find it.
 source "$(dirname "$(readlink -f "$0")")/../../../lib/logs.sh"
