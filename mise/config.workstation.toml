@@ -19,6 +19,12 @@ hk = "latest"
 [bootstrap.brew]
 homebrew_metadata = true
 
+# mise asks gh for a GitHub token: on a Mac, gh keeps it in the Keychain, where mise cannot read it.
+# With a token, the GitHub API allows 5000 requests per hour. Without a token, the limit is 60,
+# for all the machines behind the same IP address, for example a VPN.
+[settings.github]
+credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
+
 # The packages of a module are in the file of the module.
 [bootstrap.packages]
 "brew:colima" = "latest"
