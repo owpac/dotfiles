@@ -157,12 +157,14 @@ if grep -q workstation "${miserc}"; then
   log_task "Open 1Password, sign in, and turn on 'Integrate with 1Password CLI' (Settings > Developer)."
   printf "🙋 Press Enter when 1Password is ready. "
   read -r _
+  # mise reads the files of fnox (mode = "fnox") before it writes any file of a run, and the first
+  # run wrote no dotfile. Without the age key or the config of fnox, fnox fails and mise writes
+  # nothing. So write the key (from 1Password), age.toml and the link of the config of fnox first.
+  log_task "Writing the encryption key and the config of fnox..."
+  mise dot apply --yes ~/.ssh/encryption_ed25519 ~/.ssh/encryption_ed25519.pub \
+    ~/.config/fnox/age.toml ~/.config/fnox/config.toml
   log_task "Running 'mise bootstrap' again for the keys and the secrets..."
   mise bootstrap --yes
-  # mise renders the templates of a run before it writes the files of this run. The templates that
-  # read fnox (~/.workrc, ~/.npmrc) need the age key and age.toml, which the run above wrote.
-  log_task "Writing the files that read fnox..."
-  mise dot apply --yes
 fi
 
 # update the remote URL to SSH

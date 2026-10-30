@@ -148,32 +148,34 @@ A file of `modules/<module>/home/` goes to the same path in `~`: `modules/herdr/
 ```mermaid
 flowchart LR
   OP[1Password] -- encryption key --> K["~/.ssh/encryption_ed25519<br/>~/.config/fnox/age.toml"]
-  R["fnox config in this repository<br/>(encrypted values)"] --> F[fnox]
+  R["fnox config in this repository<br/>(encrypted secrets and files)"] --> F[fnox]
   K --> F
   F -- fnox exec --> C[a command]
-  F -- fnox get --> T["templates<br/>~/.workrc, ~/.npmrc"]
+  F -->|fnox get --file| T["mise, mode = fnox<br/>~/.workrc, ~/.npmrc"]
 ```
 
 | Goal | Command |
 | --- | --- |
 | Add or change a secret | `fnox set <NAME> --global --provider age` (add `--profile doctolib` for Doctolib) |
+| Add a private file | `fnox set --file <file> --provider age`, then `"<file>" = { mode = "fnox" }` in a module |
 | Run a command with the secrets | `fnox exec -- <command>` |
-| Edit `~/.workrc`, `~/.npmrc` or the domains of Doctolib | `mise run edit-secret --profile doctolib WORKRC` (or `NPMRC`, `DOCTOLIB_HOSTS`) |
-| Put back a file that you edited directly | `fnox set WORKRC --global --profile doctolib --provider age --from-file ~/.workrc` |
+| Edit `~/.workrc` or `~/.npmrc` | `mise dot edit --apply ~/.workrc` (mise runs `fnox edit --file`) |
+| Edit the domains of Doctolib | `fnox edit DOCTOLIB_HOSTS --profile doctolib`, then `mise run generate-hosts` |
+| Put back a file that you edited directly | `fnox set --file ~/.workrc --provider age` |
 | Write `/etc/hosts` for Doctolib | `mise run generate-hosts` |
 | Backups and snapshots of app preferences | age files in `modules/macos/data/` (see the [guide](./docs/macos-preferences.md)) |
 
 > [!WARNING]
 > - Do not run `mise dot add` on a secret file: mise copies the content in clear text into this repository.
-> - Do not edit `~/.workrc` or `~/.npmrc` directly: the next `mise dot apply` writes them again from fnox.
+> - Do not edit `~/.workrc` or `~/.npmrc` directly: the next `mise dot apply` writes them again from fnox. Use `mise dot edit --apply`.
 > - No secret enters the interactive shell (`env = "exec"`): a command gets the secrets only with `fnox exec`.
 
 ## Requirements
 
 | Tool | Version | Why |
 | --- | --- | --- |
-| mise | 2026.10.20 or later | `pypi:git+ssh://` sources on github.com without a token, `homebrew_metadata` |
-| fnox | 1.43.0 or later | `fnox edit` with the provider of an imported file (`age.toml`) |
+| mise | 2026.10.23 or later | `pypi:git+ssh://` sources on github.com without a token, `homebrew_metadata`, `mode = "fnox"` |
+| fnox | 1.45.0 or later | files stored by path (`[files]`) in a linked global config, `fnox edit <NAME>` |
 | pac, kompose, craft | a tag `YYYY.MM.N` on each push | mise follows the last tag with `latest` |
 
 ## Migrate a machine with chezmoi
@@ -184,7 +186,8 @@ flowchart LR
 2. `mv ~/.config/mise ~/.config/mise.before-mise`, then `mkdir -p ~/.config/mise`.
 3. `MISE_CONFIG_DIR=~/.dotfiles/mise mise vars roles="<roles>"`, then `MISE_CONFIG_DIR=~/.dotfiles/mise mise run --skip-tools modules`.
 4. `MISE_CONFIG_DIR=~/.dotfiles/mise mise dot apply --yes ~/.config/mise ~/.config/mise/conf.d`.
-5. `mise bootstrap --force-dotfiles`, then `mise dot apply --yes` for the files that read fnox.
+5. `mise dot apply --yes --force ~/.ssh/encryption_ed25519 ~/.ssh/encryption_ed25519.pub ~/.config/fnox/age.toml ~/.config/fnox/config.toml`: mise reads the files of fnox before it writes any file, so the key and the config of fnox must exist first.
+6. `mise bootstrap --force-dotfiles`.
 
 > [!CAUTION]
 > Do not run `chezmoi purge`: the source directory of chezmoi is `~/.dotfiles`, so this command deletes this repository. Remove `~/.config/chezmoi` and `~/.cache/chezmoi`, then uninstall chezmoi.

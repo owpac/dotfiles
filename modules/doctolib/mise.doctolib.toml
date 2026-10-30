@@ -1,6 +1,7 @@
 # The module doctolib: the setup of Doctolib, for the role work. PostgreSQL 15, the profile of
-# fnox, the task generate-hosts, and the files of Doctolib (home/). The private parts of this
-# setup are secrets of fnox, in the profile doctolib: ES_API_KEY, WORKRC, NPMRC and DOCTOLIB_HOSTS.
+# fnox, the task generate-hosts, and the files of Doctolib (home/). fnox keeps the private parts of
+# this setup: the secrets ES_API_KEY and DOCTOLIB_HOSTS (profile doctolib), and the files ~/.workrc
+# and ~/.npmrc.
 
 # The prefix of PostgreSQL 15 of Homebrew (package of config.work.toml).
 [vars]
@@ -28,8 +29,10 @@ root = "doctolib/home"
 [dotfile_groups.doctolib.entries]
 "~/.ssh/doctolib_ed25519.pub" = { mode = "template", remove_empty = true, permissions = "0600" }
 "~/Workspace/doctolib/.gitconfig" = { mode = "template" }
-# The templates read their content in fnox (profile doctolib), so the details of Doctolib stay out
-# of the public repository. Before fnox and its key exist, they render empty, and mise does not
-# write the files.
-"~/.npmrc" = { mode = "template", remove_empty = true, permissions = "0600" }
-"~/.workrc" = { mode = "template", remove_empty = true, permissions = "0600" }
+# fnox keeps these files, encrypted under their path ([files] of the global config of fnox), so
+# the details of Doctolib stay out of the public repository. mise writes them with
+# fnox get --file, with the mode 0600. Edit one with: mise dot edit --apply ~/.workrc
+# mise reads them before it writes any file: on a new machine, the age key must exist first
+# (install.sh applies it before the second mise bootstrap).
+"~/.npmrc" = { mode = "fnox" }
+"~/.workrc" = { mode = "fnox" }
