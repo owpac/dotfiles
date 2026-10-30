@@ -621,7 +621,10 @@ auth       sufficient     pam_tid.so
 # copy. mise cannot do it: the source of a [bootstrap.files] entry must be UTF-8 text.
 # The hook runs after the packages and before the system files: sudo_local must not load a module
 # that does not exist.
+# mise 2026.10.22 or later prints the description instead of the script. The codes \u001b[…m
+# print the name in blue and bold, the color of the module macos (see the task bootstrap), also in a pipe or with NO_COLOR.
 [bootstrap.hooks.post-packages]
+description = "\u001b[1;34m[macos]\u001b[0m 🔐 Install a copy of pam_reattach that belongs to root"
 run = '''
 module=/opt/homebrew/lib/pam/pam_reattach.so
 copy=/usr/local/lib/pam/pam_reattach.so
@@ -635,11 +638,13 @@ fi
 # Load the new keyboard shortcuts (above) without a new session. mise does not
 # restart the Dock or the Finder: it gives a reminder when it changes their preferences.
 [bootstrap.hooks.post-defaults]
+description = "\u001b[1;34m[macos]\u001b[0m ⌨️ Load the new keyboard shortcuts"
 run = "/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u"
 
 # pam-reattach is not installed: remove the root copy, after mise wrote a sudo_local that does not
 # load it.
 [bootstrap.hooks.final]
+description = "\u001b[1;34m[macos]\u001b[0m 🔐 Remove the root copy of pam_reattach if Homebrew removed the module"
 run = '''
 copy=/usr/local/lib/pam/pam_reattach.so
 if [ ! -e /opt/homebrew/lib/pam/pam_reattach.so ] && [ -e "$copy" ]; then

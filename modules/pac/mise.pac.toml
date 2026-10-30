@@ -23,7 +23,10 @@ uv = "latest"
 
 # A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
 # tool. So reinstall pac if it does not start. mise runs the hooks of each config file.
+# mise 2026.10.22 or later prints the description instead of the script. The codes \u001b[…m
+# print the name in green and bold, the color of the tools of owpac (see the task bootstrap), also in a pipe or with NO_COLOR.
 [bootstrap.hooks.post-tools]
+description = "\u001b[1;32m[pac]\u001b[0m 🔧 Reinstall pac if it does not start"
 run = '''
 if ! mise exec -- pac --version >/dev/null 2>&1; then
   echo "Reinstalling pac on the Python of mise..."

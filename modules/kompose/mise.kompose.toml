@@ -20,7 +20,10 @@ uv = "latest"
 
 # A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
 # tool. So reinstall kompose if it does not start.
+# mise 2026.10.22 or later prints the description instead of the script. The codes \u001b[…m
+# print the name in green and bold, the color of the tools of owpac (see the task bootstrap), also in a pipe or with NO_COLOR.
 [bootstrap.hooks.post-tools]
+description = "\u001b[1;32m[kompose]\u001b[0m 🔧 Reinstall kompose if it does not start"
 run = '''
 if ! mise exec -- kompose --version >/dev/null 2>&1; then
   echo "Reinstalling kompose on the Python of mise..."
