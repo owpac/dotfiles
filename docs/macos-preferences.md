@@ -3,12 +3,6 @@
 How this repo backs up and restores macOS application settings (Terminal,
 iTerm2, Rectangle, Open Island, …) without the noise of a tracked live plist.
 
-> [!CAUTION]
-> `pac preferences save` and `pac preferences remove` still call chezmoi. Update pac before you
-> use them with the layout of mise: pac must encrypt a snapshot with
-> `age -e -i ~/.ssh/encryption_ed25519 -o modules/macos/data/macos-preferences/<domain>.plist.age`, and
-> must find this repository in `~/.dotfiles`.
-
 ## The problem
 
 The obvious approach — track the live plist directly:
@@ -31,7 +25,7 @@ way — unlike editing `~/Library/Preferences` directly).
 ```
                               pac preferences save
   live domain  ── defaults export ──►  ~/.config/macos-preferences/<domain>.plist
-  (cfprefsd)                                   │ age -e (encrypt)
+  (cfprefsd)                                   │ age -e -R ~/.ssh/encryption_ed25519.pub
                                                ▼
                         modules/macos/data/macos-preferences/<domain>.plist.age   (repo)
                                                │ task macos-preferences: age -d
@@ -162,7 +156,9 @@ Do **not** track apps that keep their real config elsewhere:
 - `defaults import` writes through `cfprefsd`; a **running** app may need a
   restart to pick up the imported values.
 - Some plists carry ephemeral keys (window frames, Sparkle updater timestamps).
-  They're harmless to restore, but a re-`save` will always show a diff — it's
-  never a perfect no-op.
+  `pac preferences save` removes the keys of `macos_preferences_ignored_keys`, and
+  encrypts a snapshot again only when its content changed (age gives a different
+  file at each encryption). So a `save` without a real change keeps the file. A
+  new ephemeral key still gives a diff: add it to the list.
 - `save` skips a domain that `defaults read` can't find (e.g. a typo, or an app
   whose prefs are sandboxed and unreadable this way).
