@@ -16,6 +16,7 @@ DIM=$'\033[2m'
 # Icons (Nerd Fonts - p10k style)
 ICON_FOLDER=$(printf '\xef\x84\x95')  # U+F115
 ICON_GIT=$(printf '\xee\x9c\xa5')     # U+E725
+ICON_TREE=$(printf '\xef\x86\xbb')    # U+F1BB
 
 # Read JSON input from stdin
 input=$(cat)
@@ -47,6 +48,25 @@ if git rev-parse --git-dir > /dev/null 2>&1; then
         git_color="$RED"
     fi
     git_info="${MAGENTA}${ICON_GIT} ${branch}${RESET} ${git_color}(${git_status})${RESET}"
+
+    # worktrunk: in place of (clean)/(dirty), the status of wt list. It gives the symbols, the
+    # uncommitted lines (@), and the commits and lines ahead of the default branch (↑, ^).
+    # Its text starts with the branch name, which the script already shows.
+    if command -v wt > /dev/null 2>&1; then
+        wt_status=$(wt list statusline --format=json 2>/dev/null | jq -r '.items[0].display.statusline // empty' 2>/dev/null)
+        wt_status=${wt_status#"$branch"}
+        wt_status=${wt_status#"${wt_status%%[![:space:]]*}"}
+        if [ -n "$wt_status" ]; then
+            git_info="${MAGENTA}${ICON_GIT} ${branch}${RESET} ${wt_status}${RESET}"
+        fi
+    fi
+
+    # In a linked worktree, the git dir and the common git dir are different: a tree icon
+    # comes before the branch.
+    git_dirs=$(git rev-parse --path-format=absolute --git-dir --git-common-dir 2>/dev/null)
+    if [ "$(sed -n 1p <<<"$git_dirs")" != "$(sed -n 2p <<<"$git_dirs")" ]; then
+        git_info="${GREEN}${ICON_TREE}${RESET} ${git_info}"
+    fi
 else
     git_info="${DIM}no git${RESET}"
 fi

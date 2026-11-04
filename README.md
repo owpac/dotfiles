@@ -92,7 +92,7 @@ mise selects its config environments before it reads the config. So the task `mo
 | `secrets` | fnox, age and the encryption key from 1Password |
 | `pac`, `kompose`, `craft` | the CLI tools of owpac, from their private repositories |
 | `aerospace`, `herdr`, `raycast`, `iterm2` | the config of these apps |
-| `agents` | Claude Code, Codex and Beads: settings, plugins, instructions |
+| `agents` | Claude Code, Codex, Beads and worktrunk: settings, plugins, instructions |
 | `doctolib` | PostgreSQL 15, `~/.workrc`, `~/.npmrc`, the git identity and `/etc/hosts` of Doctolib |
 
 ## Layout

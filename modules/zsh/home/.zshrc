@@ -67,6 +67,14 @@ if [[ "$TERM_PROGRAM" == iTerm.app ]] && (( $+commands[herdr] )); then
     command herdr "$@"
   }
 fi
+
+### worktrunk
+
+# The function wt replaces the command wt: `wt switch` can then change the directory of this
+# shell. It also loads the completions, so it comes after Oh My Zsh (compinit).
+if (( $+commands[wt] )); then
+  eval "$(command wt config shell init zsh)"
+fi
 {%- endif %}
 
 ### Aliases

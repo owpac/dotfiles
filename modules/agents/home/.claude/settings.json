@@ -6,7 +6,10 @@
     - Plugins: the marketplace owpac is the runtime clone of owpac/prompts (task agents).
       Claude Code reads its plugins in place. mise enables the plugins of vars.agent_plugins, and
       of vars.agent_plugins_work in the work mode. A merge entry does not remove a key: to remove
-      a plugin, set it to false here, or remove it with /plugin. -#}
+      a plugin, set it to false here, or remove it with /plugin.
+    - worktrunk@worktrunk: the plugin of wt, from its GitHub repository. At the start of a
+      session, Claude Code clones this marketplace and installs the plugin. With autoUpdate, an
+      interactive session updates them. -#}
 {%- set plugins = vars.agent_plugins | split(pat=" ") -%}
 {%- if "work" in (mise_env | default(value=[])) and vars.agent_plugins_work -%}
 {%- set plugins = [...plugins, ...(vars.agent_plugins_work | split(pat=" "))] -%}
@@ -27,11 +30,19 @@
         "source": "directory",
         "path": "{{ env.HOME }}/{{ vars.marketplaces_dir }}/owpac"
       }
+    },
+    "worktrunk": {
+      "source": {
+        "source": "github",
+        "repo": "max-sixty/worktrunk"
+      },
+      "autoUpdate": true
     }
   },
   "enabledPlugins": {
 {%- for plugin in plugins %}
-    "{{ plugin }}@owpac": true{% if not loop.last %},{% endif %}
+    "{{ plugin }}@owpac": true,
 {%- endfor %}
+    "worktrunk@worktrunk": true
   }
 }

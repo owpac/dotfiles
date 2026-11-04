@@ -1,0 +1,8 @@
+# The keys that mise sets in ~/.config/worktrunk/config.toml (merge entry of mise.agents.toml).
+# wt also writes this file, for example skip-commit-generation-prompt: its other keys stay.
+
+# The folder of each new worktree: next to its repository, with the branch in its name. For the
+# branch feature/auth of ~/Workspace/doctolib/doctolib: ~/Workspace/doctolib/doctolib.feature-auth.
+# This value is the default of wt. The worktrees stay outside the repository, so git, the search
+# tools and the IDE do not read them twice. The Claude Code plugin uses this folder too.
+worktree-path = "{{ repo_path }}/../{{ repo }}.{{ branch | sanitize }}"

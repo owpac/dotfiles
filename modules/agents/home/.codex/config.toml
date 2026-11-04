@@ -9,7 +9,10 @@
     - Plugins: the marketplace owpac is the runtime clone of owpac/prompts (task agents).
       mise enables the plugins of vars.agent_plugins, and of vars.agent_plugins_work in the work
       mode. Codex copies each plugin into its cache: the task agents installs the copies. A merge
-      entry does not remove a key: to remove a plugin, set enabled = false here. -#}
+      entry does not remove a key: to remove a plugin, set enabled = false here.
+    - worktrunk@worktrunk: the plugin of wt, from its git repository. At the start of a session,
+      Codex clones this marketplace and installs the plugin. A session does not update them:
+      `pac upgrade agents` runs `codex plugin marketplace upgrade`. -#}
 {%- set plugins = vars.agent_plugins | split(pat=" ") -%}
 {%- if "work" in (mise_env | default(value=[])) and vars.agent_plugins_work -%}
 {%- set plugins = [...plugins, ...(vars.agent_plugins_work | split(pat=" "))] -%}
@@ -25,7 +28,13 @@ writable_roots = ["{{ env.HOME }}/.beads", "{{ env.HOME }}/{{ vars.beads_dir | d
 [marketplaces.owpac]
 source_type = "local"
 source = "{{ env.HOME }}/{{ vars.marketplaces_dir }}/owpac"
+
+[marketplaces.worktrunk]
+source_type = "git"
+source = "https://github.com/max-sixty/worktrunk.git"
 {% for plugin in plugins %}
 [plugins."{{ plugin }}@owpac"]
 enabled = true
-{% endfor -%}
+{% endfor %}
+[plugins."worktrunk@worktrunk"]
+enabled = true
