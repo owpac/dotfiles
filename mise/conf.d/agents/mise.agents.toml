@@ -5,9 +5,9 @@
 [vars]
 # The paths are relative to the home directory. Every task of Beads lives in this workspace.
 beads_dir = ".local/share/tasks/.beads"
-# The shared clones of the plugin marketplaces ([bootstrap.repos] below). Claude Code and Codex use
-# them as local marketplaces.
-marketplaces_dir = ".local/share/agent-marketplaces"
+# The shared clones of the plugin marketplaces ([bootstrap.repos] below), in ~/.agents with the
+# other files that the agents share. Claude Code and Codex use them as local marketplaces.
+marketplaces_dir = ".agents/marketplaces"
 # The plugins of the marketplace owpac, separated by spaces. Both agents get them.
 agent_plugins = "productivity python rails setup beads engram"
 # The plugins of the marketplace owpac for the work mode only.
