@@ -42,7 +42,7 @@ flowchart LR
   D --> E[task modules]
   E --> F[mise bootstrap]
   F --> G{workstation?}
-  G -- yes --> H[sign in to 1Password] --> I[write ~/.ssh/config] --> J[mise bootstrap again]
+  G -- yes --> H[sign in to 1Password] --> I[mise bootstrap again]
   G -- no --> K[done]
 ```
 

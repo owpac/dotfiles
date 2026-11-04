@@ -143,9 +143,8 @@ fi
 # --- Bootstrap --------------------------------------------------------------------------
 # The first run installs the packages, 1Password among them. The keys from 1Password and the
 # files encrypted with age need a second run, after the sign-in to 1Password. On a workstation,
-# the first run stops before its dotfiles: mise cannot clone the private marketplace of the agents
-# ([bootstrap.repos]) yet, and the templates that read 1Password stop the dotfiles. mise then
-# writes no dotfile. The second run writes them.
+# the templates that read 1Password stop the first run before its dotfiles. The second run writes
+# them.
 log_task "Running 'mise bootstrap'..."
 if ! mise bootstrap --prompt-vars --yes; then
   grep -q workstation "${miserc}" || error "mise bootstrap failed."
@@ -156,12 +155,8 @@ if grep -q workstation "${miserc}"; then
   log_task "Open 1Password, sign in, and turn on 'Integrate with 1Password CLI' (Settings > Developer)."
   printf "🙋 Press Enter when 1Password is ready. "
   read -r _
-  # mise clones the private repositories ([bootstrap.repos]) before it writes the dotfiles. git
-  # needs the 1Password agent of ~/.ssh/config for them, so write the SSH config and the public
-  # key of the Mac first. The files of fnox need no step here: their group waits for the age key
-  # and the config of fnox (depends in the module doctolib).
-  log_task "Writing the SSH config..."
-  mise dot apply --yes ~/.ssh/config ~/.ssh/mbp_ed25519.pub
+  # The files of fnox need no step here: their group waits for the age key and the config of fnox
+  # (depends in the module doctolib).
   log_task "Running 'mise bootstrap' again for the keys and the secrets..."
   mise bootstrap --yes
 fi
