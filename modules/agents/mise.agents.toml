@@ -5,8 +5,8 @@
 [vars]
 # The paths are relative to the home directory. Every task of Beads lives in this workspace.
 beads_dir = ".local/share/tasks/.beads"
-# The runtime clones of the plugin marketplaces (task agents). `pac upgrade agents` pulls them.
-# Claude Code and Codex use them as local marketplaces.
+# The shared clones of the plugin marketplaces ([bootstrap.repos] below). Claude Code and Codex use
+# them as local marketplaces.
 marketplaces_dir = ".local/share/agent-marketplaces"
 # The plugins of the marketplace owpac, separated by spaces. Both agents get them.
 agent_plugins = "productivity python rails setup beads engram"
@@ -18,6 +18,16 @@ agent_plugins_work = ""
 "brew:beads" = "latest"
 "brew:gentleman-programming/tap/engram" = "latest"
 "brew:worktrunk" = "latest"
+
+# The marketplace owpac: one clone of owpac/prompts for Claude Code and Codex. mise clones it, and
+# `mise run update` and `pac upgrade agents` pull it. If the config enables a plugin that the clone
+# does not have yet, run `mise run update`. Do not edit this clone: a clone with local changes
+# stops mise bootstrap.
+# owpac/prompts is private, so git clones it over SSH, with the 1Password agent of ~/.ssh/config.
+# mise clones the repositories before it writes the dotfiles. So on a new Mac, install.sh writes
+# ~/.ssh/config before the second mise bootstrap.
+[bootstrap.repos]
+"~/{{ vars.marketplaces_dir }}/owpac" = { url = "git@github.com:owpac/prompts.git" }
 
 # Claude Code, Codex, bd and wt also write their config file, so mise merges the keys of owpac
 # into these files. A merge entry must be in [dotfiles]: a group deploys whole files
@@ -44,6 +54,6 @@ exclude = [".claude/settings.json", ".codex/config.toml", ".config/bd/config.yam
 "~/.codex/AGENTS.md" = { source = ".config/ia/AGENTS.md" }
 "~/.beads/redirect" = { mode = "template" }
 
-# The tasks agents and claude-token. A relative path starts in this folder.
+# The tasks beads, codex-plugins and claude-token. A relative path starts in this folder.
 [task_config]
 includes = ["tasks"]

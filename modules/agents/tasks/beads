@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#MISE description="Create the Beads home workspace"
+#
+# The home workspace holds every task of Beads (pac agent init). It is a Dolt database, not a
+# file, so a dotfile cannot create it.
+# mise bootstrap runs this task each time (task bootstrap). The task is idempotent: it skips a
+# workspace that exists, and it does nothing while bd or pac is missing.
+
+set -eufo pipefail
+
+# lib/ is at the root of this repository: follow the link of this task to find it.
+source "$(dirname "$(readlink -f "$0")")/../../../lib/logs.sh"
+
+beads_dir="$HOME/$(mise vars beads_dir)"
+
+if command -v bd >/dev/null 2>&1 && command -v pac >/dev/null 2>&1 && [ ! -f "$beads_dir/metadata.json" ]; then
+  pac agent init || log_error "Could not create the Beads home workspace"
+fi

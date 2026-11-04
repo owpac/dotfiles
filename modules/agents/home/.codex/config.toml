@@ -6,10 +6,13 @@
     - sandbox_workspace_write: in the Auto preset, sandboxed bd commands can reach the shared Dolt
       server (127.0.0.1:3308), and write ~/.beads and the home workspace. Trade-off: sandboxed
       commands get network access.
-    - Plugins: the marketplace owpac is the runtime clone of owpac/prompts (task agents).
-      mise enables the plugins of vars.agent_plugins, and of vars.agent_plugins_work in the work
-      mode. Codex copies each plugin into its cache: the task agents installs the copies. A merge
-      entry does not remove a key: to remove a plugin, set enabled = false here.
+    - Plugins: the marketplace owpac is the shared clone of owpac/prompts ([bootstrap.repos] of
+      mise.agents.toml). Codex does not read a local marketplace in place, and does not install
+      its plugins at the start of a session. So the task codex-plugins copies the plugins that
+      this file enables into the cache of Codex. `pac upgrade agents` pulls the clone, then
+      refreshes these copies.
+    - mise enables the plugins of vars.agent_plugins, and of vars.agent_plugins_work in the work
+      mode. A merge entry does not remove a key: to remove a plugin, set enabled = false here.
     - worktrunk@worktrunk: the plugin of wt, from its git repository. At the start of a session,
       Codex clones this marketplace and installs the plugin. A session does not update them:
       `pac upgrade agents` runs `codex plugin marketplace upgrade`. -#}

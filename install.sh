@@ -145,8 +145,9 @@ MISE_CONFIG_DIR="${DOTFILES_DIR}/mise" mise dot apply --yes "${MISE_DIR}" "${MIS
 # --- Bootstrap --------------------------------------------------------------------------
 # The first run installs the packages, 1Password among them. The keys from 1Password and the
 # files encrypted with age need a second run, after the sign-in to 1Password. On a workstation,
-# the templates that read 1Password stop the dotfiles of the first run: mise then writes no
-# dotfile. The second run writes them.
+# the first run stops before its dotfiles: mise cannot clone the private marketplace of the agents
+# ([bootstrap.repos]) yet, and the templates that read 1Password stop the dotfiles. mise then
+# writes no dotfile. The second run writes them.
 log_task "Running 'mise bootstrap'..."
 if ! mise bootstrap --prompt-vars --yes; then
   grep -q workstation "${miserc}" || error "mise bootstrap failed."
@@ -160,9 +161,12 @@ if grep -q workstation "${miserc}"; then
   # mise reads the files of fnox (mode = "fnox") before it writes any file of a run, and the first
   # run wrote no dotfile. Without the age key or the config of fnox, fnox fails and mise writes
   # nothing. So write the key (from 1Password), age.toml and the link of the config of fnox first.
-  log_task "Writing the encryption key and the config of fnox..."
+  # mise also clones the private repositories ([bootstrap.repos]) before it writes the dotfiles.
+  # git needs the 1Password agent of ~/.ssh/config for them, so write the SSH config and the
+  # public key of the Mac first too.
+  log_task "Writing the encryption key, the config of fnox and the SSH config..."
   mise dot apply --yes ~/.ssh/encryption_ed25519 ~/.ssh/encryption_ed25519.pub \
-    ~/.config/fnox/age.toml ~/.config/fnox/config.toml
+    ~/.config/fnox/age.toml ~/.config/fnox/config.toml ~/.ssh/config ~/.ssh/mbp_ed25519.pub
   log_task "Running 'mise bootstrap' again for the keys and the secrets..."
   mise bootstrap --yes
 fi

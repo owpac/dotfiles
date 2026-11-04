@@ -72,7 +72,7 @@ credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
 [tasks.bootstrap]
 description = "Run the setup scripts of a workstation"
 raw = true
-# mise prints the command of a task ("[agents] $ ~/.config/…"), not its description. quiet and
+# mise prints the command of a task ("[beads] $ ~/.config/…"), not its description. quiet and
 # --quiet hide these lines, and the loop prints "[task] emoji description" instead, as the
 # descriptions of the hooks. mise still prints the errors.
 # In a terminal without NO_COLOR, the name has the color of its module, as the hooks: macos blue,
@@ -83,10 +83,11 @@ tty=''
 if [ -t 2 ] && [ -z "${NO_COLOR:-}" ]; then
   tty=1
 fi
-for task in agents herdr-plugins macos-setup macos-preferences backups claude-token; do
+for task in beads codex-plugins herdr-plugins macos-setup macos-preferences backups claude-token; do
   info=$(mise tasks info "$task" 2>/dev/null) || continue
   case "$task" in
-    agents) icon='🤖' color='1;35' ;;
+    beads) icon='📿' color='1;35' ;;
+    codex-plugins) icon='🔌' color='1;35' ;;
     claude-token) icon='🔑' color='1;35' ;;
     herdr-plugins) icon='🧩' color='1;33' ;;
     macos-setup) icon='🍎' color='1;34' ;;

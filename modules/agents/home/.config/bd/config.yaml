@@ -3,7 +3,7 @@
 #
 # metrics.disabled: true is the value that `bd metrics off` writes. Thus bd sends no usage metrics,
 # and does not show its notice about these metrics. On a new machine, mise writes this file before
-# bd starts for the first time (pac agent init, in the task agents).
+# bd starts for the first time (pac agent init, in the task beads).
 #
 # With no-git-ops: true, bd does no git operation. Also, `bd prime` gives no git steps to the
 # agents. The agent above bd decides about the git operations, not bd.
