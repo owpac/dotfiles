@@ -1,4 +1,4 @@
-# The module zsh, on each machine (modules_base in config.toml): Oh My Zsh, Powerlevel10k and
+# The module zsh, on each machine (each set of miserc.toml lists it): Oh My Zsh, Powerlevel10k and
 # the files of the shell.
 
 [dotfile_groups.zsh]

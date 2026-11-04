@@ -1,4 +1,4 @@
-# The module git, on each machine (modules_base in config.toml).
+# The module git, on each machine (each set of miserc.toml lists it).
 
 [dotfile_groups.git]
 root = "git/home"

@@ -2,7 +2,7 @@
 # own venv, from its private GitHub repository. mise 2026.10.19 or later lists a private
 # repository with `git ls-remote` over SSH, so no GitHub token is necessary. On a server (the
 # NAS, the Pi), ssh forwards the 1Password agent of the Mac (ForwardAgent).
-# A machine without access to this repository turns off the module: mise vars modules_off="pac"
+# A machine without access to this repository uses a set without this module (miserc.toml).
 
 # A git tag has no release date, so mise cannot check the delay of minimum_release_age, and it
 # shows a warning at each install. The tags of this repository come from its own workflow, so

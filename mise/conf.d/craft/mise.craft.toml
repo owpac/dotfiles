@@ -1,7 +1,7 @@
 # The module craft: the CLI that manages the Minecraft server of the homelab (owpac/craft).
 # mise installs it as the module pac installs pac: see conf.d/pac/mise.pac.toml for the private
 # repository.
-# A machine without access to this repository turns off the module: mise vars modules_off="craft"
+# A machine without access to this repository uses a set without this module (miserc.toml).
 
 # A git tag has no release date, so mise cannot check the delay of minimum_release_age, and it
 # shows a warning at each install. The tags of this repository come from its own workflow, so

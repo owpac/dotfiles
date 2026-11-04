@@ -105,15 +105,16 @@ if [ "$(readlink "${MISE_DIR}" 2>/dev/null || true)" != "${DOTFILES_DIR}/mise" ]
 fi
 
 # --- Roles of this machine --------------------------------------------------------------
-# The roles select the setup of this machine (see mise/config.toml): minimal, server,
-# workstation and work. DOTFILES_ROLES gives them without a question, for example
-# DOTFILES_ROLES="workstation work". mise saves the roles in its state directory (vars.roles). The
-# task modules writes the roles and their modules into ~/.config/mise/miserc.local.toml, in mise/
-# of this repository: git ignores this file.
+# The roles select the setup of this machine: minimal, server, workstation and work. Each role is
+# a set of environments in mise/miserc.toml (env_sets). DOTFILES_ROLES gives them without a
+# question, for example DOTFILES_ROLES="workstation work". The first mise bootstrap saves them
+# into ~/.config/mise/miserc.local.toml (--save-env), in mise/ of this repository: git ignores
+# this file. A machine with saved roles gets no question.
 miserc="${MISE_DIR}/miserc.local.toml"
-if [ ! -f "${miserc}" ]; then
+roles=""
+if ! grep -q '^env' "${miserc}" 2>/dev/null; then
   if [ -n "${DOTFILES_ROLES:-}" ]; then
-    roles="${DOTFILES_ROLES}"
+    roles=$(printf '%s' "${DOTFILES_ROLES}" | tr ' ' ',')
   elif [ -n "${REMOTE_CONTAINERS:-}${CODESPACES:-}${VSCODE_REMOTE_CONTAINERS_SESSION:-}${GITPOD_HOST:-}" ]; then
     roles="minimal"
   elif [ -n "${SSH_CLIENT:-}" ]; then
@@ -127,7 +128,7 @@ if [ ! -f "${miserc}" ]; then
         printf "🙋 What profile do you want? [personal/work] "
         read -r profile
         case "${profile}" in
-          work) roles="workstation work" ;;
+          work) roles="workstation,work" ;;
           *) roles="workstation" ;;
         esac
         ;;
@@ -135,8 +136,6 @@ if [ ! -f "${miserc}" ]; then
   else
     roles="workstation"
   fi
-  mise vars roles="${roles}"
-  mise run --skip-tools modules
   log_done "Roles of this machine: ${roles}"
 fi
 
@@ -145,8 +144,14 @@ fi
 # files encrypted with age need a second run, after the sign-in to 1Password. On a workstation,
 # the templates that read 1Password stop the first run before its dotfiles. The second run writes
 # them.
+# -E selects the roles of a new machine, and --save-env saves them, also when the run fails. The
+# next runs read them in miserc.local.toml.
+set --
+if [ -n "${roles}" ]; then
+  set -- -E "${roles}" --save-env
+fi
 log_task "Running 'mise bootstrap'..."
-if ! mise bootstrap --prompt-vars --yes; then
+if ! mise bootstrap --prompt-vars --yes "$@"; then
   grep -q workstation "${miserc}" || error "mise bootstrap failed."
   log_task "The first run stopped before the keys from 1Password. The second run writes them."
 fi

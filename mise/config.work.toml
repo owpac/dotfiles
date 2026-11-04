@@ -1,10 +1,6 @@
 # The role work: a workstation for Doctolib, with the role workstation. The tools and the
 # packages of Doctolib.
 
-# The modules of this role. The task modules adds them to the modules of the role workstation.
-[vars]
-modules_work = "doctolib"
-
 [tools]
 ruby = "3.3.6"
 terraform = "1.8.0"

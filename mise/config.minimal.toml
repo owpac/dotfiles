@@ -1,6 +1,3 @@
 # The role minimal: containers, Codespaces and other ephemeral environments. The shell and git
-# only: the modules of config.toml.
-
-# The modules of this role. The task modules adds them to the modules of config.toml.
-[vars]
-modules_minimal = ""
+# only: its set (env_sets in miserc.toml) selects the modules zsh and git. This role has no setup
+# of its own.

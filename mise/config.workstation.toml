@@ -1,10 +1,6 @@
 # The role workstation: a Mac, in the personal mode and in the work mode. The tools and the
 # packages without a module, and the task bootstrap. The module macos holds the setup of macOS.
 
-# The modules of this role. The task modules adds them to the modules of config.toml.
-[vars]
-modules_workstation = "macos ssh secrets pac aerospace agents herdr raycast iterm2"
-
 # Python and uv come with the module pac.
 [tools]
 node = "latest"

@@ -7,18 +7,14 @@
 # This file applies to each machine. A machine selects its setup on 3 axes:
 #   - Roles: the type of machine. minimal (containers, Codespaces), server (the NAS and the
 #     Raspberry Pi), workstation (a Mac) and work (a Mac for Doctolib, with workstation). A role is
-#     a config environment: config.<role>.toml holds its setup and lists its modules
-#     (vars.modules_<role>).
+#     a set of environments (env_sets in miserc.toml): the environment of the role, where
+#     config.<role>.toml holds its setup, and the modules of the role.
 #   - Modules: the blocks of setup that a machine turns on as a whole, for example herdr or agents.
 #     A module is a config environment too: conf.d/<module>/mise.<module>.toml holds all its setup.
-#     vars.modules_base lists the modules of each machine.
 #   - Systems: macos or linux. A module keeps its system variants: `os` on an entry, `os()` in a
 #     template. miserc.toml sets auto_env = false: mise adds no platform environment.
-# The machine saves its roles (vars.roles). The task modules writes the roles and the modules
-# into miserc.local.toml, for example env = ["workstation", "zsh", "git", "ssh"]. Do not edit
-# this file: the task writes it again.
-# Change the roles of a machine: mise vars roles="workstation work", then run
-# `mise run --skip-tools modules`, then `mise bootstrap --prune-dotfiles`.
+# The machine saves its roles in miserc.local.toml, for example env = ["workstation", "work"].
+# Change the roles of a machine: mise bootstrap -E workstation,work --save-env --prune-dotfiles
 #
 # A folder of conf.d/ holds a module. mise.<module>.toml declares its dotfile group, its
 # templates, its packages, its merges and its tasks. mise reads this file only when the machine
@@ -36,17 +32,14 @@
 #   - Add a file to a group: mise dot add --group <group> <file>
 #   - Remove a file: remove its source, then run `mise dot apply --prune`.
 #   - Add a module: add its folder, with its group in mise.<module>.toml and its files in home/.
-#     Add the module to the list of a role. On each machine, run `mise bootstrap --update`, then
-#     `mise run --skip-tools modules`, then `mise bootstrap`.
+#     Add the module to the set of a role (env_sets in miserc.toml). On each machine, run
+#     `mise bootstrap --update`.
 #
 # Apply the setup: mise bootstrap
 # Pull this repository, then apply it: mise bootstrap --update --prune-dotfiles
 #   mise fast-forwards this repository, then runs again with the new config. --prune-dotfiles
 #   removes the files that a group does not deploy any more, for example after the pull removed a
 #   module. mise asks before it removes a file.
-#   If the pull changes the modules of a role, the task modules must write the new list: run
-#   `mise run --skip-tools modules`, then `mise bootstrap --prune-dotfiles`. Before a task, mise
-#   installs all the tools of the config, and --skip-tools stops this step: the task needs no tool.
 # See the changes first: mise bootstrap --dry-run, mise dot diff, mise bootstrap status
 
 [settings]
@@ -77,12 +70,3 @@ email_work = { default = "29702840+owpac@users.noreply.github.com", prompt = "Wo
 
 # The age identity that decrypts the .age files of this repository. 1Password holds it.
 age_identity = { default = "{{ env.HOME }}/.ssh/encryption_ed25519" }
-
-# The roles of this machine, separated by spaces: minimal, server, workstation, work. install.sh
-# saves the answer, and `mise vars roles="workstation work"` changes it. A saved answer replaces a
-# default, not a fixed value: so this var and modules_off have a default.
-roles = { default = "minimal", prompt = "Roles (minimal, server, workstation, work), separated by spaces" }
-# The modules of each machine. Each file of a role adds its modules (vars.modules_<role>).
-modules_base = "zsh git"
-# The modules that this machine turns off, separated by spaces: mise vars modules_off="raycast"
-modules_off = { default = "" }
