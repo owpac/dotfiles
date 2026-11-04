@@ -63,8 +63,9 @@ A machine selects its setup on 3 axes:
 
 ```mermaid
 flowchart LR
+  B["vars.modules_base"] --> M
   R["roles<br/>(vars.roles)"] --> M["modules<br/>(vars.modules_&lt;role&gt;)"]
-  O["modules_off"] -. removes .-> M
+  O["vars.modules_off"] -. removes .-> M
   M --> S["miserc.local.toml<br/>env = [roles, modules]"]
   S --> X["mise reads<br/>config.&lt;role&gt;.toml<br/>conf.d/&lt;module&gt;/mise.&lt;module&gt;.toml"]
 ```
@@ -72,6 +73,13 @@ flowchart LR
 - **Roles**: the type of machine. `mise/config.<role>.toml` holds the setup of a role and lists its modules.
 - **Modules**: blocks of setup that a machine turns on as a whole. `mise/conf.d/<module>/mise.<module>.toml` holds all the setup of a module.
 - **Systems**: `macos` or `linux`. A module keeps its system variants: `os` on an entry, `os()` in a template.
+
+| Var | Where | Content |
+| --- | --- | --- |
+| `roles` | the state directory of mise, on this machine | the roles of this machine, for example `workstation work` |
+| `modules_base` | `mise/config.toml` | the modules of each machine: `zsh git` |
+| `modules_<role>` | `mise/config.<role>.toml` | the modules of a role |
+| `modules_off` | the state directory of mise, on this machine | the modules that this machine turns off |
 
 mise selects its config environments before it reads the config. So the task `modules` writes the roles and the modules into `mise/miserc.local.toml`. git ignores this file.
 
