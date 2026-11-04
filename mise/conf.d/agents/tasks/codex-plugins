@@ -12,7 +12,7 @@
 set -eufo pipefail
 
 # lib/ is at the root of this repository: follow the link of this task to find it.
-source "$(dirname "$(readlink -f "$0")")/../../../lib/logs.sh"
+source "$(dirname "$(readlink -f "$0")")/../../../../lib/logs.sh"
 
 command -v codex >/dev/null 2>&1 || exit 0
 

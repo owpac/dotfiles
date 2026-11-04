@@ -2,9 +2,9 @@
 #MISE description="Import the encrypted snapshots of the macOS app preferences"
 #
 # Re-apply the preferences of the macOS apps from the encrypted snapshots in
-# modules/macos/data/macos-preferences/<domain>.plist.age, with `defaults import` (this command goes
-# through cfprefsd, unlike an edit of the live plist). The task tracks one stable snapshot for each
-# domain, instead of the live ~/Library/Preferences/<domain>.plist, which changes all the time.
+# mise/conf.d/macos/data/macos-preferences/<domain>.plist.age, with `defaults import` (this command
+# goes through cfprefsd, unlike an edit of the live plist). The task tracks one stable snapshot for
+# each domain, instead of the live ~/Library/Preferences/<domain>.plist, which changes all the time.
 #
 # The task decrypts each snapshot to ~/.config/macos-preferences/<domain>.plist, where
 # `pac preferences save` writes a new snapshot. Then it imports only the snapshots that changed
@@ -20,7 +20,7 @@ set -euo pipefail
 shopt -s nullglob
 
 # lib/ is at the root of this repository: follow the link of this task to find it.
-source "$(dirname "$(readlink -f "$0")")/../../../lib/logs.sh"
+source "$(dirname "$(readlink -f "$0")")/../../../../lib/logs.sh"
 
 # mise runs this task through its link in ~/.config/mise/conf.d/macos/tasks. Follow the link to find
 # the folder of the module.

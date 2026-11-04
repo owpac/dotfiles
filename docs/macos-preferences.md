@@ -27,7 +27,7 @@ way — unlike editing `~/Library/Preferences` directly).
   live domain  ── defaults export ──►  ~/.config/macos-preferences/<domain>.plist
   (cfprefsd)                                   │ age -e -R ~/.ssh/encryption_ed25519.pub
                                                ▼
-                        modules/macos/data/macos-preferences/<domain>.plist.age   (repo)
+                    mise/conf.d/macos/data/macos-preferences/<domain>.plist.age   (repo)
                                                │ task macos-preferences: age -d
                                                ▼
                               ~/.config/macos-preferences/<domain>.plist    (stable mirror)
@@ -46,14 +46,14 @@ app's schedule.
 
 | Path | Role |
 |---|---|
-| `modules/macos/data/macos-preferences/<domain>.plist.age` | The encrypted snapshot (source). The task decrypts it to `~/.config/macos-preferences/<domain>.plist`. |
-| `modules/macos/tasks/macos-preferences` | Decrypts each snapshot, and re-applies it with `defaults import`. `mise bootstrap` runs it (task `bootstrap`). |
-| `modules/macos/data/macos-preferences.yaml` | The keys that `pac preferences save` removes, and the list of domains that pac keeps. The task does not read this list: it imports each `.plist.age` file. |
-| `pac preferences …` ([owpac/pac](https://github.com/owpac/pac)) | The CLI to list / save / remove tracked preferences. mise installs it (`modules/pac/mise.pac.toml`), and writes its zsh completion (subcommands + slug/domain). |
+| `mise/conf.d/macos/data/macos-preferences/<domain>.plist.age` | The encrypted snapshot (source). The task decrypts it to `~/.config/macos-preferences/<domain>.plist`. |
+| `mise/conf.d/macos/tasks/macos-preferences` | Decrypts each snapshot, and re-applies it with `defaults import`. `mise bootstrap` runs it (task `bootstrap`). |
+| `mise/conf.d/macos/data/macos-preferences.yaml` | The keys that `pac preferences save` removes, and the list of domains that pac keeps. The task does not read this list: it imports each `.plist.age` file. |
+| `pac preferences …` ([owpac/pac](https://github.com/owpac/pac)) | The CLI to list / save / remove tracked preferences. mise installs it (`mise/conf.d/pac/mise.pac.toml`), and writes its zsh completion (subcommands + slug/domain). |
 
 ## The import task
 
-`modules/macos/tasks/macos-preferences` runs at each `mise bootstrap`, on a workstation:
+`mise/conf.d/macos/tasks/macos-preferences` runs at each `mise bootstrap`, on a workstation:
 
 - It decrypts each snapshot, and writes `~/.config/macos-preferences/<domain>.plist` only
   when the content changed.
@@ -82,7 +82,7 @@ Apps also write keys that are not settings: window positions (`NSWindow Frame *`
 without a real change of settings.
 
 `pac preferences save` removes them from each snapshot before it adds the snapshot. The
-patterns are in `modules/macos/data/macos-preferences.yaml` → `macos_preferences_ignored_keys`
+patterns are in `mise/conf.d/macos/data/macos-preferences.yaml` → `macos_preferences_ignored_keys`
 (shell patterns, for every domain). The snapshot is an XML plist with sorted keys. So a
 snapshot changes only when a real setting changes, and the other machines re-import an app
 only after a real change.

@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# Installs mise, clones this repository into ~/.dotfiles, selects the mode of this machine, then
-# runs mise bootstrap. mise links the files of mise/ into ~/.config/mise.
+# Installs mise, clones this repository into ~/.dotfiles, links ~/.config/mise to mise/ of this
+# repository, selects the roles of this machine, then runs mise bootstrap.
 
 # -e: exit on error
 # -u: exit on unset variables
@@ -47,7 +47,7 @@ error() {
 DOTFILES_USER=${DOTFILES_USER:-"owpac"}
 DOTFILES_HTTPS_URL=${DOTFILES_HTTPS_URL:-"https://github.com/${DOTFILES_USER}/dotfiles.git"}
 DOTFILES_SSH_URL=${DOTFILES_SSH_URL:-"git@github.com:${DOTFILES_USER}/dotfiles.git"}
-# mise/config.toml expects these paths (dotfiles.root and the entry "~/.config/mise").
+# mise/config.toml expects DOTFILES_DIR (dotfiles.root). mise reads its config in MISE_DIR.
 DOTFILES_DIR="${HOME}/.dotfiles"
 MISE_DIR="${HOME}/.config/mise"
 
@@ -90,21 +90,26 @@ else
 fi
 
 # --- Config directory of mise -----------------------------------------------------------
-# mise links each file of mise/ into ~/.config/mise. A config that mise did not link goes to a
-# backup.
-if [ -e "${MISE_DIR}/config.toml" ] && [ ! -L "${MISE_DIR}/config.toml" ]; then
-  backup="${MISE_DIR}.$(date +%Y%m%d%H%M%S)"
-  log_task "Moving the current mise config to '${backup}'..."
-  mv "${MISE_DIR}" "${backup}"
+# ~/.config/mise is one link to mise/ of this repository, as `mise bootstrap --config-dir mise`
+# makes it. mise then reads the whole config from this repository, and `mise bootstrap --update`
+# pulls this repository. Another config directory goes to a backup.
+if [ "$(readlink "${MISE_DIR}" 2>/dev/null || true)" != "${DOTFILES_DIR}/mise" ]; then
+  if [ -e "${MISE_DIR}" ] || [ -L "${MISE_DIR}" ]; then
+    backup="${MISE_DIR}.$(date +%Y%m%d%H%M%S)"
+    log_task "Moving the current mise config to '${backup}'..."
+    mv "${MISE_DIR}" "${backup}"
+  fi
+  mkdir -p "$(dirname "${MISE_DIR}")"
+  ln -s "${DOTFILES_DIR}/mise" "${MISE_DIR}"
+  log_done "Linked ${MISE_DIR} to ${DOTFILES_DIR}/mise"
 fi
-mkdir -p "${MISE_DIR}"
 
 # --- Roles of this machine --------------------------------------------------------------
 # The roles select the setup of this machine (see mise/config.toml): minimal, server,
 # workstation and work. DOTFILES_ROLES gives them without a question, for example
 # DOTFILES_ROLES="workstation work". mise saves the roles in its state directory (vars.roles). The
-# task modules writes the roles and their modules into ~/.config/mise/miserc.local.toml. Both
-# stay on this machine, outside this repository.
+# task modules writes the roles and their modules into ~/.config/mise/miserc.local.toml, in mise/
+# of this repository: git ignores this file.
 miserc="${MISE_DIR}/miserc.local.toml"
 if [ ! -f "${miserc}" ]; then
   if [ -n "${DOTFILES_ROLES:-}" ]; then
@@ -130,17 +135,10 @@ if [ ! -f "${miserc}" ]; then
   else
     roles="workstation"
   fi
-  MISE_CONFIG_DIR="${DOTFILES_DIR}/mise" mise vars roles="${roles}"
-  MISE_CONFIG_DIR="${DOTFILES_DIR}/mise" mise run --skip-tools modules
+  mise vars roles="${roles}"
+  mise run --skip-tools modules
   log_done "Roles of this machine: ${roles}"
 fi
-
-# --- Links of the config of mise --------------------------------------------------------
-# mise reads the modules through their links in ~/.config/mise/conf.d, and these links do not
-# exist yet. Create the links of ~/.config/mise and ~/.config/mise/conf.d first, from the config
-# in this repository. mise bootstrap then reads the whole config: the roles and their modules.
-log_task "Linking the config of mise..."
-MISE_CONFIG_DIR="${DOTFILES_DIR}/mise" mise dot apply --yes "${MISE_DIR}" "${MISE_DIR}/conf.d"
 
 # --- Bootstrap --------------------------------------------------------------------------
 # The first run installs the packages, 1Password among them. The keys from 1Password and the

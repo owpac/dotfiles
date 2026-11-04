@@ -5,7 +5,7 @@
       the home workspace, also when Claude Code does not start from a shell that read ~/.zshenv.
     - Plugins: the marketplace owpac is the shared clone of owpac/prompts ([bootstrap.repos] of
       mise.agents.toml). Claude Code reads its plugins in place, so a pull of the clone is
-      sufficient. `mise run update` and `pac upgrade agents` pull it.
+      sufficient. `mise bootstrap --update` and `pac upgrade agents` pull it.
     - mise enables the plugins of vars.agent_plugins, and of vars.agent_plugins_work in the work
       mode. A merge entry does not remove a key: to remove a plugin, set it to false here, or
       remove it with /plugin.

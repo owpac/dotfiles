@@ -37,12 +37,12 @@ The script selects the roles of the machine:
 ```mermaid
 flowchart LR
   A["git and mise<br/>(Homebrew on macOS)"] --> B[clone ~/.dotfiles]
-  B --> C[save the roles]
-  C --> D[task modules]
-  D --> E[link ~/.config/mise]
+  B --> C["link ~/.config/mise<br/>to ~/.dotfiles/mise"]
+  C --> D[save the roles]
+  D --> E[task modules]
   E --> F[mise bootstrap]
   F --> G{workstation?}
-  G -- yes --> H[sign in to 1Password] --> I[mise bootstrap again] --> J[mise dot apply]
+  G -- yes --> H[sign in to 1Password] --> I[write ~/.ssh/config] --> J[mise bootstrap again]
   G -- no --> K[done]
 ```
 
@@ -70,10 +70,10 @@ flowchart LR
 ```
 
 - **Roles**: the type of machine. `mise/config.<role>.toml` holds the setup of a role and lists its modules.
-- **Modules**: blocks of setup that a machine turns on as a whole. `modules/<module>/mise.<module>.toml` holds all the setup of a module.
+- **Modules**: blocks of setup that a machine turns on as a whole. `mise/conf.d/<module>/mise.<module>.toml` holds all the setup of a module.
 - **Systems**: `macos` or `linux`. A module keeps its system variants: `os` on an entry, `os()` in a template.
 
-mise selects its config environments before it reads the config. So the task `modules` writes the roles and the modules into `~/.config/mise/miserc.local.toml`, outside this repository.
+mise selects its config environments before it reads the config. So the task `modules` writes the roles and the modules into `mise/miserc.local.toml`. git ignores this file.
 
 | Role | Machine | Modules |
 | --- | --- | --- |
@@ -100,48 +100,50 @@ mise selects its config environments before it reads the config. So the task `mo
 ```text
 ~/.dotfiles
 ├── install.sh
-├── mise/                     → ~/.config/mise (one link for each file)
-│   ├── config.toml           the base: settings, vars, task update
-│   ├── config.<role>.toml    the setup and the modules of a role
-│   ├── miserc.toml           auto_env = false: a module can have the name macos
-│   └── tasks/modules         writes miserc.local.toml
-├── modules/<module>/         → ~/.config/mise/conf.d/<module> (without home/ and data/)
-│   ├── mise.<module>.toml    dotfile group, templates, packages, tools, hooks, tasks
-│   ├── home/                 the files, at their path in ~
-│   ├── tasks/                the setup scripts
-│   └── data/                 the files that the tasks read (age)
-├── lib/                      the shell functions of the tasks
+├── mise/                         ← ~/.config/mise is one link to this folder
+│   ├── config.toml               the base: settings, vars
+│   ├── config.<role>.toml        the setup and the modules of a role
+│   ├── miserc.toml               auto_env = false: a module can have the name macos
+│   ├── miserc.local.toml         the roles and the modules of this machine (git ignores it)
+│   ├── tasks/modules             writes miserc.local.toml
+│   └── conf.d/<module>/
+│       ├── mise.<module>.toml    dotfile group, templates, packages, tools, hooks, tasks
+│       ├── home/                 the files, at their path in ~
+│       ├── tasks/                the setup scripts
+│       └── data/                 the files that the tasks read (age)
+├── lib/                          the shell functions of the tasks
 └── docs/
 ```
 
-A file of `modules/<module>/home/` goes to the same path in `~`: `modules/herdr/home/.config/herdr/config.toml` → `~/.config/herdr/config.toml`. mise links a plain file, and renders a template ([Tera](https://mise.jdx.dev/templates.html)).
+`~/.config/mise` is one link to `mise/`, as `mise bootstrap --config-dir mise` makes it. mise reads `conf.d/<module>/mise.<module>.toml` only when the machine selects the module, and reads no other file of the folder.
+
+A file of `mise/conf.d/<module>/home/` goes to the same path in `~`: `mise/conf.d/herdr/home/.config/herdr/config.toml` → `~/.config/herdr/config.toml`. mise links a plain file, and renders a template ([Tera](https://mise.jdx.dev/templates.html)).
 
 ## Daily use
 
 | Goal | Command |
 | --- | --- |
 | Apply the setup | `mise bootstrap` (add `--dry-run` to see the changes first) |
-| Pull this repository, then apply it | `mise run --skip-tools update` |
+| Pull this repository, then apply it | `mise bootstrap --update --prune-dotfiles` |
 | See what differs | `mise bootstrap status`, `mise dot status`, `mise dot diff` |
-| Change the roles of this machine | `mise vars roles="workstation work"`, then `mise run --skip-tools update` |
-| Turn off a module on this machine | `mise vars modules_off="<module> <module>"`, then `mise run --skip-tools update` |
+| Change the roles of this machine | `mise vars roles="workstation work"`, then `mise run --skip-tools modules`, then `mise bootstrap --prune-dotfiles` |
+| Turn off a module on this machine | `mise vars modules_off="<module> <module>"`, then `mise run --skip-tools modules`, then `mise bootstrap --prune-dotfiles` |
 | Edit a linked file | edit it in place: the change goes into this repository |
-| Edit a template | edit it in `modules/<module>/home/`, then `mise dot apply` |
+| Edit a template | edit it in `mise/conf.d/<module>/home/`, then `mise dot apply` |
 | Add a file to a module | `mise dot add --group <module> <file>` |
 | Add a template | add `"~/<file>" = { mode = "template" }` under `[dotfile_groups.<module>.entries]` |
 | Remove a file | remove its source, then `mise dot apply --prune` |
 | Add a package | add it to the file of its module (`os = "macos"` for one system only) |
 | Add a tool | `mise use --global <tool>`, then commit the change |
-| Add a module | create `modules/<module>/mise.<module>.toml` and `home/`, add the module to the list of a role, then `mise run --skip-tools update` |
-| Add a file to `mise/` or to a module config | `mise dot apply` creates its link, then mise reads the file |
+| Add a module | create `mise/conf.d/<module>/mise.<module>.toml` and `home/`, add the module to the list of a role, then `mise run --skip-tools modules`, then `mise bootstrap` |
 | Remove a module | `mise dot unapply --group <module>`, then remove its folder, its name in the lists of the roles, and its tasks in the task `bootstrap` |
 
 > [!NOTE]
-> - `--skip-tools`: before a task, mise installs all the tools of the config, and a failed install stops the task. `update` needs no tool.
-> - `update` runs `git pull`, the task `modules`, then `mise bootstrap --update --prune-dotfiles`. It replaces `chezmoi update`.
+> - `mise bootstrap --update` fast-forwards this repository, then runs again with the new config. It replaces `chezmoi update`. If the pull changes the modules of a role, run `mise run --skip-tools modules`, then `mise bootstrap --prune-dotfiles`.
+> - `--skip-tools`: before a task, mise installs all the tools of the config, and a failed install stops the task. The task `modules` needs no tool.
 > - A cask (`brew-cask:`) that mise installs gets the metadata of Homebrew (`homebrew_metadata`), so `brew upgrade` sees it. A cask of a third-party tap stays with mise.
 > - A machine without access to the private repositories of owpac turns off `pac`, `kompose` and `craft`.
-> - Do not edit `~/.config/mise/miserc.local.toml`: the task `modules` writes it again.
+> - Do not edit `mise/miserc.local.toml`: the task `modules` writes it again.
 
 ## Secrets
 
@@ -163,7 +165,7 @@ flowchart LR
 | Edit the domains of Doctolib | `fnox edit DOCTOLIB_HOSTS --profile doctolib`, then `mise run generate-hosts` |
 | Put back a file that you edited directly | `fnox set --file ~/.workrc --provider age` |
 | Write `/etc/hosts` for Doctolib | `mise run generate-hosts` |
-| Backups and snapshots of app preferences | age files in `modules/macos/data/` (see the [guide](./docs/macos-preferences.md)) |
+| Backups and snapshots of app preferences | age files in `mise/conf.d/macos/data/` (see the [guide](./docs/macos-preferences.md)) |
 
 > [!WARNING]
 > - Do not run `mise dot add` on a secret file: mise copies the content in clear text into this repository.
@@ -174,7 +176,7 @@ flowchart LR
 
 | Tool | Version | Why |
 | --- | --- | --- |
-| mise | 2026.11.0 or later | `pypi:git+ssh://` sources on github.com, `homebrew_metadata`, `mode = "fnox"`, `depends` of a dotfile group |
+| mise | 2026.11.0 or later | `pypi:git+ssh://` sources on github.com, `homebrew_metadata`, `mode = "fnox"`, `depends` of a dotfile group, `bootstrap --update` of a linked config |
 | fnox | 1.45.0 or later | files stored by path (`[files]`) in a linked global config, `fnox edit <NAME>` |
 | pac, kompose, craft | a tag `YYYY.MM.N` on each push | mise follows the last tag with `latest` |
 
@@ -183,10 +185,9 @@ flowchart LR
 `install.sh` does not migrate a machine where chezmoi wrote the dotfiles: mise needs `--force-dotfiles` to replace these files.
 
 1. `git -C ~/.dotfiles switch main`, then `git -C ~/.dotfiles pull`.
-2. `mv ~/.config/mise ~/.config/mise.before-mise`, then `mkdir -p ~/.config/mise`.
-3. `MISE_CONFIG_DIR=~/.dotfiles/mise mise vars roles="<roles>"`, then `MISE_CONFIG_DIR=~/.dotfiles/mise mise run --skip-tools modules`.
-4. `MISE_CONFIG_DIR=~/.dotfiles/mise mise dot apply --yes ~/.config/mise ~/.config/mise/conf.d`.
-5. `mise bootstrap --force-dotfiles`.
+2. `mv ~/.config/mise ~/.config/mise.before-mise`, then `ln -s ~/.dotfiles/mise ~/.config/mise`.
+3. `mise vars roles="<roles>"`, then `mise run --skip-tools modules`.
+4. `mise bootstrap --force-dotfiles`.
 
 > [!CAUTION]
 > Do not run `chezmoi purge`: the source directory of chezmoi is `~/.dotfiles`, so this command deletes this repository. Remove `~/.config/chezmoi` and `~/.cache/chezmoi`, then uninstall chezmoi.

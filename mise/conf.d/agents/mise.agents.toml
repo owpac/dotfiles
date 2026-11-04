@@ -20,9 +20,9 @@ agent_plugins_work = ""
 "brew:worktrunk" = "latest"
 
 # The marketplace owpac: one clone of owpac/prompts for Claude Code and Codex. mise clones it, and
-# `mise run update` and `pac upgrade agents` pull it. If the config enables a plugin that the clone
-# does not have yet, run `mise run update`. Do not edit this clone: a clone with local changes
-# stops mise bootstrap.
+# `mise bootstrap --update` and `pac upgrade agents` pull it. If the config enables a plugin that
+# the clone does not have yet, run `mise bootstrap --update`. Do not edit this clone: a clone with
+# local changes stops mise bootstrap.
 # owpac/prompts is private, so git clones it over SSH, with the 1Password agent of ~/.ssh/config.
 # mise clones the repositories before it writes the dotfiles. So on a new Mac, install.sh writes
 # ~/.ssh/config before the second mise bootstrap.
@@ -30,17 +30,17 @@ agent_plugins_work = ""
 "~/{{ vars.marketplaces_dir }}/owpac" = { url = "git@github.com:owpac/prompts.git" }
 
 # Claude Code, Codex, bd and wt also write their config file, so mise merges the keys of owpac
-# into these files. A merge entry must be in [dotfiles]: a group deploys whole files
-# only. Each source needs its full path: a relative source starts in ~/.config/mise/conf.d/agents.
-# The group agents excludes these sources, so it does not link them.
+# into these files. A merge entry must be in [dotfiles]: a group deploys whole files only. A
+# relative source starts in the folder of this file. The group agents excludes these sources, so
+# it does not link them.
 # mise dot add sorts the entries of a table: keep them sorted, and keep the comments above it.
 [dotfiles]
 "~/.claude" = { permissions = "0700" }
-"~/.claude/settings.json/owpac" = { source = "~/.dotfiles/modules/agents/home/.claude/settings.json", merge = true, template = "tera" }
-"~/.codex/config.toml/owpac" = { source = "~/.dotfiles/modules/agents/home/.codex/config.toml", merge = true, template = "tera" }
+"~/.claude/settings.json/owpac" = { source = "home/.claude/settings.json", merge = true, template = "tera" }
+"~/.codex/config.toml/owpac" = { source = "home/.codex/config.toml", merge = true, template = "tera" }
 "~/.config/bd/config.yaml" = { permissions = "0600" }
-"~/.config/bd/config.yaml/owpac" = { source = "~/.dotfiles/modules/agents/home/.config/bd/config.yaml", merge = true }
-"~/.config/worktrunk/config.toml/owpac" = { source = "~/.dotfiles/modules/agents/home/.config/worktrunk/config.toml", merge = true }
+"~/.config/bd/config.yaml/owpac" = { source = "home/.config/bd/config.yaml", merge = true }
+"~/.config/worktrunk/config.toml/owpac" = { source = "home/.config/worktrunk/config.toml", merge = true }
 
 [dotfile_groups.agents]
 root = "agents/home"

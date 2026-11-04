@@ -1,5 +1,5 @@
 # The module craft: the CLI that manages the Minecraft server of the homelab (owpac/craft).
-# mise installs it as the module pac installs pac: see modules/pac/mise.pac.toml for the private
+# mise installs it as the module pac installs pac: see conf.d/pac/mise.pac.toml for the private
 # repository.
 # A machine without access to this repository turns off the module: mise vars modules_off="craft"
 

@@ -2,11 +2,11 @@
 #MISE description="Decrypt the app backups into ~/Backup"
 #
 # The backups of the apps that have no preferences file (Raycast, Stream Deck, Wave Link) are
-# encrypted in modules/macos/data/backups/<file>.age. The task decrypts each backup into
+# encrypted in mise/conf.d/macos/data/backups/<file>.age. The task decrypts each backup into
 # ~/Backup/<file>, and writes a file only when its content changed. Import a backup with its app.
 # mise bootstrap runs this task each time (task bootstrap).
 # Add a backup:
-#   age -e -i ~/.ssh/encryption_ed25519 -o "modules/macos/data/backups/<file>.age" "<file>"
+#   age -e -i ~/.ssh/encryption_ed25519 -o "mise/conf.d/macos/data/backups/<file>.age" "<file>"
 
 # This task lists files with a glob, so it keeps the globs on (no -f). nullglob gives no file
 # when the folder is empty.
@@ -14,7 +14,7 @@ set -euo pipefail
 shopt -s nullglob
 
 # lib/ is at the root of this repository: follow the link of this task to find it.
-source "$(dirname "$(readlink -f "$0")")/../../../lib/logs.sh"
+source "$(dirname "$(readlink -f "$0")")/../../../../lib/logs.sh"
 
 # mise runs this task through its link in ~/.config/mise/conf.d/macos/tasks. Follow the link to find
 # the folder of the module.
