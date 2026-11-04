@@ -174,7 +174,7 @@ flowchart LR
 
 | Tool | Version | Why |
 | --- | --- | --- |
-| mise | 2026.10.23 or later | `pypi:git+ssh://` sources on github.com without a token, `homebrew_metadata`, `mode = "fnox"` |
+| mise | 2026.11.0 or later | `pypi:git+ssh://` sources on github.com, `homebrew_metadata`, `mode = "fnox"`, `depends` of a dotfile group |
 | fnox | 1.45.0 or later | files stored by path (`[files]`) in a linked global config, `fnox edit <NAME>` |
 | pac, kompose, craft | a tag `YYYY.MM.N` on each push | mise follows the last tag with `latest` |
 
@@ -186,8 +186,7 @@ flowchart LR
 2. `mv ~/.config/mise ~/.config/mise.before-mise`, then `mkdir -p ~/.config/mise`.
 3. `MISE_CONFIG_DIR=~/.dotfiles/mise mise vars roles="<roles>"`, then `MISE_CONFIG_DIR=~/.dotfiles/mise mise run --skip-tools modules`.
 4. `MISE_CONFIG_DIR=~/.dotfiles/mise mise dot apply --yes ~/.config/mise ~/.config/mise/conf.d`.
-5. `mise dot apply --yes --force ~/.ssh/encryption_ed25519 ~/.ssh/encryption_ed25519.pub ~/.config/fnox/age.toml ~/.config/fnox/config.toml`: mise reads the files of fnox before it writes any file, so the key and the config of fnox must exist first.
-6. `mise bootstrap --force-dotfiles`.
+5. `mise bootstrap --force-dotfiles`.
 
 > [!CAUTION]
 > Do not run `chezmoi purge`: the source directory of chezmoi is `~/.dotfiles`, so this command deletes this repository. Remove `~/.config/chezmoi` and `~/.cache/chezmoi`, then uninstall chezmoi.

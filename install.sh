@@ -158,15 +158,12 @@ if grep -q workstation "${miserc}"; then
   log_task "Open 1Password, sign in, and turn on 'Integrate with 1Password CLI' (Settings > Developer)."
   printf "🙋 Press Enter when 1Password is ready. "
   read -r _
-  # mise reads the files of fnox (mode = "fnox") before it writes any file of a run, and the first
-  # run wrote no dotfile. Without the age key or the config of fnox, fnox fails and mise writes
-  # nothing. So write the key (from 1Password), age.toml and the link of the config of fnox first.
-  # mise also clones the private repositories ([bootstrap.repos]) before it writes the dotfiles.
-  # git needs the 1Password agent of ~/.ssh/config for them, so write the SSH config and the
-  # public key of the Mac first too.
-  log_task "Writing the encryption key, the config of fnox and the SSH config..."
-  mise dot apply --yes ~/.ssh/encryption_ed25519 ~/.ssh/encryption_ed25519.pub \
-    ~/.config/fnox/age.toml ~/.config/fnox/config.toml ~/.ssh/config ~/.ssh/mbp_ed25519.pub
+  # mise clones the private repositories ([bootstrap.repos]) before it writes the dotfiles. git
+  # needs the 1Password agent of ~/.ssh/config for them, so write the SSH config and the public
+  # key of the Mac first. The files of fnox need no step here: their group waits for the age key
+  # and the config of fnox (depends in the module doctolib).
+  log_task "Writing the SSH config..."
+  mise dot apply --yes ~/.ssh/config ~/.ssh/mbp_ed25519.pub
   log_task "Running 'mise bootstrap' again for the keys and the secrets..."
   mise bootstrap --yes
 fi
