@@ -183,20 +183,6 @@ flowchart LR
 | Homebrew | 6.0.22 or later, on a Mac | mise writes the install receipt of a cask that it installs (`homebrew_metadata`) |
 | pac, kompose, craft | a tag `YYYY.MM.N` on each push | mise follows the last tag with `latest` |
 
-## Migrate a machine with chezmoi
-
-`install.sh` does not migrate a machine where chezmoi wrote the dotfiles: mise needs `--force-dotfiles` to replace these files.
-
-1. `git -C ~/.dotfiles switch main`, then `git -C ~/.dotfiles pull`.
-2. `mv ~/.config/mise ~/.config/mise.before-mise`, then `ln -s ~/.dotfiles/mise ~/.config/mise`.
-3. `mise bootstrap -E <roles> --save-env --force-dotfiles`, for example `-E workstation,work`.
-4. Remove `~/.config/chezmoi` and `~/.cache/chezmoi`, then uninstall chezmoi.
-
-> [!CAUTION]
-> Do not run `chezmoi purge`: the source directory of chezmoi is `~/.dotfiles`, so this command deletes this repository.
-
-The branch [`chezmoi`](https://github.com/owpac/dotfiles/tree/chezmoi) keeps the last version with chezmoi. Until its migration, a machine with chezmoi follows this branch: `git -C ~/.dotfiles switch -c chezmoi --track origin/chezmoi`.
-
 ## Guides
 
 - [Tracking macOS app preferences](./docs/macos-preferences.md): snapshot and re-import app settings with `pac preferences`, without the noise of a tracked live plist.
