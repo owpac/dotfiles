@@ -3,6 +3,8 @@
   beads@owpac.
     - env: BEADS_ACTOR is the agent name for the claims, notes and comments of bd. BEADS_DIR is
       the home workspace, also when Claude Code does not start from a shell that read ~/.zshenv.
+    - permissions.defaultMode: each session starts in auto mode. `--permission-mode` or
+      shift+tab changes the mode of one session.
     - Plugins: the marketplace owpac is the shared clone of owpac/prompts ([bootstrap.repos] of
       mise.agents.toml). Claude Code reads its plugins in place, so a pull of the clone is
       sufficient. `mise bootstrap --update` and `pac upgrade agents` pull it.
@@ -18,6 +20,9 @@
 {%- endif -%}
 {
   "model": "opus",
+  "permissions": {
+    "defaultMode": "auto"
+  },
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"

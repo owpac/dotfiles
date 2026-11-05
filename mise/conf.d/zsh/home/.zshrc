@@ -74,18 +74,10 @@ fi
 alias terractx='terraform workspace select $1'
 alias ghpr='gh pr create -df -t $(git_current_branch) && gh pr view -w && bin/dev ci:build'
 alias gbrm="git for-each-ref --format='%(refname:short)' refs/heads | grep -v \"master\|main\" | xargs git branch -D"
-# Claude Code: start each session with Opus 1M. The managed settings block the "model" setting,
-# so the option is added here. A subcommand does not accept an option before it, so the
-# subcommands of `claude --help` (agents, attach, stop, mcp...) run without --model.
-claude() {
-  case "${1:-}" in
-    agents|attach|auth|auto-mode|doctor|gateway|import|install|logs|mcp|plugin|plugins|purge|respawn|rm|setup-token|stop|kill|ultrareview|update|upgrade)
-      command claude "$@" ;;
-    *)
-      command claude --model "opus[1m]" "$@" ;;
-  esac
-}
-alias yolo='claude --permission-mode auto'
+# Claude Code: start each session with Opus 1M, in auto mode. The managed settings of the work Mac
+# block the "model" and "permissions.defaultMode" settings, so the options are added here.
+# Claude Code 2.1.316 accepts these options before a subcommand (agents, stop, mcp...).
+alias claude='claude --model "opus[1m]" --permission-mode auto'
 
 {% if "work" in envs -%}
 ### Work
