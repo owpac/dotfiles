@@ -1,46 +1,5 @@
-# Global config of mise. ~/.config/mise is one link to mise/ of this repository, as
-# `mise bootstrap --config-dir mise` makes it (install.sh creates this link). So each mise command
-# reads this config, from any directory. `mise use --global` and
-# `mise bootstrap packages use --global` write their changes here, through the link. The local
-# files of this machine (miserc.local.toml, config.local.toml) are in mise/ too: git ignores them.
-#
-# This file applies to each machine. A machine selects its setup on 3 axes:
-#   - Roles: the type of machine. minimal (containers, Codespaces), server (the NAS and the
-#     Raspberry Pi), workstation (a Mac) and work (a Mac for Doctolib, with workstation). A role is
-#     a set of environments (env_sets in miserc.toml): the environment of the role, where
-#     config.<role>.toml holds its setup, and the modules of the role.
-#   - Modules: the blocks of setup that a machine turns on as a whole, for example herdr or agents.
-#     A module is a config environment too: conf.d/<module>/mise.<module>.toml holds all its setup.
-#   - Systems: macos or linux. A module keeps its system variants: `os` on an entry, `os()` in a
-#     template. miserc.toml sets auto_env = false: mise adds no platform environment.
-# The machine saves its roles in miserc.local.toml, for example env = ["workstation", "work"].
-# Change the roles of a machine: mise bootstrap -E workstation,work --save-env --prune-dotfiles
-#
-# A folder of conf.d/ holds a module. mise.<module>.toml declares its dotfile group, its
-# templates, its packages, its merges and its tasks. mise reads this file only when the machine
-# selects the module, and reads no other file of the folder. home/ holds the files of the group,
-# at their path in the home directory. mise links each file
-# (conf.d/herdr/home/.config/herdr/config.toml to ~/.config/herdr/config.toml), and renders the
-# templates that the group lists. tasks/ holds the setup scripts of the module, and data/ the
-# files that its tasks read.
-# A module keeps its role variants: "work" in mise_env in a template, env = "work" on a package,
-# variants = [{ profile = "work" }] on a whole file. A role and a module never have the same name.
-#
-# How to change the dotfiles:
-#   - Edit a link in place: the change goes into this repository.
-#   - Edit a template in home/, then run `mise dot apply`.
-#   - Add a file to a group: mise dot add --group <group> <file>
-#   - Remove a file: remove its source, then run `mise dot apply --prune`.
-#   - Add a module: add its folder, with its group in mise.<module>.toml and its files in home/.
-#     Add the module to the set of a role (env_sets in miserc.toml). On each machine, run
-#     `mise bootstrap --update`.
-#
-# Apply the setup: mise bootstrap
-# Pull this repository, then apply it: mise bootstrap --update --prune-dotfiles
-#   mise fast-forwards this repository, then runs again with the new config. --prune-dotfiles
-#   removes the files that a group does not deploy any more, for example after the pull removed a
-#   module. mise asks before it removes a file.
-# See the changes first: mise bootstrap --dry-run, mise dot diff, mise bootstrap status
+# The global config of mise, for each machine. ~/.config/mise is one link to mise/ of this
+# repository. The README explains the roles, the modules, the layout and the daily commands.
 
 # The oldest mise that this config supports: [env_sets] in miserc.toml and
 # `mise bootstrap --save-env` (2026.11.1). An older mise stops with an error. install.sh reads this
