@@ -50,6 +50,17 @@ DOTFILES_SSH_URL=${DOTFILES_SSH_URL:-"git@github.com:${DOTFILES_USER}/dotfiles.g
 # mise/config.toml expects DOTFILES_DIR (dotfiles.root). mise reads its config in MISE_DIR.
 DOTFILES_DIR="${HOME}/.dotfiles"
 MISE_DIR="${HOME}/.config/mise"
+# Exit status 0 if the version $1 is older than the version $2. Versions are YYYY.MM.N.
+version_lt() {
+  printf '%s %s\n' "$1" "$2" | awk '{
+    split($1, a, "."); split($2, b, ".")
+    for (i = 1; i <= 3; i++) {
+      if (a[i] + 0 < b[i] + 0) exit 0
+      if (a[i] + 0 > b[i] + 0) exit 1
+    }
+    exit 1
+  }'
+}
 
 # --- mise and git -----------------------------------------------------------------------
 # On macOS, Homebrew installs mise and git. Homebrew stays on the machine, and mise sees the
@@ -73,7 +84,6 @@ elif [ "$(uname)" = "Linux" ]; then
 else
   error "Unsupported operating system."
 fi
-log_done "mise $(mise --version) ready"
 
 # --- Repository -------------------------------------------------------------------------
 # Use the HTTPS URL for the clone: the SSH key comes from 1Password, which is not set up yet.
@@ -88,6 +98,24 @@ else
   fi
   git clone "${DOTFILES_HTTPS_URL}" "${DOTFILES_DIR}"
 fi
+
+# --- Version of mise --------------------------------------------------------------------
+# mise/config.toml gives the oldest mise that it supports (min_version). The script of mise
+# installs a version older than 24 hours only, and Homebrew can be late. If this mise is older,
+# install this version.
+min_version=$(sed -n 's/^min_version = "\([0-9.]*\)".*/\1/p' "${DOTFILES_DIR}/mise/config.toml")
+if [ -n "${min_version}" ] && version_lt "$(mise --version | cut -d' ' -f1)" "${min_version}"; then
+  log_task "Updating mise to ${min_version} or later..."
+  if [ "$(uname)" = "Darwin" ]; then
+    brew upgrade mise
+  else
+    curl -fsSL https://mise.run | MISE_VERSION="v${min_version}" sh
+  fi
+  if version_lt "$(mise --version | cut -d' ' -f1)" "${min_version}"; then
+    error "This repository needs mise ${min_version} or later. Try again later."
+  fi
+fi
+log_done "mise $(mise --version) ready"
 
 # --- Config directory of mise -----------------------------------------------------------
 # ~/.config/mise is one link to mise/ of this repository, as `mise bootstrap --config-dir mise`

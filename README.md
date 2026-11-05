@@ -173,7 +173,7 @@ flowchart LR
 
 | Tool | Version | Why |
 | --- | --- | --- |
-| mise | 2026.11.1 or later | `pypi:git+ssh://` sources on github.com, `homebrew_metadata`, `mode = "fnox"`, `depends` of a dotfile group, `bootstrap --update` of a linked config, `[env_sets]` and `--save-env` |
+| mise | 2026.11.1 or later (`min_version` in `mise/config.toml`) | `pypi:git+ssh://` sources on github.com, `homebrew_metadata`, `mode = "fnox"`, `depends` of a dotfile group, `bootstrap --update` of a linked config, `[env_sets]` and `--save-env` |
 | fnox | 1.45.0 or later | files stored by path (`[files]`) in a linked global config, `fnox edit <NAME>` |
 | pac, kompose, craft | a tag `YYYY.MM.N` on each push | mise follows the last tag with `latest` |
 

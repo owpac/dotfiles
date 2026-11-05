@@ -42,6 +42,11 @@
 #   module. mise asks before it removes a file.
 # See the changes first: mise bootstrap --dry-run, mise dot diff, mise bootstrap status
 
+# The oldest mise that this config supports: [env_sets] in miserc.toml and
+# `mise bootstrap --save-env` (2026.11.1). An older mise stops with an error. install.sh reads this
+# value and installs this version or a newer one.
+min_version = "2026.11.1"
+
 [settings]
 idiomatic_version_file_enable_tools = ["ruby", "node", "terraform"]
 # The root of the dotfile groups: the group zsh reads conf.d/zsh/home. The path goes into this
