@@ -1,0 +1,62 @@
+# The role workstation: a Mac, in the personal mode and in the work mode. The tools and the
+# packages without a module. The module macos holds the setup of macOS.
+
+# Python and uv come with the module pac.
+[tools]
+node = "latest"
+hk = "latest"
+
+# mise installs the Homebrew formulae itself, in /opt/homebrew, with the receipts of Homebrew:
+# `brew upgrade` sees them. mise sees the packages that Homebrew installed.
+# homebrew_metadata: after mise installs a cask, it also writes the metadata of Homebrew. Homebrew
+# then owns the cask, and `brew upgrade` sees it. A cask of a third-party tap (aerospace) stays
+# with mise: `mise bootstrap packages upgrade` upgrades it. This setting needs the first release of
+# mise after 2026.10.19.
+[bootstrap.brew]
+homebrew_metadata = true
+
+# mise asks gh for a GitHub token: on a Mac, gh keeps it in the Keychain, where mise cannot read it.
+# With a token, the GitHub API allows 5000 requests per hour. Without a token, the limit is 60,
+# for all the machines behind the same IP address, for example a VPN.
+[settings.github]
+credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
+
+# The packages of a module are in the file of the module.
+[bootstrap.packages]
+"brew:colima" = "latest"
+"brew:displayplacer" = "latest"
+"brew:docker" = "latest"
+"brew:docker-compose" = "latest"
+"brew:fzf" = "latest"
+"brew:git" = "latest"
+"brew:gh" = "latest"
+"brew:htop" = "latest"
+"brew:mas" = "latest"
+"brew:mise" = "latest"
+"brew:mole" = "latest"
+"brew:mtr" = "latest"
+"brew:nmap" = "latest"
+# npm comes with node. Homebrew installs node for its alias npm. mise also installs node
+# ([tools]): check if this package is still useful.
+"brew:node" = "latest"
+"brew:tree" = "latest"
+"brew:zoxide" = "latest"
+"brew-cask:1password" = "latest"
+"brew-cask:1password-cli" = "latest"
+"brew-cask:appcleaner" = "latest"
+"brew-cask:discord" = "latest"
+"brew-cask:elgato-stream-deck" = "latest"
+"brew-cask:elgato-wave-link" = "latest"
+"brew-cask:firefox" = "latest"
+"brew-cask:font-jetbrains-mono-nerd-font" = "latest"
+"brew-cask:obsidian" = "latest"
+"brew-cask:readdle-spark" = "latest"
+"brew-cask:rectangle" = "latest"
+"brew-cask:signal" = "latest"
+"brew-cask:spotify" = "latest"
+"brew-cask:thaw" = "latest"
+"brew-cask:visual-studio-code" = "latest"
+"brew-cask:zen" = "latest"
+
+[dotfiles]
+"~/Workspace" = { permissions = "0700" }

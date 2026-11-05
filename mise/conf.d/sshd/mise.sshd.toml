@@ -1,0 +1,9 @@
+# The module sshd: the authorized keys of SSH on a server of the homelab. sshd reads them when
+# the Mac connects. The name of this module is not server: a module and a role never have the
+# same name.
+
+[dotfile_groups.sshd]
+root = "sshd/home"
+
+[dotfile_groups.sshd.entries]
+"~/.ssh/authorized_keys" = { mode = "template", permissions = "0600" }

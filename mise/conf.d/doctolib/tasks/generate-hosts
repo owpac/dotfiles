@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#MISE description="Write /etc/hosts with the local domains of the dev environment of Doctolib"
+#
+# The list of the domains is the secret DOCTOLIB_HOSTS of fnox (profile doctolib): the details of
+# Doctolib stay out of the public repository. The task reads the list, then replaces /etc/hosts
+# with sudo: the header of macOS, then one line 127.0.0.1 for each domain. Run it by hand:
+#   mise run generate-hosts
+# Change the list of the domains, then run this task again:
+#   fnox edit DOCTOLIB_HOSTS --profile doctolib
+
+set -eufo pipefail
+
+# lib/ is at the root of this repository: follow the link of this task to find it.
+source "$(dirname "$(readlink -f "$0")")/../../../../lib/logs.sh"
+
+command -v fnox >/dev/null 2>&1 || error "fnox is not installed yet: run mise bootstrap first"
+
+# Defines subdomains, environments, extensions and extra_urls. The bash of macOS (3.2) cannot
+# source a process substitution, so eval reads the list.
+eval "$(fnox get --profile doctolib DOCTOLIB_HOSTS)"
+
+{
+  cat <<'EOF'
+##
+# Host Database
+#
+# localhost is used to configure the loopback interface
+# when the system is booting.  Do not change this entry.
+##
+127.0.0.1	localhost
+255.255.255.255	broadcasthost
+::1             localhost
+EOF
+  for subdomain in "${subdomains[@]}"; do
+    for environment in "${environments[@]}"; do
+      for extension in "${extensions[@]}"; do
+        echo "127.0.0.1 ${subdomain}-${environment}.doctolib.${extension}"
+      done
+    done
+  done
+  for extra_url in "${extra_urls[@]}"; do
+    echo "127.0.0.1 ${extra_url}"
+  done
+} | sudo tee /etc/hosts >/dev/null
+
+log_done "/etc/hosts updated"

@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#MISE description="Copy the plugins of owpac into the cache of Codex"
+#
+# Codex does not read a local marketplace in place, and does not install its plugins at the start
+# of a session. So the task copies the plugins of owpac that ~/.codex/config.toml enables into the
+# cache of Codex, and removes the copies of the other plugins of owpac. Claude Code reads the
+# shared clone in place, so it needs no task. `pac upgrade agents` refreshes these copies after a
+# pull of the clone.
+# mise bootstrap runs this task each time (task bootstrap), after it clones the marketplace
+# ([bootstrap.repos]). The task is idempotent, and does nothing without Codex.
+
+set -eufo pipefail
+
+# lib/ is at the root of this repository: follow the link of this task to find it.
+source "$(dirname "$(readlink -f "$0")")/../../../../lib/logs.sh"
+
+command -v codex >/dev/null 2>&1 || exit 0
+
+# Codex reads config.toml itself. For each plugin of owpac, the list gives enabled (config.toml
+# enables the plugin) and installed (the cache has a copy). --available adds the plugins without a
+# copy.
+if ! plugins=$(codex plugin list --json --available --marketplace owpac); then
+  log_error "Could not list the plugins of owpac in Codex"
+  exit 0
+fi
+
+# Print the id of each plugin of owpac whose state matches a jq condition.
+plugins_where() {
+  jq -r "(.installed + .available)[] | select($1) | .pluginId" <<<"$plugins"
+}
+
+for id in $(plugins_where '.enabled and (.installed | not)'); do
+  log_task "Installing Codex plugin $id..."
+  codex plugin add "$id" >/dev/null || log_error "Could not install $id in Codex"
+done
+
+for id in $(plugins_where '.installed and (.enabled | not)'); do
+  log_task "Removing Codex plugin $id, which config.toml no longer enables..."
+  codex plugin remove "$id" >/dev/null || log_error "Could not remove $id from Codex"
+done

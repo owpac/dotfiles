@@ -1,0 +1,39 @@
+# The module doctolib: the setup of Doctolib, for the role work. PostgreSQL 15, the profile of
+# fnox, the task generate-hosts, and the files of Doctolib (home/). fnox keeps the private parts of
+# this setup: the secrets ES_API_KEY and DOCTOLIB_HOSTS (profile doctolib), and the files ~/.workrc
+# and ~/.npmrc.
+
+# The prefix of PostgreSQL 15 of Homebrew (package of config.work.toml).
+[vars]
+postgresql_prefix = "{{ vars.homebrew_prefix }}/opt/postgresql@15"
+
+[env]
+# The secrets of Doctolib are in the profile doctolib of the global config of fnox (module
+# secrets). fnox exec reads them only when this profile is active.
+FNOX_PROFILE = "doctolib"
+# PostgreSQL 15, for the Rails apps of Doctolib: its commands, and its files for the native gems.
+# The gem pg finds pg_config with BUNDLE_BUILD__PG.
+_.path = ["{{ vars.postgresql_prefix }}/bin"]
+LDFLAGS = "-L{{ vars.postgresql_prefix }}/lib"
+CPPFLAGS = "-I{{ vars.postgresql_prefix }}/include"
+PKG_CONFIG_PATH = "{{ vars.postgresql_prefix }}/lib/pkgconfig"
+BUNDLE_BUILD__PG = "--with-pg-config={{ vars.postgresql_prefix }}/bin/pg_config"
+
+# The task generate-hosts writes /etc/hosts. A relative path starts in this folder.
+[task_config]
+includes = ["tasks"]
+
+[dotfile_groups.doctolib]
+root = "doctolib/home"
+# The files of fnox below need the age key and the config of fnox, from the group secrets. mise
+# writes the group secrets first, then this group, in the same apply (mise 2026.11.0 or later).
+depends = ["secrets"]
+
+[dotfile_groups.doctolib.entries]
+"~/.ssh/doctolib_ed25519.pub" = { mode = "template", remove_empty = true, permissions = "0600" }
+"~/Workspace/doctolib/.gitconfig" = { mode = "template" }
+# fnox keeps these files, encrypted under their path ([files] of the global config of fnox), so
+# the details of Doctolib stay out of the public repository. mise writes them with
+# fnox get --file, with the mode 0600. Edit one with: mise dot edit --apply ~/.workrc
+"~/.npmrc" = { mode = "fnox" }
+"~/.workrc" = { mode = "fnox" }

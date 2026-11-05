@@ -1,0 +1,12 @@
+# herdr, the terminal multiplexer of the workstations. herdr can add its own files in its
+# directory: mise links each file of the group, and leaves the other files alone.
+
+[bootstrap.packages]
+"brew:herdr" = "latest"
+
+[dotfile_groups.herdr]
+root = "herdr/home"
+
+# The task herdr-plugins. A relative path starts in this folder.
+[task_config]
+includes = ["tasks"]

@@ -1,0 +1,3 @@
+# The role minimal: containers, Codespaces and other ephemeral environments. The shell and git
+# only: its set (env_sets in miserc.toml) selects the modules zsh and git. This role has no setup
+# of its own.

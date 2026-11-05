@@ -1,3 +1,8 @@
+# The local files of mise on this machine: miserc.local.toml (the roles, from --save-env) and
+# config.local.toml. ~/.config/mise is a link to mise/, so mise writes these files in this
+# repository.
+/mise/*.local.toml
+
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,macos,windows,jetbrains+all,python
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,macos,windows,jetbrains+all,python
 
@@ -139,6 +144,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+# This repository keeps the shell functions of its tasks in lib/.
+!/lib/
 lib64/
 parts/
 sdist/

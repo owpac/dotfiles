@@ -1,0 +1,97 @@
+# The global config of mise, for each machine. ~/.config/mise is one link to mise/ of this
+# repository. The README explains the roles, the modules, the layout and the daily commands.
+
+# The oldest mise that this config supports: [env_sets] in miserc.toml and
+# `mise bootstrap --save-env` (2026.11.1). An older mise stops with an error. install.sh reads this
+# value and installs this version or a newer one.
+min_version = "2026.11.1"
+
+[settings]
+idiomatic_version_file_enable_tools = ["ruby", "node", "terraform"]
+# The root of the dotfile groups: the group zsh reads conf.d/zsh/home. The path goes into this
+# repository, not through the link ~/.config/mise, so the links of the dotfiles point directly to
+# the files of this repository.
+dotfiles.root = "~/.dotfiles/mise/conf.d"
+# The history of mise (mode track, mise dot save, history-watch) keeps versions of the files that
+# it tracks in place. This repository and git do this work, so the history stays off, and mise dot
+# status does not show its empty sections.
+history.enabled = false
+# mise skips the versions that are younger than 3 days (default: 24h). The delay limits the risk of
+# a compromised release. It applies when mise resolves `latest` or a prefix such as "3.15", to the
+# dependencies of the npm and pypi tools, and to mise self-update. It does not apply to an exact
+# version, to a version without a release date (pac and kompose from git), or to the packages of
+# mise bootstrap (Homebrew, apt).
+minimum_release_age = "3d"
+
+[vars]
+# The answers of each machine. mise asks for them once (mise vars prompt, or
+# mise bootstrap --prompt-vars) and keeps them in its state directory, outside this repository.
+full_name = { default = "", prompt = "Full name" }
+# The GitHub noreply address keeps the real email out of the public commits. It is public, and
+# it rejects the incoming mail.
+email = { default = "29702840+owpac@users.noreply.github.com", prompt = "Email" }
+email_work = { default = "29702840+owpac@users.noreply.github.com", prompt = "Work email" }
+
+# The age identity that decrypts the .age files of this repository. 1Password holds it.
+age_identity = { default = "{{ env.HOME }}/.ssh/encryption_ed25519" }
+
+# The prefix of Homebrew on a Mac. The templates use it to test a file of Homebrew, and the module
+# doctolib uses it for PostgreSQL. `brew shellenv` sets HOMEBREW_PREFIX.
+homebrew_prefix = "{{ env.HOMEBREW_PREFIX | default(value='/opt/homebrew') }}"
+
+# The setup that the other steps do not cover: the scripts in the tasks/ folders of the modules.
+# mise bootstrap runs this task after the other steps, on each role, one script after the other.
+# mise loads the task of a module only when the machine selects the module: the loop skips the
+# tasks that mise does not find. A server or a container shows only the line of its roles and
+# modules, and its own tasks.
+[tasks.bootstrap]
+description = "Show the roles and the modules, then run the setup scripts of the modules"
+raw = true
+# mise prints the command of a task ("[beads] $ ~/.config/…"), not its description. quiet and
+# --quiet hide these lines, and the loop prints "[task] emoji description" instead, as the
+# descriptions of the hooks. mise still prints the errors.
+# In a terminal without NO_COLOR, the name has the color of its module, as the hooks: macos blue,
+# agents magenta, herdr yellow, tools of owpac (pac, kompose, craft) green. Red stays for errors.
+# The first line gives the roles and the modules of this machine. mise gives the expanded sets
+# (env_sets of miserc.toml) to the task in MISE_ENV. A module has a folder in conf.d, and a role
+# has none.
+quiet = true
+run = '''
+tty=''
+if [ -t 2 ] && [ -z "${NO_COLOR:-}" ]; then
+  tty=1
+fi
+roles='' modules=''
+for env in $(printf '%s' "${MISE_ENV:-}" | tr ',' ' '); do
+  if [ -d "$HOME/.config/mise/conf.d/$env" ]; then
+    modules="${modules:+$modules, }$env"
+  else
+    roles="${roles:+$roles, }$env"
+  fi
+done
+on='' off=''
+if [ -n "$tty" ]; then
+  on=$(printf '\033[1m') off=$(printf '\033[0m')
+fi
+printf '%s[mise]%s 🧭 Roles: %s · Modules: %s\n' "$on" "$off" "${roles:-none}" "${modules:-none}" >&2
+for task in beads codex-plugins herdr-plugins macos-setup macos-preferences backups claude-token; do
+  info=$(mise tasks info "$task" 2>/dev/null) || continue
+  case "$task" in
+    beads) icon='📿' color='1;35' ;;
+    codex-plugins) icon='🔌' color='1;35' ;;
+    claude-token) icon='🔑' color='1;35' ;;
+    herdr-plugins) icon='🧩' color='1;33' ;;
+    macos-setup) icon='🍎' color='1;34' ;;
+    macos-preferences) icon='🎛️' color='1;34' ;;
+    backups) icon='💾' color='1;34' ;;
+    *) icon='' color='1' ;;
+  esac
+  on='' off=''
+  if [ -n "$tty" ]; then
+    on=$(printf '\033[%sm' "$color") off=$(printf '\033[0m')
+  fi
+  description=$(printf '%s\n' "$info" | sed -n 's/^Description: //p')
+  printf '%s[%s]%s %s%s\n' "$on" "$task" "$off" "${icon:+$icon }" "$description" >&2
+  mise run --quiet "$task" || exit 1
+done
+'''

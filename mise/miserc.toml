@@ -1,0 +1,26 @@
+# The settings that mise reads before the config files. miserc.local.toml, next to this file,
+# holds the roles of this machine (env): `mise bootstrap -E <roles> --save-env` writes it, and git
+# ignores it.
+#
+# auto_env = false: mise adds no platform environment (unix, macos, linux, macos-arm64). So a file
+# named after a platform, such as conf.d/macos/mise.macos.toml, loads only when the machine
+# selects the module of the same name. mise 2027.6.0 turns auto_env on by default: this line
+# keeps the current behavior, and stops the warning of mise about platform files.
+auto_env = false
+
+# The roles: one set of environments for each role. A set lists the environment of the role
+# (config.<role>.toml) and the modules of the role (conf.d/<module>/mise.<module>.toml). mise
+# expands the sets of env before it reads the config, and {{ mise_env }} holds the expanded list.
+# A set expands one level only, so each set lists all its modules, zsh and git included.
+# A machine selects its roles once: mise bootstrap -E workstation,work --save-env
+# A machine that needs another list of modules gets its own set here, for example a server
+# without the private tools of owpac (pac, kompose, craft).
+[env_sets]
+minimal = ["minimal", "zsh", "git"]
+server = ["server", "zsh", "git", "ssh", "sshd", "pac", "kompose", "craft"]
+workstation = [
+  "workstation", "zsh", "git", "macos", "ssh", "secrets", "pac",
+  "aerospace", "agents", "herdr", "raycast", "iterm2",
+]
+# A Mac for Doctolib selects workstation too: env = ["workstation", "work"].
+work = ["work", "doctolib"]

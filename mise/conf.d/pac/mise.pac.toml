@@ -1,0 +1,35 @@
+# The module pac: the CLI that upgrades each machine (owpac/pac). mise installs it with uv, in its
+# own venv, from its private GitHub repository. mise 2026.10.19 or later lists a private
+# repository with `git ls-remote` over SSH, so no GitHub token is necessary. On a server (the
+# NAS, the Pi), ssh forwards the 1Password agent of the Mac (ForwardAgent).
+# A machine without access to this repository uses a set without this module (miserc.toml).
+
+# A git tag has no release date, so mise cannot check the delay of minimum_release_age, and it
+# shows a warning at each install. The tags of this repository come from its own workflow, so
+# the tool skips the delay. Its dependencies from PyPI also skip it.
+[settings]
+minimum_release_age_excludes = ["pypi:git+ssh://git@github.com/owpac/pac.git"]
+
+[tools]
+# Python stays on one minor version. mise installs the Python tools with the link python/3.15. A
+# new patch version keeps their venv, but a new minor version breaks it. The hook below then
+# reinstalls the tool. The module kompose declares the same versions.
+python = "3.15"
+uv = "latest"
+# On github.com, `latest` is the last tag. The workflow tag.yml of the repository tags each push on
+# main, so `mise upgrade` installs each push. postinstall writes the zsh completion of each new
+# version.
+"pypi:git+ssh://git@github.com/owpac/pac.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && pac --completion zsh > "$HOME/.local/bin/completions/_pac"' }
+
+# A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
+# tool. So reinstall pac if it does not start. mise runs the hooks of each config file.
+# mise 2026.10.22 or later prints the description instead of the script. The codes \u001b[…m
+# print the name in green and bold, the color of the tools of owpac (see the task bootstrap), also in a pipe or with NO_COLOR.
+[bootstrap.hooks.post-tools]
+description = "\u001b[1;32m[pac]\u001b[0m 🔧 Reinstall pac if it does not start"
+run = '''
+if ! mise exec -- pac --version >/dev/null 2>&1; then
+  echo "Reinstalling pac on the Python of mise..."
+  mise install --force "pypi:git+ssh://git@github.com/owpac/pac.git"
+fi
+'''

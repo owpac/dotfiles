@@ -1,0 +1,2 @@
+# The role server: a server of the homelab, the NAS and the Raspberry Pi. They have the same setup.
+# Its set (env_sets in miserc.toml) selects its modules. This role has no setup of its own yet.
