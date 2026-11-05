@@ -29,14 +29,6 @@ plugins=(
 
 source $ZSH/oh-my-zsh.sh
 
-### Editor
-
-if [ "$(command -v code)" ]; then
-  export EDITOR='code --wait'
-else
-  export EDITOR='vim'
-fi
-
 {%- if os() == "macos" and "workstation" in envs %}
 
 ### Claude
