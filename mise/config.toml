@@ -71,6 +71,10 @@ email_work = { default = "29702840+owpac@users.noreply.github.com", prompt = "Wo
 # The age identity that decrypts the .age files of this repository. 1Password holds it.
 age_identity = { default = "{{ env.HOME }}/.ssh/encryption_ed25519" }
 
+# The prefix of Homebrew on a Mac. The templates use it to test a file of Homebrew, and the module
+# doctolib uses it for PostgreSQL. `brew shellenv` sets HOMEBREW_PREFIX.
+homebrew_prefix = "{{ env.HOMEBREW_PREFIX | default(value='/opt/homebrew') }}"
+
 # The setup that the other steps do not cover: the scripts in the tasks/ folders of the modules.
 # mise bootstrap runs this task after the other steps, on each role, one script after the other.
 # mise loads the task of a module only when the machine selects the module: the loop skips the

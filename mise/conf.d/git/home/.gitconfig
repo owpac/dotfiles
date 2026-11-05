@@ -1,6 +1,7 @@
 {%- set envs = mise_env | default(value=[]) -%}
+{%- set code = vars.homebrew_prefix ~ "/bin/code" -%}
 [core]
-  editor = {% if "/opt/homebrew/bin/code" is file %}code --wait{% else %}vim{% endif %}
+  editor = {% if code is file %}code --wait{% else %}vim{% endif %}
 [user]
   name = owpac
   email = {{ vars.email }}
@@ -27,7 +28,7 @@
   program = "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
 {%- endif %}
 
-{% if "/opt/homebrew/bin/code" is file -%}
+{% if code is file -%}
 [diff]
   tool = vscode
 [difftool "vscode"]

@@ -5,7 +5,7 @@
 
 # The prefix of PostgreSQL 15 of Homebrew (package of config.work.toml).
 [vars]
-postgresql_prefix = "{{ env.HOMEBREW_PREFIX | default(value='/opt/homebrew') }}/opt/postgresql@15"
+postgresql_prefix = "{{ vars.homebrew_prefix }}/opt/postgresql@15"
 
 [env]
 # The secrets of Doctolib are in the profile doctolib of the global config of fnox (module
