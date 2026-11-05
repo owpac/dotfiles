@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#MISE description="Install the herdr integrations of the agents"
+#
+# Install the herdr integrations of Claude Code and Codex. mise bootstrap runs this task each time
+# (task bootstrap), after the packages: herdr is then installed.
+# Each integration adds a SessionStart hook to the agent. The hook sends the session ID to herdr.
+# After `herdr server stop`, herdr resumes each agent with this ID (`resume_agents_on_restore`).
+# Without the integration, herdr starts only a shell in the pane.
+# herdr writes the integration files itself: the hook scripts, and the hooks in
+# ~/.claude/settings.json, ~/.codex/hooks.json and ~/.codex/config.toml. Thus mise does not manage
+# these hooks. The merge entries of the module agents keep the other keys of these files.
+# The task installs an integration only if herdr does not show it as current, for example after an
+# update of herdr. The hook does nothing outside a herdr pane.
+
+set -eufo pipefail
+
+# lib/ is at the root of this repository: follow the link of this task to find it.
+source "$(dirname "$(readlink -f "$0")")/../../../../lib/logs.sh"
+
+command -v herdr >/dev/null 2>&1 || exit 0
+
+# herdr installs an integration only in the folder of the agent: ~/.claude or ~/.codex. The module
+# agents creates these folders.
+agents=(claude codex)
+
+status=$(herdr integration status)
+for agent in "${agents[@]}"; do
+  [ -d "$HOME/.$agent" ] || continue
+  grep -q "^$agent: current " <<< "$status" && continue
+  log_task "Installing the herdr integration of $agent..."
+  herdr integration install "$agent" >/dev/null
+  log_done "herdr integration of $agent installed"
+done

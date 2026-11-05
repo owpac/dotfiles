@@ -7,6 +7,6 @@
 [dotfile_groups.herdr]
 root = "herdr/home"
 
-# The task herdr-plugins. A relative path starts in this folder.
+# The tasks herdr-plugins and herdr-integrations. A relative path starts in this folder.
 [task_config]
 includes = ["tasks"]
