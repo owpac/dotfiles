@@ -7,7 +7,7 @@
 beads_dir = ".local/share/tasks/.beads"
 # The plugins of the marketplace owpac, separated by spaces. Both agents get them. Claude Code and
 # Codex clone the marketplace themselves: their config gives its git source.
-agent_plugins = "productivity python rails setup beads engram"
+agent_plugins = "productivity python rails setup beads engram herdr"
 # The plugins of the marketplace owpac for the work mode only.
 agent_plugins_work = ""
 

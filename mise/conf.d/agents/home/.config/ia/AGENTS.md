@@ -60,6 +60,14 @@ bd prime                # Refresh Beads context
 
 **Never** store patient data, personal data or secrets in engram or Beads.
 
+## Worktrees and agents
+
+- worktrunk (`wt`) creates and removes each git worktree. In herdr, 1 worktree = 1 workspace.
+- Before the first code change of a task in a git repository, load the skill `worktrees` of the plugin `herdr` (`/herdr:worktrees`, `$worktrees` in Codex). It tells when to use a worktree, and how to take the work to the default branch.
+- Ask the user before `git push`, `gh pr create`, `wt merge` and `wt remove`, unless the mode is `auto`. The skill `worktrees` tells where to read the mode.
+- Give each agent that changes code its own worktree. The skill `worktrees` gives the commands.
+- Address another agent with its herdr name. Its pane ID changes when its pane moves to another workspace.
+
 ## Writing style: simplified technical language (STL)
 
 Write all the text that you produce in simplified technical language: replies, documentation, code comments, commit messages, PR descriptions, Beads notes and engram memories. In English, follow ASD-STE100. In French, follow the same rules transposed to French.
