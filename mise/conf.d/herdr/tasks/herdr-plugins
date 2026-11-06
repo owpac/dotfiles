@@ -5,8 +5,10 @@
 # packages: herdr is then installed.
 # herdr writes its plugin files itself: ~/.config/herdr/plugins.json and ~/.config/herdr/plugins/
 # (git checkout, compiled binary, locks, absolute paths). Thus mise does not manage these files.
-# This task holds only the list of the plugins. A plugin that is already installed keeps its
-# version: `herdr plugin update` updates it.
+# This task holds only the list of the plugins, each at a fixed git ref. If the installed ref is
+# not the ref of the list, the task installs the ref of the list: change the ref here to update a
+# plugin on each machine. A plugin linked to a local checkout (`herdr plugin link`) is a copy for
+# development: the task keeps it.
 
 set -eufo pipefail
 
@@ -18,13 +20,21 @@ command -v herdr >/dev/null 2>&1 || exit 0
 # <plugin id> <GitHub owner/repo> <git ref>
 plugins=(
   "herdr-bar jeffarese/herdr-bar c49cc31cc62e0be18e79637262a572b5dd97f28a" # prefix+p (cmd+p)
+  "herdr-fork owpac/herdr-fork 2026.11.2" # prefix+ctrl+d / ctrl+shift+d / ctrl+t: fork the agent
+  "herdr-worktrunk owpac/herdr-worktrunk 2026.11.2" # prefix+shift+g / x / m: worktrees, observer
 )
 
 installed=$(herdr plugin list)
 for plugin in "${plugins[@]}"; do
   read -r id repo ref <<< "$plugin"
-  grep -q "^- $id " <<< "$installed" && continue
-  log_task "Installing the herdr plugin $id..."
+  # herdr shows "- <id> (<name>) enabled [github:<owner/repo>@<ref>]", or [local:<path>].
+  line=$(grep "^- $id " <<< "$installed" || true)
+  [[ $line == *"[github:$repo@$ref]"* ]] && continue
+  if [[ $line == *"[local:"* ]]; then
+    log_done "herdr plugin $id: the local checkout stays"
+    continue
+  fi
+  log_task "Installing the herdr plugin $id at $ref..."
   herdr plugin install "$repo" --ref "$ref" --yes
-  log_done "herdr plugin $id installed"
+  log_done "herdr plugin $id installed at $ref"
 done

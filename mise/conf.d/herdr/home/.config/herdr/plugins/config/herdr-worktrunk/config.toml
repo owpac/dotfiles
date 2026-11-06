@@ -1,0 +1,13 @@
+# Config of the herdr plugin owpac/herdr-worktrunk. herdr gives this folder to the plugin
+# (`herdr plugin config-dir herdr-worktrunk`). The skill worktrees of the agent plugin herdr
+# (owpac/prompts) also reads this file.
+
+# What an agent can do without a question, at the end of a task in a worktree:
+# - "ask": the agent asks before git push, gh pr create, wt merge and wt remove.
+# - "auto": the agent does these steps, and reports at the end.
+# In a conversation, "mode auto" or "mode ask" changes the mode for this conversation only.
+agent_mode = "ask"
+
+# Another mode for one repository. A path that starts with ~/ starts in the home directory.
+# [repositories."~/.dotfiles"]
+# agent_mode = "auto"

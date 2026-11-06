@@ -124,36 +124,59 @@ close_workspace = "prefix+shift+w"    # cmd+shift+w closes the window
 rename_workspace = "prefix+shift+r"
 next_workspace = "prefix+ctrl+down"   # ctrl+alt+tab in the iTerm2 "herdr" profile
 previous_workspace = "prefix+ctrl+up" # ctrl+alt+shift+tab in the iTerm2 "herdr" profile
-# Worktrees are workspaces too, so they use shift: G new, O open, X remove.
-new_worktree = "prefix+shift+g"       # g = git
+# Worktrees are workspaces too, so they use shift: G new, O open, X remove, M merge.
+# Rule: worktrunk (wt) creates and removes each worktree, and 1 worktree = 1 workspace.
+# The plugin owpac/herdr-worktrunk gives G, X and M to wt: the wt hooks run, and the path is the
+# path of wt (../<repo>.<branch>). The native keys of herdr use git and ~/.herdr/worktrees.
+# G opens the worktree picker (fzf): type to filter, Enter opens a worktree or a branch, or
+# creates the typed name (row "+ Create worktree"), ⌫ on an empty filter removes a worktree after
+# a question, Tab changes the preview (diff, log, changes), Esc cancels.
+# The observer of the plugin moves the pane of an agent to the workspace of its worktree, and
+# closes the workspace of a removed worktree.
+# Its config: plugins/config/herdr-worktrunk/config.toml.
+# Closing a workspace (prefix+shift+w, or prefix+x on its last pane) keeps the worktree on disk.
+new_worktree = ""                     # prefix+shift+g: see [[keys.command]]
 open_worktree = "prefix+shift+o"      # o = open an existing checkout
-remove_worktree = "prefix+shift+x"    # x = delete the checkout (git worktree remove). Asks first.
+remove_worktree = ""                  # prefix+shift+x: see [[keys.command]]
 
-# Fork the agent of the focused pane (Claude Code: --resume <session> --fork-session).
+[[keys.command]]
+key = "prefix+shift+g"                # g = git: pick or create a worktree (worktree picker)
+type = "plugin_action"
+command = "herdr-worktrunk.pick"      # plugin owpac/herdr-worktrunk
+description = "pick a worktree (wt)"
+
+[[keys.command]]
+key = "prefix+shift+x"                # remove the worktree of the workspace (wt remove). Asks first.
+type = "plugin_action"
+command = "herdr-worktrunk.remove"
+description = "remove the worktree (wt)"
+
+[[keys.command]]
+key = "prefix+shift+m"                # m = merge the worktree into the default branch (wt merge)
+type = "plugin_action"
+command = "herdr-worktrunk.merge"
+description = "merge the worktree (wt)"
+
+# Fork the agent of the focused pane (plugin owpac/herdr-fork: Claude Code and Codex).
 # Rule: ctrl + the key that creates a split or a tab = the same, with a fork of the agent.
-# iTerm2 herdr profile: cmd+ctrl+d (right), cmd+ctrl+shift+d (below), cmd+ctrl+t (tab),
-# cmd+ctrl+x (close and stop).
+# iTerm2 herdr profile: cmd+ctrl+d (right), cmd+ctrl+shift+d (below), cmd+ctrl+t (tab).
+# For a fork that changes code, fork, then move the fork into a worktree
+# (/worktrunk:wt-switch-create): the observer of herdr-worktrunk moves its pane.
+# To close a fork, close its pane (prefix+x). The conversation stays: claude --resume finds it.
 [[keys.command]]
 key = "prefix+ctrl+d"                 # fork into a new pane on the right
-type = "shell"
-command = "\"$HOME/.config/herdr/scripts/fork-agent\" right"
+type = "plugin_action"
+command = "herdr-fork.right"         # plugin owpac/herdr-fork
 
 [[keys.command]]
 key = "prefix+ctrl+shift+d"           # fork into a new pane below
-type = "shell"
-command = "\"$HOME/.config/herdr/scripts/fork-agent\" down"
+type = "plugin_action"
+command = "herdr-fork.down"
 
 [[keys.command]]
 key = "prefix+ctrl+t"                 # fork into a new tab
-type = "shell"
-command = "\"$HOME/.config/herdr/scripts/fork-agent\" tab"
-
-# A fork of a conversation that runs in the background (claude --bg, /resume) also runs in the
-# background: x only closes its client. ctrl+x stops the background session, then closes the pane.
-[[keys.command]]
-key = "prefix+ctrl+x"                 # close the pane and stop its background Claude Code session
-type = "shell"
-command = "\"$HOME/.config/herdr/scripts/close-agent\""
+type = "plugin_action"
+command = "herdr-fork.tab"
 
 # Send /reload-plugins to each Claude Code agent, for example after `pac upgrade agents`.
 # iTerm2 herdr profile: cmd+ctrl+u. A new version of Claude Code needs a restart instead:
