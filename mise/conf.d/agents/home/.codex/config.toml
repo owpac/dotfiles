@@ -6,17 +6,17 @@
     - sandbox_workspace_write: in the Auto preset, sandboxed bd commands can reach the shared Dolt
       server (127.0.0.1:3308), and write ~/.beads and the home workspace. Trade-off: sandboxed
       commands get network access.
-    - Plugins: the marketplace owpac is the shared clone of owpac/prompts ([bootstrap.repos] of
-      mise.agents.toml). Codex does not read a local marketplace in place, and does not install
-      its plugins at the start of a session. So the task codex-plugins copies the plugins that
-      this file enables into the cache of Codex. `pac upgrade agents` pulls the clone, then
-      refreshes these copies.
+    - Plugins: Codex clones each git marketplace itself. At the start of a session, Codex 0.166.0
+      updates each marketplace, and the plugins of a marketplace that changed (in its source, not
+      in its docs). Before the first session, the task codex-plugins clones the marketplaces:
+      without a clone, `codex plugin list` fails. The task also installs the plugins that this
+      file enables. `pac upgrade agents` runs `codex plugin marketplace upgrade`.
+    - owpac: the private repository owpac/prompts. Git clones it over SSH, with the 1Password
+      agent of ~/.ssh/config. If 1Password is locked, Codex shows an error after 30 s, and the
+      session keeps the old version.
     - mise enables the plugins of vars.agent_plugins, and of vars.agent_plugins_work in the work
       mode. A merge entry does not remove a key: to remove a plugin, set enabled = false here.
-    - worktrunk@worktrunk: the plugin of wt, from its git repository. At the start of a session,
-      Codex clones this marketplace and installs the plugin. Before the first session, the task
-      codex-plugins clones it: without the clone, `codex plugin list` fails. A session does not
-      update them: `pac upgrade agents` runs `codex plugin marketplace upgrade`. -#}
+    - worktrunk@worktrunk: the plugin of wt, from its git repository. -#}
 {%- set plugins = vars.agent_plugins | split(pat=" ") -%}
 {%- if "work" in (mise_env | default(value=[])) and vars.agent_plugins_work -%}
 {%- set plugins = [...plugins, ...(vars.agent_plugins_work | split(pat=" "))] -%}
@@ -30,8 +30,8 @@ network_access = true
 writable_roots = ["{{ env.HOME }}/.beads", "{{ env.HOME }}/{{ vars.beads_dir | dirname }}"]
 
 [marketplaces.owpac]
-source_type = "local"
-source = "{{ env.HOME }}/{{ vars.marketplaces_dir }}/owpac"
+source_type = "git"
+source = "git@github.com:owpac/prompts.git"
 
 [marketplaces.worktrunk]
 source_type = "git"

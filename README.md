@@ -94,7 +94,7 @@ A machine that needs another list of modules gets its own set in `mise/miserc.to
 | `secrets` | fnox, age and the encryption key from 1Password |
 | `pac`, `kompose`, `craft` | the CLI tools of owpac, from their private repositories |
 | `aerospace`, `herdr`, `raycast`, `iterm2` | the config of these apps |
-| `agents` | Claude Code, Codex, Beads and worktrunk: settings, plugins, instructions. The marketplace owpac is a clone in `~/.agents/marketplaces` |
+| `agents` | Claude Code, Codex, Beads and worktrunk: settings, plugins, instructions. Each agent clones the marketplace owpac itself (git source) |
 | `doctolib` | PostgreSQL 15, `~/.workrc`, `~/.npmrc`, the git identity and `/etc/hosts` of Doctolib |
 
 ## Layout

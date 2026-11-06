@@ -5,15 +5,16 @@
       the home workspace, also when Claude Code does not start from a shell that read ~/.zshenv.
     - permissions.defaultMode: each session starts in auto mode. `--permission-mode` or
       shift+tab changes the mode of one session.
-    - Plugins: the marketplace owpac is the shared clone of owpac/prompts ([bootstrap.repos] of
-      mise.agents.toml). Claude Code reads its plugins in place, so a pull of the clone is
-      sufficient. `mise bootstrap --update` and `pac upgrade agents` pull it.
+    - Plugins: Claude Code clones each marketplace itself, at the start of a session, and
+      installs the plugins that this file enables. With autoUpdate, an interactive session
+      updates the marketplaces and their plugins.
+    - owpac: the private repository owpac/prompts. Git clones it over SSH, with the 1Password
+      agent of ~/.ssh/config. If 1Password is locked, the update fails without a message, and
+      the old version stays.
     - mise enables the plugins of vars.agent_plugins, and of vars.agent_plugins_work in the work
       mode. A merge entry does not remove a key: to remove a plugin, set it to false here, or
       remove it with /plugin.
-    - worktrunk@worktrunk: the plugin of wt, from its GitHub repository. At the start of a
-      session, Claude Code clones this marketplace and installs the plugin. With autoUpdate, an
-      interactive session updates them. -#}
+    - worktrunk@worktrunk: the plugin of wt, from its GitHub repository. -#}
 {%- set plugins = vars.agent_plugins | split(pat=" ") -%}
 {%- if "work" in (mise_env | default(value=[])) and vars.agent_plugins_work -%}
 {%- set plugins = [...plugins, ...(vars.agent_plugins_work | split(pat=" "))] -%}
@@ -34,9 +35,10 @@
   "extraKnownMarketplaces": {
     "owpac": {
       "source": {
-        "source": "directory",
-        "path": "{{ env.HOME }}/{{ vars.marketplaces_dir }}/owpac"
-      }
+        "source": "git",
+        "url": "git@github.com:owpac/prompts.git"
+      },
+      "autoUpdate": true
     },
     "worktrunk": {
       "source": {

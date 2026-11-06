@@ -5,10 +5,8 @@
 [vars]
 # The paths are relative to the home directory. Every task of Beads lives in this workspace.
 beads_dir = ".local/share/tasks/.beads"
-# The shared clones of the plugin marketplaces ([bootstrap.repos] below), in ~/.agents with the
-# other files that the agents share. Claude Code and Codex use them as local marketplaces.
-marketplaces_dir = ".agents/marketplaces"
-# The plugins of the marketplace owpac, separated by spaces. Both agents get them.
+# The plugins of the marketplace owpac, separated by spaces. Both agents get them. Claude Code and
+# Codex clone the marketplace themselves: their config gives its git source.
 agent_plugins = "productivity python rails setup beads engram"
 # The plugins of the marketplace owpac for the work mode only.
 agent_plugins_work = ""
@@ -18,29 +16,6 @@ agent_plugins_work = ""
 "brew:beads" = "latest"
 "brew:gentleman-programming/tap/engram" = "latest"
 "brew:worktrunk" = "latest"
-
-# The marketplace owpac: one clone of owpac/prompts for Claude Code and Codex. mise clones it, and
-# `mise bootstrap --update` and `pac upgrade agents` pull it. If the config enables a plugin that
-# the clone does not have yet, run `mise bootstrap --update`. Do not edit this clone: a clone with
-# local changes stops mise bootstrap.
-# owpac/prompts is private, so git clones it over SSH, with the 1Password agent of ~/.ssh/config.
-[bootstrap.repos]
-"~/{{ vars.marketplaces_dir }}/owpac" = { url = "git@github.com:owpac/prompts.git" }
-
-# mise clones the repositories before it writes the dotfiles. A repository cannot wait for a
-# dotfile: [bootstrap.repos] has no depends. So on a new Mac, this hook writes the SSH config and
-# the public key of the Mac (module ssh) before the first clone. The key comes from 1Password: on
-# the first run of install.sh, 1Password is not ready, so the hook stops the run. install.sh
-# expects this failure. When the clone exists, the hook does nothing.
-# The codes \u001b[…m print the name in magenta and bold, the color of the module agents (see the
-# task bootstrap), also in a pipe or with NO_COLOR.
-[bootstrap.hooks.pre-repos]
-description = "\u001b[1;35m[agents]\u001b[0m 🗝️ Write the SSH config if owpac is not cloned yet"
-run = '''
-if [ ! -d "$HOME/{{ vars.marketplaces_dir }}/owpac" ]; then
-  mise dot apply --yes ~/.ssh/config ~/.ssh/mbp_ed25519.pub
-fi
-'''
 
 # Claude Code, Codex, bd and wt also write their config file, so mise merges the keys of owpac
 # into these files. A merge entry must be in [dotfiles]: a group deploys whole files only. A
