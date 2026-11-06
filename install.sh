@@ -76,10 +76,12 @@ if [ "$(uname)" = "Darwin" ]; then
   done
 elif [ "$(uname)" = "Linux" ]; then
   command -v git >/dev/null 2>&1 || error "Install git first."
+  # The mise of ~/.local/bin comes before another mise of the system, for example the package of
+  # apt in /usr/bin. Thus the next steps read the mise that this script installs.
+  export PATH="${HOME}/.local/bin:${PATH}"
   if ! command -v mise >/dev/null 2>&1; then
     log_task "Installing mise in ~/.local/bin..."
     curl -fsSL https://mise.run | sh
-    export PATH="${HOME}/.local/bin:${PATH}"
   fi
 else
   error "Unsupported operating system."
@@ -100,18 +102,34 @@ else
 fi
 
 # --- Version of mise --------------------------------------------------------------------
-# mise/config.toml gives the oldest mise that it supports (min_version). The script of mise
-# installs a version older than 24 hours only, and Homebrew can be late. If this mise is older,
-# install this version.
+# mise/config.toml gives the oldest mise that it supports (min_version). If this mise is older,
+# install the newest mise that is available, and min_version at least:
+# - On macOS, Homebrew installs its newest mise. Homebrew can be late.
+# - On Linux, the script of mise installs the newest release that is older than 24 hours. If this
+#   release is still older than min_version, min_version is younger than 24 hours: then install
+#   min_version.
+
+# The version of the mise on PATH. hash -r clears the cache of the shell, which can keep the path
+# of the old mise. A command substitution runs in a subshell, so the main shell clears its cache
+# too, after the update.
+mise_version() {
+  hash -r
+  mise --version | cut -d' ' -f1
+}
+
 min_version=$(sed -n 's/^min_version = "\([0-9.]*\)".*/\1/p' "${DOTFILES_DIR}/mise/config.toml")
-if [ -n "${min_version}" ] && version_lt "$(mise --version | cut -d' ' -f1)" "${min_version}"; then
+if [ -n "${min_version}" ] && version_lt "$(mise_version)" "${min_version}"; then
   log_task "Updating mise to ${min_version} or later..."
   if [ "$(uname)" = "Darwin" ]; then
     brew upgrade mise
   else
-    curl -fsSL https://mise.run | MISE_VERSION="v${min_version}" sh
+    curl -fsSL https://mise.run | sh
+    if version_lt "$(mise_version)" "${min_version}"; then
+      curl -fsSL https://mise.run | MISE_VERSION="v${min_version}" sh
+    fi
   fi
-  if version_lt "$(mise --version | cut -d' ' -f1)" "${min_version}"; then
+  hash -r
+  if version_lt "$(mise_version)" "${min_version}"; then
     error "This repository needs mise ${min_version} or later. Try again later."
   fi
 fi

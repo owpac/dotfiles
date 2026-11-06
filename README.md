@@ -46,7 +46,7 @@ flowchart LR
   G -- no --> K[done]
 ```
 
-The script always clones into `~/.dotfiles`: the config of mise expects this path. If mise is older than `min_version` in `mise/config.toml`, the script installs this version: the script of mise installs a version older than 24 hours only. On a Mac, the first `mise bootstrap` installs 1Password. The second run writes the SSH keys and the files that read 1Password or fnox.
+The script always clones into `~/.dotfiles`: the config of mise expects this path. If mise is older than `min_version` in `mise/config.toml`, the script installs the newest mise that is available, and `min_version` at least. On Linux, the script of mise installs only a release older than 24 hours. If this release is still older than `min_version`, the script installs `min_version`. The mise of `~/.local/bin` comes before another mise of the system, for example the package of apt. On a Mac, the first `mise bootstrap` installs 1Password. The second run writes the SSH keys and the files that read 1Password or fnox.
 
 | Variable | Default |
 | --- | --- |
