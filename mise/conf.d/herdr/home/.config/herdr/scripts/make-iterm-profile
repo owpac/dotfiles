@@ -44,7 +44,7 @@ TOGGLE = "<"  # cmd+< changes to the Default profile
 # Keys that keep their macOS or iTerm2 action:
 # cmd+c, cmd+v, cmd+n, cmd+s, cmd+q, cmd+- / cmd+= / cmd+0 (font size), cmd+> (window cycle).
 LETTERS = "twrpxdeybgoaijkl"  # i j k l = up left down right: the same focus as cmd + arrow
-SHIFT_LETTERS = "twrdgoxa"
+SHIFT_LETTERS = "twrdgoxam"
 COPY_MODE = "y"  # herdr copy_mode = prefix+y
 DIGITS = "123456789"
 # ctrl+& ... ctrl+ç select the herdr tabs 1..9. cmd + digit stays for the iTerm2 tabs: iTerm2 checks
@@ -60,11 +60,10 @@ TAB_CYCLES = [
     (CTRL | ALT, CTRL_DOWN, CTRL_UP),  # ctrl+alt+tab: next / previous workspace
 ]
 ARROWS = {0xF702: "D", 0xF703: "C", 0xF700: "A", 0xF701: "B"}  # left right up down
-# cmd+ctrl+d / t fork the agent into a new pane on the right or a new tab, cmd+ctrl+x
-# closes the pane and stops its background session, and cmd+ctrl+u sends /reload-plugins to each
-# Claude Code agent: they send the prefix + ctrl+d / t / x / u (herdr [[keys.command]] that run
-# scripts/fork-agent, scripts/close-agent and scripts/reload-plugins).
-FORKS = "dtxu"
+# cmd+ctrl+d / t fork the agent into a new pane on the right or a new tab (plugin herdr-fork),
+# and cmd+ctrl+u sends /reload-plugins to each Claude Code agent: they send the prefix +
+# ctrl+d / t / u (herdr [[keys.command]]).
+FORKS = "dtu"
 # cmd+ctrl+shift+d forks the agent into a new pane below. ctrl+shift+d has no control byte,
 # so the profile sends its CSI u form (100 = "d", 6 = shift + ctrl).
 FORK_BELOW = "\x1b[100;6u"
