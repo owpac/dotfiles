@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-#MISE description="Copy the plugins of owpac into the cache of Codex"
+#MISE description="Clone the git marketplaces of Codex and copy the plugins of owpac into its cache"
 #
 # Codex does not read a local marketplace in place, and does not install its plugins at the start
 # of a session. So the task copies the plugins of owpac that ~/.codex/config.toml enables into the
 # cache of Codex, and removes the copies of the other plugins of owpac. Claude Code reads the
 # shared clone in place, so it needs no task. `pac upgrade agents` refreshes these copies after a
-# pull of the clone.
+# pull of the clone. The task also clones the git marketplaces of Codex that have no clone.
 # mise bootstrap runs this task each time (task bootstrap), after it clones the marketplace
 # ([bootstrap.repos]). The task is idempotent, and does nothing without Codex.
 
@@ -15,6 +15,19 @@ set -eufo pipefail
 source "$(dirname "$(readlink -f "$0")")/../../../../lib/logs.sh"
 
 command -v codex >/dev/null 2>&1 || exit 0
+
+# config.toml declares the git marketplaces (worktrunk), but mise does not clone them. Codex clones
+# a git marketplace at the start of a session, or with `codex plugin marketplace add` or `upgrade`.
+# Without the clone, `codex plugin list` fails, and `pac upgrade agents` stops. If the clone of a
+# marketplace is missing, `codex plugin marketplace list` fails: the task then clones it.
+if ! codex plugin marketplace list >/dev/null 2>&1; then
+  log_task "Cloning the git marketplaces of Codex..."
+  if codex plugin marketplace upgrade >/dev/null; then
+    log_done "Codex git marketplaces cloned"
+  else
+    log_error "Could not clone the git marketplaces of Codex"
+  fi
+fi
 
 # Codex reads config.toml itself. For each plugin of owpac, the list gives enabled (config.toml
 # enables the plugin) and installed (the cache has a copy). --available adds the plugins without a
