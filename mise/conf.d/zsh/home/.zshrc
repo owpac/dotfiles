@@ -78,6 +78,13 @@ alias gbrm="git for-each-ref --format='%(refname:short)' refs/heads | grep -v \"
 # block the "model" and "permissions.defaultMode" settings, so the options are added here.
 # Claude Code 2.1.316 accepts these options before a subcommand (agents, stop, mcp...).
 alias claude='claude --model "opus[1m]" --permission-mode auto'
+# Codex in a herdr pane: run without the shared daemon of Codex. The daemon runs the hooks and the
+# commands with the environment of the pane that started it: herdr then gives the Codex session to
+# this other pane (herdrdev/herdr#4649, openai/codex#48500). The sessions stay on the disk, so
+# `codex resume` works. Codex 0.166 accepts the option before a subcommand, for example fork or resume.
+if [[ -n "$HERDR_ENV" ]]; then
+  alias codex='codex --no-daemon'
+fi
 
 {% if "work" in envs -%}
 ### Work
