@@ -14,3 +14,9 @@ worktree-path = "{{ repo_path }}/../{{ repo }}.{{ branch | sanitize }}"
 # target/. wt reads .worktreeinclude in the main worktree. Without this file, the command copies
 # nothing. Each repository lists its own files.
 copy = "wt step copy-ignored --require-include"
+# Remove the worktree of each merged pull request (~/.local/bin/wt-prune-merged). Then remove the
+# worktrees that Git sees as merged, if they are older than 1 day: this step works without gh.
+# The new worktree stays: wt-prune-merged skips the current worktree, and it is younger than
+# 1 day. The ";" runs wt step prune also if wt prune-merged fails. One key runs the 2 removals
+# one after the other, so they never remove the same worktree at the same time.
+prune = "wt prune-merged; wt step prune --min-age=1d"
