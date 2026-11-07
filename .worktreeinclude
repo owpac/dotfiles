@@ -1,0 +1,5 @@
+# The gitignored files that `wt step copy-ignored` copies to each new worktree.
+# The roles of mise on this machine.
+mise/miserc.local.toml
+# The local permissions of Claude Code.
+.claude/settings.local.json
