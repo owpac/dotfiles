@@ -6,3 +6,11 @@
 # This value is the default of wt. The worktrees stay outside the repository, so git, the search
 # tools and the IDE do not read them twice. The Claude Code plugin uses this folder too.
 worktree-path = "{{ repo_path }}/../{{ repo }}.{{ branch | sanitize }}"
+
+# The commands that wt runs in the background after it creates a worktree. A user hook needs no
+# approval.
+[post-start]
+# Copy to the new worktree the gitignored files that .worktreeinclude lists, for example .env or
+# target/. wt reads .worktreeinclude in the main worktree. Without this file, the command copies
+# nothing. Each repository lists its own files.
+copy = "wt step copy-ignored --require-include"
