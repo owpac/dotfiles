@@ -18,3 +18,7 @@ copy = "wt step copy-ignored --require-include"
 # step works without network. The new worktree stays: it is younger than 1 day. The observer of the
 # herdr plugin herdr-worktrunk removes the worktree of each merged pull request (prune_merged).
 prune = "wt step prune --min-age=1d"
+# Open the new worktree in herdr, in the group of the workspace of its project. wt gives the main
+# checkout in repo_path, and escapes the values for the shell. Outside herdr (no socket), the hook
+# does nothing and does not fail.
+herdr = '[ -n "$HERDR_SOCKET_PATH" ] && herdr worktree open --cwd {{ repo_path }} --path {{ worktree_path }} --no-focus >/dev/null || true'
