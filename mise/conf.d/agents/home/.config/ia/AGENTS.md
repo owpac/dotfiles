@@ -35,6 +35,7 @@ bd prime                # Refresh Beads context
 
 **Memory: engram (MCP tools `mem_*`), in every repository.**
 - Use engram only when the session does real work: a Beads task, code changes, or an investigation worth remembering. Skip it entirely for quick questions and read-only checks.
+- Also skip engram for a small change (a diff of less than about 30 lines) that teaches nothing durable. Beads keeps the trace of the task.
 - Session start: call `mem_session_start` with:
   - `id`: if your prompt gives you an engram session id, use it verbatim. Otherwise build `<agent>-<beads-id or adhoc>-<YYYYMMDD-HHMM>`, where `<agent>` is your agent name (see **Agent names** below);
   - `directory` = the current working directory.
