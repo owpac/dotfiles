@@ -21,7 +21,7 @@ command -v herdr >/dev/null 2>&1 || exit 0
 plugins=(
   "herdr-bar jeffarese/herdr-bar c49cc31cc62e0be18e79637262a572b5dd97f28a" # prefix+p (cmd+p)
   "herdr-fork owpac/herdr-fork 2026.11.5" # prefix+ctrl+d / ctrl+shift+d / ctrl+t: fork the agent
-  "herdr-worktrunk owpac/herdr-worktrunk 2026.11.5" # prefix+shift+g / x / m: worktrees, observer
+  "herdr-worktrunk owpac/herdr-worktrunk 2026.11.7" # prefix+shift+g / x / m: worktrees, observer
 )
 
 installed=$(herdr plugin list)

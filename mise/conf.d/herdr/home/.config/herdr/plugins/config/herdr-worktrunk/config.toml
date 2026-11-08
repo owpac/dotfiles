@@ -2,6 +2,11 @@
 # (`herdr plugin config-dir herdr-worktrunk`). The skill worktrees of the agent plugin herdr
 # (owpac/prompts) also reads this file.
 
+# The observer removes the worktree of each merged pull request, every 5 minutes. It skips a
+# worktree where an agent works, then closes the workspace. Needs gh. The observer reads this key
+# when it starts.
+prune_merged = true
+
 # What an agent can do without a question, at the end of a task in a worktree:
 # - "ask": the agent asks before git push, gh pr create, wt merge and wt remove.
 # - "auto": the agent does these steps, and reports at the end.
