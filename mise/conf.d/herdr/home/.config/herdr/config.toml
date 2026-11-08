@@ -124,9 +124,9 @@ close_workspace = "prefix+shift+w"    # cmd+shift+w closes the window
 rename_workspace = "prefix+shift+r"
 next_workspace = "prefix+ctrl+down"   # ctrl+alt+tab in the iTerm2 "herdr" profile
 previous_workspace = "prefix+ctrl+up" # ctrl+alt+shift+tab in the iTerm2 "herdr" profile
-# Worktrees are workspaces too, so they use shift: G new, O open, X remove, M merge.
+# Worktrees are workspaces too, so they use shift: G new, O open, X remove, M merge, C clean.
 # Rule: worktrunk (wt) creates and removes each worktree, and 1 worktree = 1 workspace.
-# The plugin owpac/herdr-worktrunk gives G, X and M to wt: the wt hooks run, and the path is the
+# The plugin owpac/herdr-worktrunk gives G, X, M and C to wt: the wt hooks run, and the path is the
 # path of wt (../<repo>.<branch>). The native keys of herdr use git and ~/.herdr/worktrees.
 # G opens the worktree picker (fzf): type to filter, Enter opens a worktree or a branch, or
 # creates the typed name (row "+ Create worktree"), ⌫ on an empty filter removes a worktree after
@@ -156,6 +156,12 @@ key = "prefix+shift+m"                # m = merge the worktree into the default 
 type = "plugin_action"
 command = "herdr-worktrunk.merge"
 description = "merge the worktree (wt)"
+
+[[keys.command]]
+key = "prefix+shift+c"                # c = clean the old worktrees without pull request
+type = "plugin_action"
+command = "herdr-worktrunk.clean"
+description = "clean the old worktrees (wt)"
 
 # Fork the agent of the focused pane (plugin owpac/herdr-fork: Claude Code and Codex).
 # Rule: ctrl + the key that creates a split or a tab = the same, with a fork of the agent.
