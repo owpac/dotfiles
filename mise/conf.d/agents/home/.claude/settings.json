@@ -14,13 +14,21 @@
     - mise enables the plugins of vars.agent_plugins, and of vars.agent_plugins_work in the work
       mode. A merge entry does not remove a key: to remove a plugin, set it to false here, or
       remove it with /plugin.
-    - worktrunk@worktrunk: the plugin of wt, from its GitHub repository. -#}
+    - worktrunk@worktrunk: the plugin of wt, from its GitHub repository.
+    - attribution: no Co-Authored-By trailer in commits, and no footer in pull requests.
+      Without this key, Claude Code tells each session to add them, and a small model
+      (Haiku) can follow this order instead of CLAUDE.md. -#}
 {%- set plugins = vars.agent_plugins | split(pat=" ") -%}
 {%- if "work" in (mise_env | default(value=[])) and vars.agent_plugins_work -%}
 {%- set plugins = [...plugins, ...(vars.agent_plugins_work | split(pat=" "))] -%}
 {%- endif -%}
 {
   "model": "opus",
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
   "permissions": {
     "defaultMode": "auto"
   },
