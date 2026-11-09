@@ -158,7 +158,7 @@ command = "herdr-worktrunk.merge"
 description = "merge the worktree (wt)"
 
 [[keys.command]]
-key = "prefix+shift+c"                # c = clean the old worktrees without pull request
+key = "prefix+shift+c"                # c = clean the old worktrees without pull request. iTerm2: cmd+shift+c.
 type = "plugin_action"
 command = "herdr-worktrunk.clean"
 description = "clean the old worktrees (wt)"

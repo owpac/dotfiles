@@ -44,7 +44,7 @@ TOGGLE = "<"  # cmd+< changes to the Default profile
 # Keys that keep their macOS or iTerm2 action:
 # cmd+c, cmd+v, cmd+n, cmd+s, cmd+q, cmd+- / cmd+= / cmd+0 (font size), cmd+> (window cycle).
 LETTERS = "twrpxdeybgoaijkl"  # i j k l = up left down right: the same focus as cmd + arrow
-SHIFT_LETTERS = "twrdgoxam"
+SHIFT_LETTERS = "twrdgoxamc"
 COPY_MODE = "y"  # herdr copy_mode = prefix+y
 DIGITS = "123456789"
 # ctrl+& ... ctrl+ç select the herdr tabs 1..9. cmd + digit stays for the iTerm2 tabs: iTerm2 checks

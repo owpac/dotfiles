@@ -9,7 +9,7 @@ prune_merged = true
 
 # Once a day, the observer opens the popup cleaner: the list of the worktrees without pull request
 # and without change for this number of days. Enter deletes one, ctrl-a deletes all, each after a
-# confirmation. prefix+shift+c opens the same list at any time.
+# confirmation. prefix+shift+c (cmd+shift+c in the iTerm2 profile herdr) opens the same list at any time.
 stale_days = 7
 
 # What an agent can do without a question, at the end of a task in a worktree:
