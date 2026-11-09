@@ -70,6 +70,20 @@ bd prime                # Refresh Beads context
 - Give each agent that changes code its own worktree. The skill `worktrees` gives the commands.
 - Address another agent with its herdr name. Its pane ID changes when its pane moves to another workspace.
 
+## herdr tab title
+
+In herdr (`HERDR_ENV=1`), give your tab the theme of your work: 1 to 3 words, for example `homelab` or `goodbye script`. The user then finds the agent in the tab bar and in herdr-bar.
+
+1. At the start of a task, and each time that the topic of the conversation changes, read the label of your tab:
+
+   ```sh
+   tab="$(herdr pane current --current | jq -r .result.pane.tab_id)"
+   herdr tab get "$tab" | jq -r .result.tab.label
+   ```
+
+2. If the label is a number, the theme that you gave, or the theme that your orchestrator gave (your prompt names an orchestrator), and if it does not match your work, rename the tab: `herdr tab rename "$tab" "<theme>"`.
+3. Do not rename a tab that the user named. Do not rename a tab that has several agents.
+
 ## Writing style: simplified technical language (STL)
 
 Write all the text that you produce in simplified technical language: replies, documentation, code comments, commit messages, PR descriptions, Beads notes and engram memories. In English, follow ASD-STE100. In French, follow the same rules transposed to French.
