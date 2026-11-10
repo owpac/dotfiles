@@ -1,6 +1,5 @@
 # Config of the herdr plugin owpac/herdr-worktrunk. herdr gives this folder to the plugin
-# (`herdr plugin config-dir herdr-worktrunk`). The skill worktrees of the agent plugin herdr
-# (owpac/prompts) also reads this file. Each key has its value, also the default value.
+# (`herdr plugin config-dir herdr-worktrunk`). Each key has its value, also the default value.
 
 # Start the observer with herdr (default: true). The observer moves the pane of an agent to the
 # workspace of its worktree, and closes the workspace of a removed worktree. It reads this file
@@ -29,13 +28,3 @@ popup_size = "default"
 # last state of the remote (default: false). The fetch can ask the ssh agent (1Password) for a
 # key. The versions of the plugin before the layers of proof ignore this key.
 fetch_before_check = false
-
-# What an agent can do without a question, at the end of a task in a worktree (default: "ask"):
-# - "ask": the agent asks before git push, gh pr create, wt merge and wt remove.
-# - "auto": the agent does these steps, and reports at the end.
-# In a conversation, "mode auto" or "mode ask" changes the mode for this conversation only.
-agent_mode = "ask"
-
-# Another mode for one repository. A path that starts with ~/ starts in the home directory.
-# [repositories."~/.dotfiles"]
-# agent_mode = "auto"
