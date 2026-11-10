@@ -1,18 +1,34 @@
 # Config of the herdr plugin owpac/herdr-worktrunk. herdr gives this folder to the plugin
 # (`herdr plugin config-dir herdr-worktrunk`). The skill worktrees of the agent plugin herdr
-# (owpac/prompts) also reads this file.
+# (owpac/prompts) also reads this file. Each key has its value, also the default value.
+
+# Start the observer with herdr (default: true). The observer moves the pane of an agent to the
+# workspace of its worktree, and closes the workspace of a removed worktree. It reads this file
+# when it starts: after a change, run pkill -f 'herdr-worktrunk observe --run'.
+observe = true
 
 # The observer removes the worktree of each merged or closed pull request, every 5 minutes. It
 # closes the idle agents of the worktree first, and keeps a worktree where an agent works. Then it
-# closes the workspace. Needs gh. The observer reads these keys when it starts.
+# closes the workspace. Needs gh (default: false).
 prune_merged = true
 
-# Once a day, the observer opens the popup cleaner: the list of the worktrees without pull request
-# and without change for this number of days. Enter deletes one, ctrl-a deletes all, each after a
-# confirmation. prefix+shift+c (cmd+shift+c in the iTerm2 profile herdr) opens the same list at any time.
+# Once a day, the observer opens the popup cleaner if a worktree has no pull request and no change
+# for this number of days (default: 0, off). The cleaner uses this number for its rule "no pull
+# request" (7 if 0). prefix+shift+c (cmd+shift+c in the iTerm2 profile herdr) opens the cleaner at
+# any time.
 stale_days = 7
 
-# What an agent can do without a question, at the end of a task in a worktree:
+# The size of the picker, the cleaner and the merger (default: "default"):
+# - "default": the size of herdr-bar, 74 % x 62 % of the window.
+# - "big": 90 % x 80 % of the window.
+popup_size = "default"
+
+# The cleaner fetches origin before its checks, so the integration and the push state see the
+# last state of the remote (default: false). The fetch can ask the ssh agent (1Password) for a
+# key. The versions of the plugin before the layers of proof ignore this key.
+fetch_before_check = false
+
+# What an agent can do without a question, at the end of a task in a worktree (default: "ask"):
 # - "ask": the agent asks before git push, gh pr create, wt merge and wt remove.
 # - "auto": the agent does these steps, and reports at the end.
 # In a conversation, "mode auto" or "mode ask" changes the mode for this conversation only.

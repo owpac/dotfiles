@@ -1,0 +1,17 @@
+# Config of the herdr plugin owpac/herdr-fork. herdr gives this folder to the plugin
+# (`herdr plugin config-dir herdr-fork`). Each key has its value, also the default value.
+
+# The model of a fork of the actions right, down and tab (default: "inherited"):
+# - "inherited": the model of the last answer of the forked agent (opus[1m] keeps its context).
+# - "default": the default model of Claude Code or Codex.
+# - a model, for example "sonnet". A model of the other kind of agent acts as "inherited".
+manual_model = "inherited"
+
+# The model of an agent of the command worktree (default: "auto"):
+# - "auto": the model that the orchestrator gives with --model, else as "inherited".
+# - "inherited", "default" or a model: as above.
+agentic_model = "auto"
+
+# Fork or brief for the command worktree (default: "auto"). With "fork" or "brief", the command
+# refuses the other mode. With "auto", the orchestrator chooses.
+agentic_mode = "auto"
