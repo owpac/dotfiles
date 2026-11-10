@@ -158,16 +158,16 @@ command = "herdr-worktrunk.merge"
 description = "merge the worktree (wt)"
 
 [[keys.command]]
-key = "prefix+shift+c"                # c = clean the old worktrees without pull request. iTerm2: cmd+shift+c.
+key = "prefix+shift+c"                # c = clean: all the worktrees, with a verdict. iTerm2: cmd+shift+c.
 type = "plugin_action"
 command = "herdr-worktrunk.clean"
-description = "clean the old worktrees (wt)"
+description = "clean the worktrees (wt)"
 
 # Fork the agent of the focused pane (plugin owpac/herdr-fork: Claude Code and Codex).
 # Rule: ctrl + the key that creates a split or a tab = the same, with a fork of the agent.
 # iTerm2 herdr profile: cmd+ctrl+d (right), cmd+ctrl+shift+d (below), cmd+ctrl+t (tab).
-# For a fork that changes code, fork, then move the fork into a worktree
-# (/worktrunk:wt-switch-create): the observer of herdr-worktrunk moves its pane.
+# For a fork that changes code, an orchestrator creates a worktree and starts the fork in its
+# workspace (herdr-fork worktree, skill worktrees of owpac/prompts).
 # To close a fork, close its pane (prefix+x). The conversation stays: claude --resume finds it.
 [[keys.command]]
 key = "prefix+ctrl+d"                 # fork into a new pane on the right
