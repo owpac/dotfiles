@@ -14,10 +14,9 @@ worktree-path = "{{ repo_path }}/../{{ repo }}.{{ branch | sanitize }}"
 # target/. wt reads .worktreeinclude in the main worktree. Without this file, the command copies
 # nothing. Each repository lists its own files.
 copy = "wt step copy-ignored --require-include"
-# Remove the worktrees and the branches that Git sees as merged, if they are older than 1 day. This
-# step works without network. The new worktree stays: it is younger than 1 day. The observer of the
-# herdr plugin herdr-worktrunk removes the worktree of each merged pull request (prune_merged).
-prune = "wt step prune --min-age=1d"
+# No prune hook: wt step prune ignores the agents of herdr. The observer of the herdr plugin
+# herdr-worktrunk removes the merged worktrees, with its agent rule (prune_merged). A merge entry does
+# not remove a key: on an older machine, remove prune from ~/.config/worktrunk/config.toml by hand.
 # Open the new worktree in herdr, in the group of the workspace of its project. wt gives the main
 # checkout in repo_path, and escapes the values for the shell. Outside herdr (no socket), the hook
 # does nothing and does not fail.
