@@ -13,10 +13,10 @@ observe = true
 # Needs the CLI of the forge: gh, glab, tea or az (default: false).
 prune_merged = true
 
-# Once a day, the observer opens the popup cleaner if a worktree has no pull request and no change
-# for this number of days (default: 0, off). The cleaner uses this number for its rule "no pull
-# request" (7 if 0). prefix+shift+c (cmd+shift+c in the iTerm2 profile herdr) opens the cleaner at
-# any time.
+# A notification names each worktree without pull request and without change for this number of
+# days, once in this number of days (default: 0, off). The cleaner uses this number for its rule
+# "no pull request" (7 if 0). prefix+shift+c (cmd+shift+c in the iTerm2 profile herdr) opens the
+# cleaner at any time.
 stale_days = 7
 
 # The size of the picker, the cleaner and the merger (default: "default"):
