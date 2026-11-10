@@ -31,7 +31,8 @@ bd prime                # Refresh Beads context
 **Agent names** (Beads actor, engram session ids, provenance `--actor`):
 - `claude` when you are Claude Code, `codex` when you are Codex.
 - A specialized agent with its own prompt or role is named `claude-<name>` or `codex-<name>` (e.g. `claude-review`). If your prompt states a name, use it.
-- `BEADS_ACTOR` is already set to your name (by your tool's config, or by the orchestrator), so `bd` attributes your claims, notes and comments correctly. Never pass a different `--actor`.
+- `BEADS_ACTOR` is already set to your name by the config of your tool, so `bd` attributes your claims, notes and comments correctly. Never pass a different `--actor`.
+- A herdr name (for example `task-7a7-3`, given by an orchestrator) is only the address of your pane: it is not your agent name.
 
 **Memory: engram (MCP tools `mem_*`), in every repository.**
 - Use engram only when the session does real work: a Beads task, code changes, or an investigation worth remembering. Skip it entirely for quick questions and read-only checks.
@@ -65,7 +66,7 @@ bd prime                # Refresh Beads context
 
 - worktrunk (`wt`) creates and removes each git worktree. In herdr, 1 worktree = 1 workspace.
 - Before the first code change of a task in a git repository, load the skill `worktrees` of the plugin `herdr` (`/herdr:worktrees`, `$worktrees` in Codex). It tells when to use a worktree, and how to take the work to the default branch.
-- Ask the user before `git push`, `gh pr create`, `wt merge` and `wt remove`, unless the mode is `auto`. The skill `worktrees` tells where to read the mode.
+- Ask the user before `git push`, `gh pr create`, `gh pr merge` (or the same commands of another forge), `wt merge` and `wt remove`, unless the mode is `auto`. The skill `worktrees` tells where to read the mode.
 - Do not run `wt step prune`: it ignores the agents in the other worktrees. In herdr, the observer of the plugin `herdr-worktrunk` removes the merged worktrees.
 - Give each agent that changes code its own worktree. The skill `worktrees` gives the commands.
 - Address another agent with its herdr name. Its pane ID changes when its pane moves to another workspace.
