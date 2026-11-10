@@ -7,9 +7,11 @@
 # when it starts: after a change, run pkill -f 'herdr-worktrunk observe --run'.
 observe = true
 
-# The observer removes the worktree of each merged or closed pull request, every 5 minutes. It
-# closes the idle agents of the worktree first, and keeps a worktree where an agent works. Then it
-# closes the workspace. Needs gh (default: false).
+# The observer removes the worktree of each merged or closed pull request, every 5 minutes. It also
+# removes the worktree of a branch in the default branch: at once if the branch has its own
+# commits, else after 1 day without agent. It closes the idle agents of the worktree first, and
+# keeps a worktree where an agent works. Then it closes the workspace and shows a notification.
+# Needs the CLI of the forge: gh, glab, tea or az (default: false).
 prune_merged = true
 
 # Once a day, the observer opens the popup cleaner if a worktree has no pull request and no change
