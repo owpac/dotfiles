@@ -163,6 +163,12 @@ type = "plugin_action"
 command = "herdr-worktrunk.clean"
 description = "clean the worktrees (wt)"
 
+[[keys.command]]
+key = "prefix+z"                      # z = undo: restore the last removed worktree. iTerm2: cmd+z.
+type = "plugin_action"
+command = "herdr-worktrunk.restore"
+description = "restore the last removed worktree (wt)"
+
 # Fork the agent of the focused pane (plugin owpac/herdr-fork: Claude Code and Codex).
 # Rule: ctrl + the key that creates a split or a tab = the same, with a fork of the agent.
 # iTerm2 herdr profile: cmd+ctrl+d (right), cmd+ctrl+shift+d (below), cmd+ctrl+t (tab).

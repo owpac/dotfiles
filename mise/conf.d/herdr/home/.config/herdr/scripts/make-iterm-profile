@@ -43,7 +43,9 @@ TOGGLE = "<"  # cmd+< changes to the Default profile
 
 # Keys that keep their macOS or iTerm2 action:
 # cmd+c, cmd+v, cmd+n, cmd+s, cmd+q, cmd+- / cmd+= / cmd+0 (font size), cmd+> (window cycle).
-LETTERS = "twrpxdeybgoaijkl"  # i j k l = up left down right: the same focus as cmd + arrow
+# i j k l = up left down right: the same focus as cmd + arrow. z = restore the last removed worktree
+# (herdr-worktrunk): in this profile, cmd+z does not undo the close of an iTerm2 session.
+LETTERS = "twrpxdeybgoaijklz"
 SHIFT_LETTERS = "twrdgoxamc"
 COPY_MODE = "y"  # herdr copy_mode = prefix+y
 DIGITS = "123456789"
