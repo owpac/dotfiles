@@ -20,7 +20,7 @@ prune_merged = true
 stale_days = 7
 
 # The size of the picker, the cleaner and the merger (default: "default"):
-# - "default": the size of herdr-bar, 74 % x 62 % of the window.
+# - "default": the size of the other popups (herdr-omnibar), 74 % x 62 % of the window.
 # - "big": 90 % x 80 % of the window.
 popup_size = "default"
 

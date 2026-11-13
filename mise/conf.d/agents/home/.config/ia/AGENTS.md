@@ -72,7 +72,7 @@ bd prime                # Refresh Beads context
 
 ## herdr tab title
 
-In herdr (`HERDR_ENV=1`), give your tab the theme of your work: 1 to 3 words, for example `homelab` or `goodbye script`. The user then finds the agent in the tab bar and in herdr-bar.
+In herdr (`HERDR_ENV=1`), give your tab the theme of your work: 1 to 3 words, for example `homelab` or `goodbye script`. The user then finds the agent in the tab bar and in herdr-omnibar.
 
 1. At the start of a task, and each time that the topic of the conversation changes, read the label of your tab:
 
