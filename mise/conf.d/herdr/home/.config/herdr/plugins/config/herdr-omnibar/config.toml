@@ -26,10 +26,18 @@ pills = "square"
 # - running_time (off by default): the running time of each agent and command.
 # - pull_requests (off by default): the pull request of each branch (gh), as a badge and as the
 #   view PR of the preview.
-features = ["mouse", "rename_tab", "auto_titles", "agent_logos", "recent_first", "pull_requests"]
+features = ["mouse", "rename_tab", "auto_titles", "agent_logos", "pull_requests", "move_workspaces", "auto_sort"]
 
 # The filters of the chips, in the order of Tab. Remove a name to hide its filter: its action
 # still opens it. Its shortcut (@ & * # + > %) works only for a filter of this list.
 # Default: ["all", "agents", "tabs", "workspaces", "worktrees", "folders", "new", "actions"].
 # - panes (off by default): one row for each pane of each tab. % opens it.
 filters = ["all", "agents", "workspaces", "worktrees", "folders", "new", "actions"]
+
+# The order of the sort of the workspaces: a workspace label, a folder of git projects, "git"
+# (the other git projects) or "other" (the workspaces without git).
+sidebar_order = ["~", "other", "git"]
+
+# The order of the lists: "attention" (needs you, then done), "activity" (last change of an agent),
+# "visit" (last visit of the tab) and "herdr" (the order of herdr).
+list_order = ["attention", "activity", "visit"]
