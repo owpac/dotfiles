@@ -72,7 +72,7 @@ bd prime                # Refresh Beads context
 
 ## herdr tab title
 
-In herdr (`HERDR_ENV=1`), give your tab the theme of your work: 1 to 3 words, for example `homelab` or `goodbye script`. The user then finds the agent in the tab bar and in herdr-omnibar.
+In herdr (`HERDR_ENV=1`), give your tab a short descriptive title of your work: 3 to 6 words, with a capital first letter, in the language of the user. Example: `Tri et renommage des workspaces`. The user then finds the agent in the tab bar and in herdr-omnibar.
 
 1. At the start of a task, and each time that the topic of the conversation changes, read the label of your tab:
 
@@ -81,7 +81,7 @@ In herdr (`HERDR_ENV=1`), give your tab the theme of your work: 1 to 3 words, fo
    herdr tab get "$tab" | jq -r .result.tab.label
    ```
 
-2. If the label is a number, the theme that you gave, or the theme that your orchestrator gave (your prompt names an orchestrator), and if it does not match your work, rename the tab: `herdr tab rename "$tab" "<theme>"`.
+2. If the label is a number, the title that you gave, or the title that your orchestrator gave (your prompt names an orchestrator), and if it does not match your work, rename the tab: `herdr tab rename "$tab" "<title>"`.
 3. Do not rename a tab that the user named. Do not rename a tab that has several agents.
 
 ## Writing style: simplified technical language (STL)
