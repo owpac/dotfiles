@@ -32,10 +32,8 @@ position = "top-right"
 # All actions use the prefix (ctrl+space), then one key. The keys follow 5 rules:
 #   1. In the iTerm2 "herdr" profile, the pane keys use cmd. AeroSpace uses Hyper (cmd+ctrl+alt)
 #      for the windows, so the 2 sets of keys do not collide.
-#        cmd+shift+arrow = focus (herdr: prefix+arrow).
-#        cmd+i / j / k / l = focus too (herdr: prefix+i / j / k / l).
-#        i = up, j = left, k = down, l = right.
-#        cmd+up / cmd+down = focus too. cmd+left / cmd+right stay the start / end of the line.
+#        cmd+shift+arrow = focus (herdr: prefix+arrow). It is the only focus key.
+#        cmd+left / cmd+right stay the start / end of the line.
 #        cmd+alt+arrow = move the pane (herdr: prefix+shift+arrow). run_once_macos_config turns off
 #        the macOS keys on cmd+alt+arrow (Mission Control and Spaces).
 #        cmd+enter = fullscreen pane (herdr: prefix+f). AeroSpace puts a window in fullscreen (Hyper+f).
@@ -49,7 +47,8 @@ position = "top-right"
 #   4. ctrl + arrow selects a tab or a workspace, in the direction of the screen layout:
 #      ctrl+right / ctrl+left = next / previous tab (the tab bar is horizontal).
 #      ctrl+down / ctrl+up = next / previous workspace (the sidebar list is vertical).
-#   5. p opens herdr-omnibar, like cmd+p (quick open) in VS Code.
+#   5. p opens herdr-omnibar, like cmd+p (quick open) in VS Code. k opens its filter Actions,
+#      like cmd+k (command palette) in Slack, Linear and Raycast.
 #
 # In the iTerm2 "herdr" profile, cmd + key sends the prefix + the same key.
 # Exceptions: cmd+c, cmd+v, cmd+n, cmd+s and cmd+q stay macOS keys.
@@ -85,10 +84,10 @@ edit_scrollback = "prefix+e"
 copy_mode = "prefix+y"                # vim yank
 
 # Panes: AeroSpace windows and iTerm2 splits
-focus_pane_left = ["prefix+left", "prefix+j"]   # iTerm2: cmd+shift+arrow, cmd+i/j/k/l, cmd+up/down.
-focus_pane_down = ["prefix+down", "prefix+k"]
-focus_pane_up = ["prefix+up", "prefix+i"]
-focus_pane_right = ["prefix+right", "prefix+l"]
+focus_pane_left = "prefix+left"       # iTerm2: cmd+shift+arrow.
+focus_pane_down = "prefix+down"
+focus_pane_up = "prefix+up"
+focus_pane_right = "prefix+right"
 swap_pane_left = "prefix+shift+left"  # iTerm2: cmd+alt+arrow.
 swap_pane_down = "prefix+shift+down"
 swap_pane_up = "prefix+shift+up"
@@ -200,7 +199,8 @@ command = "\"$HOME/.config/herdr/scripts/reload-plugins\""
 
 # The plugin owpac/herdr-omnibar (task herdr-plugins):
 # one bar to go to an agent, a tab or a workspace, and to create a tab or a worktree.
-# iTerm2 herdr profile: cmd+p goes, cmd+t creates. It replaces herdr-bar and herdr-newtab-plus.
+# iTerm2 herdr profile: cmd+p goes, cmd+t creates, cmd+k runs an action. It replaces herdr-bar and
+# herdr-newtab-plus.
 [[keys.command]]
 key = "prefix+p"
 type = "plugin_action"
@@ -212,6 +212,12 @@ key = "prefix+t"
 type = "plugin_action"
 command = "herdr-omnibar.new"
 description = "omnibar: create a tab or a worktree"
+
+[[keys.command]]
+key = "prefix+k"                      # the filter Actions: the actions of the herdr plugins
+type = "plugin_action"
+command = "herdr-omnibar.actions"
+description = "omnibar: run an action"
 
 [theme]
 name = "dracula"

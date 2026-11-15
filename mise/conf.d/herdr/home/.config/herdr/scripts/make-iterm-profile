@@ -43,9 +43,9 @@ TOGGLE = "<"  # cmd+< changes to the Default profile
 
 # Keys that keep their macOS or iTerm2 action:
 # cmd+c, cmd+v, cmd+n, cmd+s, cmd+q, cmd+- / cmd+= / cmd+0 (font size), cmd+> (window cycle).
-# i j k l = up left down right: the same focus as cmd + arrow. z = restore a removed worktree
+# k = the actions of herdr-omnibar. z = restore a removed worktree
 # (herdr-worktrunk): in this profile, cmd+z does not undo the close of an iTerm2 session.
-LETTERS = "twrpxdeybgoaijklz"
+LETTERS = "twrpxdeybgoakz"
 SHIFT_LETTERS = "twrdgoxamc"
 COPY_MODE = "y"  # herdr copy_mode = prefix+y
 DIGITS = "123456789"
@@ -137,10 +137,8 @@ for code, final in ARROWS.items():
     # cmd+alt+arrow moves the pane. run_once_macos_config turns off the macOS keys on
     # cmd+alt+arrow (Mission Control and Spaces).
     keymap[key(code, CMD | ALT | ARROW)] = send("\x1b[1;2" + final)
-# cmd+up / cmd+down move the focus too. cmd+left / cmd+right keep the
-# start / end of line keys of the Default profile: cmd+j / cmd+l move the focus left / right.
-for code in (0xF700, 0xF701):
-    keymap[key(code, CMD | ARROW)] = send("\x1b[" + ARROWS[code])
+# cmd + arrow without shift is not in the layer: only cmd+shift+arrow moves the focus.
+# cmd+left / cmd+right keep the start / end of line keys of the Default profile.
 # cmd+enter puts the pane in fullscreen. In iTerm2, cmd+enter puts the window in fullscreen,
 # but AeroSpace does this job (Hyper+f).
 keymap[key("\r", CMD)] = send("f")
