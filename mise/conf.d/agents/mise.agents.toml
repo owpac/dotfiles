@@ -22,6 +22,8 @@ agent_plugins_work = ""
 # into these files. A merge entry must be in [dotfiles]: a group deploys whole files only. A
 # relative source starts in the folder of this file. The group agents excludes these sources, so
 # it does not link them.
+# bd prints a warning in each hook output if the home workspace is not 0700. The group agents
+# makes this folder for PRIME.md. On a new machine, it makes the folder before `pac agent init`.
 # mise dot add sorts the entries of a table: keep them sorted, and keep the comments above it.
 [dotfiles]
 "~/.claude" = { permissions = "0700" }
@@ -30,22 +32,20 @@ agent_plugins_work = ""
 "~/.config/bd/config.yaml" = { permissions = "0600" }
 "~/.config/bd/config.yaml/owpac" = { source = "home/.config/bd/config.yaml", merge = true }
 "~/.config/worktrunk/config.toml/owpac" = { source = "home/.config/worktrunk/config.toml", merge = true }
-# bd prints a warning in each hook output if the home workspace is not 0700. The group agents
-# makes this folder for PRIME.md. On a new machine, it makes the folder before `pac agent init`.
 "~/.local/share/tasks/.beads" = { permissions = "0700" }
 
 [dotfile_groups.agents]
 root = "agents/home"
 exclude = [".claude/settings.json", ".codex/config.toml", ".config/bd/config.yaml", ".config/worktrunk/config.toml"]
 
-[dotfile_groups.agents.entries]
 # Codex reads the shared instructions in ~/.codex/AGENTS.md, a second link to the same source. An
 # entry with a source in the group removes this source from the files that the group links, so
-# ~/.config/ia/AGENTS.md needs its own entry.
+# ~/.config/ia/AGENTS.md needs its own entry. Codex ignores a symlink in ~/.codex/rules/, so mise
+# copies the rules file.
+[dotfile_groups.agents.entries]
 "~/.config/ia/AGENTS.md" = {}
 "~/.codex/AGENTS.md" = { source = ".config/ia/AGENTS.md" }
 "~/.beads/redirect" = { mode = "template" }
-# Codex ignores a symlink in ~/.codex/rules/, so mise copies the rules file.
 "~/.codex/rules/owpac.rules" = { mode = "copy" }
 
 # The tasks beads, codex-plugins and claude-token. A relative path starts in this folder.
