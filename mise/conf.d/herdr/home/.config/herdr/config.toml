@@ -172,7 +172,7 @@ description = "restore a removed worktree (wt)"
 # Rule: ctrl + the key that creates a split or a tab = the same, with a fork of the agent.
 # iTerm2 herdr profile: cmd+ctrl+d (right), cmd+ctrl+shift+d (below), cmd+ctrl+t (tab).
 # For a fork that changes code, an orchestrator creates a worktree and starts the fork in its
-# workspace (herdr-fork worktree, skill worktrees of owpac/prompts).
+# workspace (herdr-fork worktree, skill herdr:orchestrate of owpac/prompts).
 # To close a fork, close its pane (prefix+x). The conversation stays: claude --resume finds it.
 [[keys.command]]
 key = "prefix+ctrl+d"                 # fork into a new pane on the right

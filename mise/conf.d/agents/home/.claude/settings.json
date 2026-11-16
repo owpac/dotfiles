@@ -17,7 +17,13 @@
     - worktrunk@worktrunk: the plugin of wt, from its GitHub repository.
     - attribution: no Co-Authored-By trailer in commits, and no footer in pull requests.
       Without this key, Claude Code tells each session to add them, and a small model
-      (Haiku) can follow this order instead of CLAUDE.md. -#}
+      (Haiku) can follow this order instead of CLAUDE.md.
+    - autoMemoryEnabled: no auto memory (~/.claude/projects/<project>/memory/). engram keeps
+      the durable memory of the agents (AGENTS.md, section "Memory: engram").
+    - permissions.deny: the commands that AGENTS.md and PRIME.md forbid. A deny rule blocks in
+      each permission mode, also in a compound command and after an env var prefix. It does
+      not block `sh -c '...'` or the full path of the program. mise replaces the array of
+      the target with this array: add a deny rule here, not with /permissions. -#}
 {%- set plugins = vars.agent_plugins | split(pat=" ") -%}
 {%- if "work" in (mise_env | default(value=[])) and vars.agent_plugins_work -%}
 {%- set plugins = [...plugins, ...(vars.agent_plugins_work | split(pat=" "))] -%}
@@ -29,8 +35,14 @@
     "pr": "",
     "sessionUrl": false
   },
+  "autoMemoryEnabled": false,
   "permissions": {
-    "defaultMode": "auto"
+    "defaultMode": "auto",
+    "deny": [
+      "Bash(bd init *)",
+      "Bash(bd setup *)",
+      "Bash(wt step prune *)"
+    ]
   },
   "statusLine": {
     "type": "command",
