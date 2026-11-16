@@ -1,0 +1,22 @@
+# The commands that AGENTS.md and PRIME.md forbid (owpac/dotfiles, module agents).
+# Codex loads each .rules file of ~/.codex/rules/ at the start of a session, and writes
+# default.rules itself. Codex ignores a symlink in this folder, so mise copies this file.
+# Codex splits `bash -lc "a && b"` and checks each command. It does not split a script with
+# `VAR=...`, `$(...)` or a redirection, and these rules do not see a command in such a script.
+# Test: codex execpolicy check --rules ~/.codex/rules/owpac.rules -- bd init
+
+prefix_rule(
+    pattern = ["bd", ["init", "setup"]],
+    decision = "forbidden",
+    justification = "Do not run bd init or bd setup. All the tasks are in the home workspace ~/.local/share/tasks (BEADS_DIR).",
+    match = [["bd", "init"], ["bd", "init", "--prefix", "x"], ["bd", "setup", "codex"]],
+    not_match = [["bd", "show", "task-1"], ["bd", "ready"]],
+)
+
+prefix_rule(
+    pattern = ["wt", "step", "prune"],
+    decision = "forbidden",
+    justification = "Do not run wt step prune: it ignores the agents in the other worktrees.",
+    match = [["wt", "step", "prune"], ["wt", "step", "prune", "--dry-run"]],
+    not_match = [["wt", "step", "commit"], ["wt", "list"]],
+)
