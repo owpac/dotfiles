@@ -35,7 +35,7 @@ If two rules conflict, obey the rule of the higher level:
 
 ### Review before push
 
-1. Commit in your worktree when you want. A local commit in a worktree needs no review and no question.
+1. Commit when you want. A local commit needs no review and no question.
 2. Before `git push` or a new pull request, review your own diff.
 3. Show a summary of the diff to the user.
 4. Ask the user for the approval, and wait for the answer.
@@ -52,11 +52,25 @@ The mode "auto" does not cover an action that can lose data. Always ask before t
 ## Agents and worktrees
 
 - worktrunk (`wt`) creates and removes each git worktree.
-- The main thread of a project is the session in its main checkout. The main thread does not change code.
-- Each fix, feature or update gets its own Beads task, its own worktree, and its own thread or agent. The section Clients tells how to start a thread.
-- Give each agent that changes code its own worktree.
-- Before the first code change of a task in a git repository, load the skill `workflow:worktrees` (`$worktrees` in Codex). It tells when to use a worktree, and how to take the work to the default branch.
+- A thread or an agent works in one of 2 modes: the solo mode or the main thread mode. The request of the user sets the mode. The checkout of the thread does not set it.
+- Before the first code change of a task in a git repository, load the skill `workflow:worktrees` (`$worktrees` in Codex). It gives the details of the 2 modes, and how to take the work to the default branch.
 - Do not run `wt step prune`: it ignores the agents in the other worktrees.
+
+### Solo mode (the default)
+
+- Do the work yourself, in the current checkout. Do not create a worktree or a new thread.
+- Before the first change, make sure that the checkout is free: `git status` is clean, and no other thread or agent changes this checkout. If the checkout is busy, ask the user.
+- If the repository needs a pull request, create a new branch first. If not, work on the current branch. If you do not know if the repository needs a pull request, ask the user.
+- In the main checkout, after the push or the pull request, switch the checkout back to the default branch.
+- A read-only request (a question, an analysis, a review) is a solo task that changes nothing.
+
+### Main thread mode (automatic or on request)
+
+- Use this mode if the user asks for it, in any language. For example: "orchestrate", "start one thread for each task", "you are the main thread".
+- Also use this mode if the request has two or more independent tasks. Do not ask the user first.
+- Also use this mode if the task changes more than one repository. Start one thread for each repository.
+- The main thread does not change code. It starts one thread or agent for each task, and gives their links to the user. Each thread or agent gets its own Beads task and its own wt worktree.
+- Each thread or agent works in solo mode in its worktree.
 
 ## Tasks: Beads
 
@@ -102,14 +116,14 @@ A client is the application that runs the agent. A client plugin gives the rules
 ### herdr
 
 - herdr sets `HERDR_ENV=1`. The plugin `herdr` gives the client rules.
-- To start forks or other agents, load the skill `herdr:orchestrate`.
+- In the main thread mode, load the skill `herdr:orchestrate`. It tells how to start forks or other agents.
 - A herdr name (for example `task-7a7-3`) is the address of a pane. It is not your agent name.
 - Address another agent with its herdr name. The pane ID changes when the pane moves to another workspace.
 
 ### T3 Code
 
 - T3 Code sets `T3CODE_THREAD_ID`. The plugin `t3code` gives the client rules.
-- To start a thread for a task, load the skill `t3code:orchestrate`.
+- In the main thread mode, load the skill `t3code:orchestrate`. It tells how to start a thread for a task.
 
 ### Other clients
 
