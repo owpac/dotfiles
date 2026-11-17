@@ -21,6 +21,10 @@ export UV_PYTHON_PREFERENCE=only-system
 # Beads: every task lives in the home workspace (see ~/.config/ia/AGENTS.md).
 # bd uses BEADS_DIR before any workspace of the current repository.
 export BEADS_DIR="${HOME}/{{ vars.beads_dir }}"
+# The profile of the machine: work or home (vars.machine_profile of the module agents). The
+# agents also get it from their config, because a client such as T3 Code does not give the
+# variables of this file.
+export MACHINE_PROFILE="{{ vars.machine_profile }}"
 {% endif -%}
 
 # The editor. Most tools read VISUAL first, then EDITOR: VISUAL is the full-screen editor, and

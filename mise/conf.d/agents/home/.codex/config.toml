@@ -1,8 +1,8 @@
 {#- The keys that mise sets in ~/.codex/config.toml (merge entry of mise.agents.toml).
   Codex also writes this file (for example the trust levels of the projects): its other keys and
   its comments stay. The Beads hooks come from the plugin beads@owpac.
-    - shell_environment_policy.set: BEADS_ACTOR (agent name for bd) and BEADS_DIR (home
-      workspace) for the commands that Codex runs.
+    - shell_environment_policy.set: BEADS_ACTOR (agent name for bd), BEADS_DIR (home workspace)
+      and MACHINE_PROFILE (profile of the machine, work or home) for the commands that Codex runs.
     - sandbox_workspace_write: in the Auto preset, sandboxed bd commands can reach the shared Dolt
       server (127.0.0.1:3308), and write ~/.beads and the home workspace. Trade-off: sandboxed
       commands get network access.
@@ -24,6 +24,7 @@
 [shell_environment_policy.set]
 BEADS_ACTOR = "codex"
 BEADS_DIR = "{{ env.HOME }}/{{ vars.beads_dir }}"
+MACHINE_PROFILE = "{{ vars.machine_profile }}"
 
 [sandbox_workspace_write]
 network_access = true

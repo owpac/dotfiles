@@ -2,7 +2,8 @@
   Claude Code also writes this file: its other keys stay. The Beads hooks come from the plugin
   beads@owpac.
     - env: BEADS_ACTOR is the agent name for the claims, notes and comments of bd. BEADS_DIR is
-      the home workspace, also when Claude Code does not start from a shell that read ~/.zshenv.
+      the home workspace, and MACHINE_PROFILE the profile of the machine (work or home). These
+      values apply also when Claude Code does not start from a shell that read ~/.zshenv.
     - permissions.defaultMode: each session starts in auto mode. `--permission-mode` or
       shift+tab changes the mode of one session.
     - Plugins: Claude Code clones each marketplace itself, at the start of a session, and
@@ -50,7 +51,8 @@
   },
   "env": {
     "BEADS_ACTOR": "claude",
-    "BEADS_DIR": "{{ env.HOME }}/{{ vars.beads_dir }}"
+    "BEADS_DIR": "{{ env.HOME }}/{{ vars.beads_dir }}",
+    "MACHINE_PROFILE": "{{ vars.machine_profile }}"
   },
   "extraKnownMarketplaces": {
     "owpac": {

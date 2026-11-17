@@ -5,6 +5,11 @@
 [vars]
 # The paths are relative to the home directory. Every task of Beads lives in this workspace.
 beads_dir = ".local/share/tasks/.beads"
+# The profile of the machine: work with the role work, home with the role workstation only. The
+# templates export it as MACHINE_PROFILE for the shell and the agents. A machine without this
+# module (a server, a container) has no profile. A machine with this module but without these
+# roles gets an empty value: the agents then ask for the profile.
+machine_profile = "{% set envs = mise_env | default(value=[]) %}{% if 'work' in envs %}work{% elif 'workstation' in envs %}home{% endif %}"
 # The plugins of the marketplace owpac, separated by spaces. Both agents get them. Claude Code and
 # Codex clone the marketplace themselves: their config gives its git source. The client plugins
 # (herdr, t3code) give their rules only in their client.

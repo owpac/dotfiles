@@ -75,6 +75,8 @@ A machine saves its roles in `mise/miserc.local.toml`, for example `env = ["work
 
 A module keeps its role variants: `"work" in mise_env` in a template, `env = "work"` on a package, `variants = [{ profile = "work" }]` on a whole file. A role and a module never have the same name.
 
+The var `machine_profile` of the module `agents` is `work` on a machine with the role `work`, and `home` on a machine with the role `workstation` only. The shell and the agents get it in the variable `MACHINE_PROFILE`. A server or a container has no profile.
+
 | Role | Machine | Modules |
 | --- | --- | --- |
 | `minimal` | container, Codespace | `zsh`, `git` |
