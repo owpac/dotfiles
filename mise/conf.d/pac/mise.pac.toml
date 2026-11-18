@@ -23,13 +23,26 @@ uv = "latest"
 
 # A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
 # tool. So reinstall pac if it does not start. mise runs the hooks of each config file.
+# Then write the zsh completion again. The completion shows only the active modules of pac. A
+# module of the dotfiles can enable a module of pac after the postinstall: for example, the module
+# agents merges [agent] enabled = true into ~/.config/pac/config.toml. mise applies the dotfiles
+# before the tools, so this hook sees each key. The hook writes to a temporary file first, so an
+# error keeps the old file. This error does not stop the bootstrap.
 # mise 2026.10.22 or later prints the description instead of the script. The codes \u001b[…m
 # print the name in green and bold, the color of the tools of owpac (see the task bootstrap), also in a pipe or with NO_COLOR.
 [bootstrap.hooks.post-tools]
-description = "\u001b[1;32m[pac]\u001b[0m 🔧 Reinstall pac if it does not start"
+description = "\u001b[1;32m[pac]\u001b[0m 🔧 Reinstall pac if it does not start, then write its completion"
 run = '''
 if ! mise exec -- pac --version >/dev/null 2>&1; then
   echo "Reinstalling pac on the Python of mise..."
   mise install --force "pypi:git+ssh://git@github.com/owpac/pac.git"
+fi
+completion="$HOME/.local/bin/completions/_pac"
+mkdir -p "${completion%/*}"
+if mise exec -- pac --completion zsh > "$completion.tmp"; then
+  mv "$completion.tmp" "$completion"
+else
+  rm -f "$completion.tmp"
+  echo "pac --completion zsh failed: the old completion stays." >&2
 fi
 '''
