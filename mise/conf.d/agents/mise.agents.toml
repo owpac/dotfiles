@@ -6,12 +6,29 @@
 [vars]
 # The paths are relative to the home directory. Every task of Beads lives in this workspace.
 beads_dir = ".local/share/tasks/.beads"
-# The plugins of the marketplace owpac, separated by spaces. Both agents get them. Claude Code and
-# Codex clone the marketplace themselves: their config gives its git source. The client plugins
-# (herdr, t3code) give their rules only in their client.
-agent_plugins = "writing python rails setup beads engram workflow herdr t3code"
-# The plugins of the marketplace owpac for the work mode only.
+# The plugins that the 2 agents enable, separated by spaces: <plugin>@<marketplace>. The 2
+# templates (home/.claude/settings.json, home/.codex/config.toml) enable them, and give the git
+# source of each marketplace: Claude Code and Codex clone the marketplaces themselves. To add a
+# marketplace, add its source to the 2 templates. The client plugins (herdr, t3code) give their
+# rules only in their client. worktrunk@worktrunk is the plugin of wt.
+# The task agent-plugins updates all the plugins of the agents. It also removes each plugin of a
+# marketplace of these vars (owpac, worktrunk) that these vars do not give. After the merge of a
+# pull request of owpac/prompts, run `mise run agent-plugins`. After a change of these vars, run
+# `mise bootstrap`: mise dot apply first writes the new keys, then the task runs. A running Claude
+# Code session needs /reload-plugins.
+# The 2 templates and the task use the same rule for these vars: if you change the rule, change
+# the 3 files. A computed var does not do this work: it does not see an override of agent_plugins
+# in config.local.toml.
+agent_plugins = """\
+  writing@owpac python@owpac rails@owpac setup@owpac beads@owpac engram@owpac workflow@owpac \
+  herdr@owpac t3code@owpac worktrunk@worktrunk"""
+# The plugins for the role work only, in addition to agent_plugins.
 agent_plugins_work = ""
+
+# The task agent-plugins is a Python script: it needs tomllib (Python 3.11 or later), and
+# /usr/bin/python3 of macOS is older. The modules pac, kompose and craft declare the same version.
+[tools]
+python = "3.15"
 
 # worktrunk (wt) gives each agent its own git worktree. ~/.zshrc loads its shell integration.
 [bootstrap.packages]
@@ -55,6 +72,6 @@ exclude = [".claude/settings.json", ".codex/config.toml", ".config/bd/config.yam
 "~/.beads/redirect" = { mode = "template" }
 "~/.codex/rules/owpac.rules" = { mode = "copy" }
 
-# The tasks beads, codex-plugins and claude-token. A relative path starts in this folder.
+# The tasks beads, agent-plugins (Python) and claude-token. A relative path starts in this folder.
 [task_config]
 includes = ["tasks"]
