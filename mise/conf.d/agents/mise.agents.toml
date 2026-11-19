@@ -1,6 +1,7 @@
 # The module agents: the coding agents Claude Code, Codex, Beads and worktrunk. Their variables,
 # packages, dotfiles and tasks. home/ holds the files of the group agents, and tasks/ the setup
 # scripts.
+# The module agents also enables the module agent of pac (pac agent), which is inactive by default.
 
 [vars]
 # The paths are relative to the home directory. Every task of Beads lives in this workspace.
@@ -22,6 +23,10 @@ agent_plugins_work = ""
 # into these files. A merge entry must be in [dotfiles]: a group deploys whole files only. A
 # relative source starts in the folder of this file. The group agents excludes these sources, so
 # it does not link them.
+# pac reads one config file, ~/.config/pac/config.toml. Each module of the dotfiles merges its keys
+# into this file, with the name of the module as id. mise does not remove a merged key: if a
+# machine loses the module agents, remove [agent] enabled from this file. On one machine,
+# ~/.config/pac/config.local.toml wins over config.toml.
 # bd prints a warning in each hook output if the home workspace is not 0700. The group agents
 # makes this folder for PRIME.md. On a new machine, it makes the folder before `pac agent init`.
 # mise dot add sorts the entries of a table: keep them sorted, and keep the comments above it.
@@ -31,12 +36,13 @@ agent_plugins_work = ""
 "~/.codex/config.toml/owpac" = { source = "home/.codex/config.toml", merge = true, template = "tera" }
 "~/.config/bd/config.yaml" = { permissions = "0600" }
 "~/.config/bd/config.yaml/owpac" = { source = "home/.config/bd/config.yaml", merge = true }
+"~/.config/pac/config.toml/agents" = { source = "home/.config/pac/config.toml", merge = true }
 "~/.config/worktrunk/config.toml/owpac" = { source = "home/.config/worktrunk/config.toml", merge = true }
 "~/.local/share/tasks/.beads" = { permissions = "0700" }
 
 [dotfile_groups.agents]
 root = "agents/home"
-exclude = [".claude/settings.json", ".codex/config.toml", ".config/bd/config.yaml", ".config/worktrunk/config.toml"]
+exclude = [".claude/settings.json", ".codex/config.toml", ".config/bd/config.yaml", ".config/pac/config.toml", ".config/worktrunk/config.toml"]
 
 # Codex reads the shared instructions in ~/.codex/AGENTS.md, a second link to the same source. An
 # entry with a source in the group removes this source from the files that the group links, so
