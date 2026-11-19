@@ -94,7 +94,7 @@ A machine that needs another list of modules gets its own set in `mise/miserc.to
 | `secrets` | fnox, age and the encryption key from 1Password |
 | `pac`, `kompose`, `craft` | the CLI tools of owpac, from their private repositories |
 | `aerospace`, `herdr`, `raycast`, `iterm2` | the config of these apps |
-| `agents` | Claude Code, Codex, Beads and worktrunk: settings, plugins, instructions. Each agent clones the marketplace owpac itself (git source) |
+| `agents` | Claude Code, Codex, Beads and worktrunk: settings, plugins, instructions. Each agent clones the marketplace owpac itself (git source). The task `agent-plugins` updates all the plugins of the agents, and removes each plugin of a marketplace of `agent_plugins` that `agent_plugins` does not give |
 | `doctolib` | PostgreSQL 15, `~/.workrc`, `~/.npmrc`, the git identity and `/etc/hosts` of Doctolib |
 
 ## Layout
@@ -132,6 +132,8 @@ A file of `mise/conf.d/<module>/home/` goes to the same path in `~`: `mise/conf.
 | Turn off a module on this machine | add a set without the module to `[env_sets]` in `mise/miserc.toml`, then `mise bootstrap -E <set> --save-env --prune-dotfiles` |
 | Edit a linked file | edit it in place: the change goes into this repository |
 | Edit a template | edit it in `mise/conf.d/<module>/home/`, then `mise dot apply` |
+| Update the plugins of the agents, after the merge of a pull request of owpac/prompts | `mise run agent-plugins`, then `/reload-plugins` in a running Claude Code session |
+| Change the plugins of the agents | edit `agent_plugins` in `mise/conf.d/agents/mise.agents.toml`, then `mise bootstrap` (`mise dot apply` writes the keys, then the task `agent-plugins` runs) |
 | Add a file to a module | `mise dot add --group <module> <file>` |
 | Add a template | add `"~/<file>" = { mode = "template" }` under `[dotfile_groups.<module>.entries]` |
 | Remove a file | remove its source, then `mise dot apply --prune` |

@@ -7,14 +7,16 @@
       shift+tab changes the mode of one session.
     - Plugins: Claude Code clones each marketplace itself, at the start of a session, and
       installs the plugins that this file enables. With autoUpdate, an interactive session
-      updates the marketplaces and their plugins.
+      updates the marketplaces and their plugins, after a random delay of up to 10 minutes. The
+      task agent-plugins (mise run agent-plugins, and each mise bootstrap) updates them at once.
     - owpac: the private repository owpac/prompts. Git clones it over SSH, with the 1Password
       agent of ~/.ssh/config. If 1Password is locked, the update fails without a message, and
       the old version stays.
-    - mise enables the plugins of vars.agent_plugins, and of vars.agent_plugins_work in the work
-      mode. A merge entry does not remove a key: to remove a plugin, set it to false here, or
-      remove it with /plugin.
-    - worktrunk@worktrunk: the plugin of wt, from its GitHub repository.
+    - mise enables the plugins of vars.agent_plugins (<plugin>@<marketplace>), and of
+      vars.agent_plugins_work in the work mode. A merge entry does not remove a key: the task
+      agent-plugins uninstalls each plugin of a marketplace of these vars that these vars do not
+      give, and removes its key.
+    - worktrunk: the marketplace of wt, from its GitHub repository.
     - attribution: no Co-Authored-By trailer in commits, and no footer in pull requests.
       Without this key, Claude Code tells each session to add them, and a small model
       (Haiku) can follow this order instead of CLAUDE.md.
@@ -70,8 +72,7 @@
   },
   "enabledPlugins": {
 {%- for plugin in plugins %}
-    "{{ plugin }}@owpac": true,
+    "{{ plugin }}": true{% if not loop.last %},{% endif %}
 {%- endfor %}
-    "worktrunk@worktrunk": true
   }
 }

@@ -1,0 +1,417 @@
+#!/usr/bin/env -S python3 -I
+#MISE description="Update the plugins of Claude Code and Codex, and remove the plugins that the module agents does not declare"
+"""Update the plugins of Claude Code and Codex, and remove leftovers.
+
+Claude Code and Codex clone their git marketplaces themselves. For
+each installed agent, the task:
+
+1. Updates all the marketplaces and all the installed plugins.
+2. Removes each plugin of a managed marketplace that the vars do not
+   declare: a renamed plugin, a removed plugin, or a plugin that this
+   machine does not use. A managed marketplace is the marketplace of
+   an id of vars.agent_plugins (owpac, worktrunk): a plugin of another
+   marketplace stays. A merge entry of mise does not remove a key, so
+   the task also removes the key from ~/.claude/settings.json and the
+   tables from ~/.codex/config.toml.
+3. Installs the declared plugins that have no copy.
+
+mise bootstrap runs this task each time. mise.agents.toml tells when
+to run it by hand. The task is idempotent. An error gives a log line,
+and the task continues: it never stops mise bootstrap. If the update
+of a marketplace fails (for example, 1Password is locked), the task
+removes no plugin of this marketplace: its old clone can miss the new
+name of a renamed plugin.
+"""
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import tomllib
+from collections.abc import Collection, Iterable, Sequence
+from enum import Enum
+from pathlib import Path
+from typing import Any
+
+# The data that json and tomllib read: its values have no static type.
+type JsonObject = dict[str, Any]
+
+# A git fetch over SSH can wait for the approval of 1Password.
+TIMEOUT_SECONDS = 300
+WORK_ROLE = "work"
+CODEX_GIT_SOURCE = "git"
+# A TOML table header, with or without indentation and a comment.
+TABLE_HEADER = re.compile(r"^\s*\[(?P<key>.*)\]\s*(#.*)?$")
+
+
+class Log(Enum):
+    """A kind of log line, with the color and icon of lib/logs.sh."""
+
+    TASK = ("0;34", "👉")
+    DONE = ("0;32", "✅")
+    ERROR = ("0;31", "❌")
+
+
+class ConfigurationError(Exception):
+    """The vars of the module agents do not give a correct list."""
+
+
+class CommandError(Exception):
+    """A command of an agent failed or did not stop in time."""
+
+
+def log(kind: Log, message: str) -> None:
+    """Print a colored log line on the standard error."""
+    color, icon = kind.value
+    print(f"\033[{color}m{icon} {message}\033[0m", file=sys.stderr)
+
+
+def run_command(arguments: Sequence[str]) -> str:
+    """Run a command and return its standard output.
+
+    The standard error goes to the terminal. The command gets no
+    standard input: a question fails at once, and does not wait.
+
+    Raises:
+        CommandError: If the command fails or does not stop in time.
+    """
+    try:
+        return subprocess.check_output(
+            arguments, stdin=subprocess.DEVNULL, text=True, timeout=TIMEOUT_SECONDS
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        raise CommandError(" ".join(arguments)) from error
+
+
+def try_command(arguments: Sequence[str]) -> bool:
+    """Run a command, and log an error line if it fails.
+
+    Returns:
+        True if the command succeeded.
+    """
+    try:
+        run_command(arguments)
+    except CommandError as error:
+        log(Log.ERROR, f"Command failed: {error}")
+        return False
+    return True
+
+
+def marketplace_of(plugin_id: str) -> str:
+    """Return the marketplace of a plugin id <plugin>@<marketplace>."""
+    return plugin_id.partition("@")[2]
+
+
+def read_declared_plugins() -> set[str]:
+    """Return the plugin ids that the module agents declares here.
+
+    The ids come from vars.agent_plugins, and from
+    vars.agent_plugins_work with the role work: the 2 templates enable
+    the same list. The task runs in the folder of the module, where
+    mise.agents.toml wins over config.local.toml: `mise -C ~` reads the
+    vars as mise dot apply does.
+
+    Raises:
+        ConfigurationError: If the list is not correct. The task must
+            not remove all the plugins.
+        CommandError: If mise cannot give the vars.
+    """
+    environments = os.environ.get("MISE_ENV", "").split(",")
+    if environments == [""]:
+        raise ConfigurationError("MISE_ENV is empty: run the task with mise run")
+    variables = json.loads(run_command(["mise", "-C", str(Path.home()), "vars", "--json"]))
+    plugin_ids = variables.get("agent_plugins", "").split()
+    if WORK_ROLE in environments:
+        plugin_ids += variables.get("agent_plugins_work", "").split()
+    if not plugin_ids:
+        raise ConfigurationError("vars.agent_plugins is empty")
+    incorrect_ids = [plugin_id for plugin_id in plugin_ids if not marketplace_of(plugin_id)]
+    if incorrect_ids:
+        raise ConfigurationError(f"No @<marketplace> in {incorrect_ids!r}")
+    return set(plugin_ids)
+
+
+def find_leftovers(
+    candidate_ids: Iterable[str], declared_ids: set[str], failed_marketplaces: set[str]
+) -> set[str]:
+    """Return the candidates of a managed marketplace, not declared.
+
+    The candidates come from the config and the copies of the agent,
+    not from the catalog of the marketplace: the catalog does not have
+    a renamed plugin. A leftover of a marketplace whose update failed
+    stays until the next run.
+    """
+    managed_marketplaces = {marketplace_of(plugin_id) for plugin_id in declared_ids}
+    leftovers = set()
+    for plugin_id in candidate_ids:
+        if marketplace_of(plugin_id) in managed_marketplaces and plugin_id not in declared_ids:
+            leftovers.add(plugin_id)
+    kept_ids = set()
+    for plugin_id in leftovers:
+        if marketplace_of(plugin_id) in failed_marketplaces:
+            kept_ids.add(plugin_id)
+    if kept_ids:
+        kept_list = ", ".join(sorted(kept_ids))
+        log(Log.TASK, f"Keeping {kept_list} until the next update of the marketplace")
+    return leftovers - kept_ids
+
+
+def update_marketplaces(command: Sequence[str], names: Iterable[str]) -> set[str]:
+    """Update each marketplace with a command of the agent.
+
+    Returns:
+        The names of the marketplaces whose update failed.
+    """
+    failed_marketplaces = set()
+    for name in sorted(names):
+        if not try_command([*command, name]):
+            failed_marketplaces.add(name)
+    return failed_marketplaces
+
+
+def write_atomically(path: Path, text: str) -> None:
+    """Replace the content of a file in one step, and keep its mode."""
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=path.parent, delete=False
+    ) as temporary_file:
+        temporary_file.write(text)
+    temporary_path = Path(temporary_file.name)
+    try:
+        shutil.copymode(path, temporary_path)
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
+def read_json_file(path: Path) -> JsonObject:
+    """Return the content of a JSON file, or {} if it does not exist."""
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def list_claude_versions() -> dict[str, str]:
+    """Return the version of each Claude Code plugin of the user.
+
+    Without a version in plugin.json, the version of a plugin is the
+    commit of its marketplace.
+    """
+    plugins = json.loads(run_command(["claude", "plugin", "list", "--json"]))
+    return {plugin["id"]: plugin["version"] for plugin in plugins if plugin["scope"] == "user"}
+
+
+def remove_claude_leftovers(
+    leftovers: set[str], installed_ids: set[str], settings_path: Path
+) -> None:
+    """Uninstall the leftover plugins, then remove the keys that stay.
+
+    claude plugin uninstall removes the key of an installed plugin. A
+    key stays if its plugin is not installed, or if the uninstall
+    failed: the task removes these keys in one write.
+    """
+    for plugin_id in sorted(leftovers):
+        log(Log.TASK, f"Removing Claude Code plugin {plugin_id}, which the vars do not declare...")
+        if plugin_id in installed_ids:
+            try_command(["claude", "plugin", "uninstall", plugin_id])
+    settings = read_json_file(settings_path)
+    enabled_plugins = settings.get("enabledPlugins", {})
+    keys_to_remove = leftovers & set(enabled_plugins)
+    if not keys_to_remove:
+        return
+    for plugin_id in keys_to_remove:
+        del enabled_plugins[plugin_id]
+    write_atomically(settings_path, json.dumps(settings, indent=2, ensure_ascii=False) + "\n")
+
+
+def update_claude_code(declared_ids: set[str]) -> None:
+    """Update the plugins of Claude Code, and remove the leftovers.
+
+    Claude Code clones a marketplace of extraKnownMarketplaces at the
+    start of the first session. Before this session, the marketplace
+    list does not show it, and the task skips it.
+
+    Raises:
+        CommandError: If Claude Code cannot list its marketplaces or
+            its plugins.
+    """
+    marketplaces = json.loads(run_command(["claude", "plugin", "marketplace", "list", "--json"]))
+    known_marketplaces = {marketplace["name"] for marketplace in marketplaces}
+    failed_marketplaces = update_marketplaces(
+        ["claude", "plugin", "marketplace", "update"], known_marketplaces
+    )
+    versions_before = list_claude_versions()
+    installed_ids = set(versions_before)
+    claude_home = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
+    settings_path = claude_home / "settings.json"
+    enabled_ids = set(read_json_file(settings_path).get("enabledPlugins", {}))
+
+    leftovers = find_leftovers(enabled_ids | installed_ids, declared_ids, failed_marketplaces)
+    if leftovers:
+        remove_claude_leftovers(leftovers, installed_ids, settings_path)
+    for plugin_id in sorted(declared_ids - installed_ids):
+        if marketplace_of(plugin_id) in known_marketplaces:
+            log(Log.TASK, f"Installing Claude Code plugin {plugin_id}...")
+            try_command(["claude", "plugin", "install", plugin_id])
+    # No -y: a command of a marketplace stays a question to a person.
+    for plugin_id in sorted(installed_ids - leftovers):
+        if marketplace_of(plugin_id) not in failed_marketplaces:
+            try_command(["claude", "plugin", "update", plugin_id])
+
+    for plugin_id, new_version in sorted(list_claude_versions().items()):
+        old_version = versions_before.get(plugin_id, new_version)
+        if old_version != new_version:
+            log(Log.DONE, f"Claude Code plugin {plugin_id} {old_version} → {new_version}")
+
+
+def remove_codex_tables(config_text: str, plugin_ids: Collection[str]) -> str:
+    """Remove the tables of some plugins from the config of Codex.
+
+    The tables are [plugins."<id>"], its sub-tables [plugins."<id>".…]
+    and [hooks.state."<id>:…"] (the trust of its hooks). A table ends at
+    the next line that starts with "[" and ends with "]". The comments
+    and the other tables stay. Codex writes no multi-line array in
+    these tables: a line of such an array can look like a header.
+
+    Returns:
+        The config text without these tables.
+    """
+    plugin_keys = {f'plugins."{plugin_id}"' for plugin_id in plugin_ids}
+    child_prefixes = []
+    for plugin_id in plugin_ids:
+        child_prefixes += [f'plugins."{plugin_id}".', f'hooks.state."{plugin_id}:']
+    kept_lines = []
+    is_in_removed_table = False
+    for line in config_text.splitlines(keepends=True):
+        header = TABLE_HEADER.match(line)
+        if header is not None:
+            key = header["key"]
+            is_in_removed_table = key in plugin_keys or key.startswith(tuple(child_prefixes))
+            if is_in_removed_table:
+                continue
+        elif is_in_removed_table and not line.lstrip().startswith("#"):
+            continue
+        kept_lines.append(line)
+    return "".join(kept_lines)
+
+
+def find_codex_candidates(
+    config: JsonObject, cache_path: Path, managed_marketplaces: Iterable[str]
+) -> set[str]:
+    """Return the plugin ids of the config and of the cache of Codex."""
+    candidate_ids = set(config.get("plugins", {}))
+    for hook_key in config.get("hooks", {}).get("state", {}):
+        candidate_ids.add(hook_key.partition(":")[0])
+    for marketplace in managed_marketplaces:
+        marketplace_path = cache_path / marketplace
+        if marketplace_path.is_dir():
+            candidate_ids |= {f"{path.name}@{marketplace}" for path in marketplace_path.iterdir()}
+    return candidate_ids
+
+
+def remove_codex_leftovers(leftovers: set[str], config_path: Path, cache_path: Path) -> None:
+    """Remove the copies and the tables of the leftover plugins.
+
+    codex plugin remove removes the copy and [plugins."<id>"], but not
+    [hooks.state."<id>:…"]. Then the task removes the tables that stay,
+    in one write. If the new text is not valid TOML, tomllib raises an
+    error before the write, and the file stays the same.
+    """
+    for plugin_id in sorted(leftovers):
+        log(Log.TASK, f"Removing Codex plugin {plugin_id}, which the vars do not declare...")
+        plugin_name, _, marketplace = plugin_id.partition("@")
+        if (cache_path / marketplace / plugin_name).is_dir():
+            try_command(["codex", "plugin", "remove", plugin_id])
+    config_text = config_path.read_text(encoding="utf-8")
+    new_text = remove_codex_tables(config_text, leftovers)
+    tomllib.loads(new_text)
+    if new_text != config_text:
+        write_atomically(config_path, new_text)
+
+
+def sync_codex_copies(marketplace: str, *, is_managed: bool) -> None:
+    """Install the missing enabled plugins, and remove the others.
+
+    Codex installs a new enabled plugin only after a change of its
+    marketplace. The task removes the copy of a disabled plugin only in
+    a managed marketplace.
+    """
+    plugin_list = json.loads(
+        run_command(
+            ["codex", "plugin", "list", "--json", "--available", "--marketplace", marketplace]
+        )
+    )
+    for plugin in plugin_list["installed"] + plugin_list["available"]:
+        plugin_id = plugin["pluginId"]
+        if plugin["enabled"] and not plugin["installed"]:
+            log(Log.TASK, f"Installing Codex plugin {plugin_id}...")
+            try_command(["codex", "plugin", "add", plugin_id])
+        elif plugin["installed"] and not plugin["enabled"] and is_managed:
+            log(
+                Log.TASK,
+                f"Removing Codex plugin {plugin_id}, which config.toml does not enable...",
+            )
+            try_command(["codex", "plugin", "remove", plugin_id])
+
+
+def update_codex(declared_ids: set[str]) -> None:
+    """Update the plugins of Codex, and remove the leftovers.
+
+    codex plugin marketplace upgrade clones a missing git marketplace,
+    or updates it and the copies of its plugins.
+
+    Raises:
+        CommandError: If Codex cannot list the plugins of a marketplace.
+    """
+    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+    config_path = codex_home / "config.toml"
+    cache_path = codex_home / "plugins" / "cache"
+    if not config_path.exists():
+        return
+    config = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    git_marketplaces = set()
+    for name, marketplace in config.get("marketplaces", {}).items():
+        if marketplace.get("source_type") == CODEX_GIT_SOURCE:
+            git_marketplaces.add(name)
+    failed_marketplaces = update_marketplaces(
+        ["codex", "plugin", "marketplace", "upgrade"], git_marketplaces
+    )
+
+    managed_marketplaces = {marketplace_of(plugin_id) for plugin_id in declared_ids}
+    candidate_ids = find_codex_candidates(config, cache_path, managed_marketplaces)
+    leftovers = find_leftovers(candidate_ids, declared_ids, failed_marketplaces)
+    if leftovers:
+        remove_codex_leftovers(leftovers, config_path, cache_path)
+    for marketplace in sorted(git_marketplaces - failed_marketplaces):
+        sync_codex_copies(marketplace, is_managed=marketplace in managed_marketplaces)
+
+
+def main() -> int:
+    """Update the plugins of each installed agent.
+
+    Returns:
+        Always 0: an error must not stop mise bootstrap.
+    """
+    try:
+        declared_ids = read_declared_plugins()
+    except (ConfigurationError, CommandError) as error:
+        log(Log.ERROR, f"Could not read the plugins of the vars: {error}. No plugin changed.")
+        return 0
+    agents = {"Claude Code": ("claude", update_claude_code), "Codex": ("codex", update_codex)}
+    for agent_name, (command, update_agent) in agents.items():
+        if shutil.which(command) is None:
+            continue
+        # A new version of an agent can change its output or its files:
+        # the error stops only this agent. ValueError includes the
+        # errors of json and tomllib.
+        try:
+            update_agent(declared_ids)
+        except (CommandError, ValueError, KeyError, TypeError, OSError) as error:
+            log(Log.ERROR, f"Could not update the plugins of {agent_name}: {error!r}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
