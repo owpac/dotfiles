@@ -45,8 +45,9 @@ homebrew_prefix = "{{ env.HOMEBREW_PREFIX | default(value='/opt/homebrew') }}"
 # tasks that mise does not find. A server or a container shows only the line of its roles and
 # modules, and its own tasks.
 # If a script fails, mise bootstrap stops. agent-plugins is the exception: an error of the plugins
-# must not stop the setup of a machine, and install.sh stops if mise bootstrap fails. After a
-# failure of agent-plugins, the loop prints a yellow warning and runs the next script.
+# must not stop the setup of a machine, and install.sh stops if mise bootstrap fails. After the
+# code 1 of agent-plugins (an error of the plugins), the loop prints a yellow warning and runs the
+# next script. Another code of agent-plugins, for example 130 after Ctrl-C, stops mise bootstrap.
 [tasks.bootstrap]
 description = "Show the roles and the modules, then run the setup scripts of the modules"
 raw = true
@@ -96,14 +97,19 @@ for task in beads agent-plugins herdr-plugins herdr-integrations macos-setup mac
   fi
   description=$(printf '%s\n' "$info" | sed -n 's/^Description: //p')
   printf '%s[%s]%s %s%s\n' "$on" "$task" "$off" "${icon:+$icon }" "$description" >&2
-  if ! mise run --quiet "$task"; then
-    [ "$task" = agent-plugins ] || exit 1
-    on='' off=''
-    if [ -n "$tty" ]; then
-      on=$(printf '\033[0;33m') off=$(printf '\033[0m')
-    fi
-    printf '%s[%s] ⚠️ The task failed. mise bootstrap continues with the next task.%s\n' \
-      "$on" "$task" "$off" >&2
-  fi
+  status=0
+  mise run --quiet "$task" || status=$?
+  case "$task:$status" in
+    *:0) ;;
+    agent-plugins:1)
+      on='' off=''
+      if [ -n "$tty" ]; then
+        on=$(printf '\033[0;33m') off=$(printf '\033[0m')
+      fi
+      printf '%s[%s] ⚠️ The task failed. mise bootstrap continues with the next task.%s\n' \
+        "$on" "$task" "$off" >&2
+      ;;
+    *) exit 1 ;;
+  esac
 done
 '''
