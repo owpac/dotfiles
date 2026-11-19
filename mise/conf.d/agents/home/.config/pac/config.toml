@@ -1,0 +1,4 @@
+# The module agents of the dotfiles merges this key, and `mise dot apply` sets it again each time.
+# The module agent of pac is inactive by default. On one machine, config.local.toml wins.
+[agent]
+enabled = true

@@ -1,0 +1,9 @@
+{#- The keys of pac that are not about the agents. The module agents merges the keys of the agents
+    ([agent]) with its own entry. -#}
+{%- if "agents" in (mise_env | default(value=[])) -%}
+# The module pac of the dotfiles merges this key, and `mise dot apply` sets it again each time.
+# The module inbox of pac needs bd and the plugin t3code, so only a machine with the module agents
+# enables it. On one machine, config.local.toml wins.
+[inbox]
+enabled = true
+{% endif -%}
