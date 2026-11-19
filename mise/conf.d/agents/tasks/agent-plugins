@@ -17,13 +17,17 @@ each installed agent, the task:
 
 mise bootstrap runs this task each time. mise.agents.toml tells when
 to run it by hand. The task is idempotent. An error gives a log line,
-and the task continues: it never stops mise bootstrap. If the update
-of a marketplace fails (for example, 1Password is locked), the task
-removes no plugin of this marketplace: its old clone can miss the new
-name of a renamed plugin.
+and the task continues with the next step. At the end, the task exits
+with the code 1 if it logged an error line, and 0 if not. The task
+bootstrap of mise then prints a warning and runs the next task. pac
+upgrade agents shows the failure. If the update of a marketplace
+fails (for example, 1Password is locked), the task removes no plugin
+of this marketplace: its old clone can miss the new name of a renamed
+plugin.
 """
 
 import json
+import logging
 import os
 import re
 import shutil
@@ -34,7 +38,7 @@ import tomllib
 from collections.abc import Collection, Iterable, Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 # The data that json and tomllib read: its values have no static type.
 type JsonObject = dict[str, Any]
@@ -55,6 +59,23 @@ class Log(Enum):
     ERROR = ("0;31", "❌")
 
 
+# log() gives each error line to this logger. main() adds the handler
+# that counts them, and gives the exit code from the count.
+error_logger = logging.getLogger("agent-plugins")
+
+
+class ErrorCounter(logging.Handler):
+    """Count the error lines of one run of the task."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.ERROR)
+        self.error_count = 0
+
+    @override
+    def emit(self, record: logging.LogRecord) -> None:
+        self.error_count += 1
+
+
 class ConfigurationError(Exception):
     """The vars of the module agents do not give a correct list."""
 
@@ -64,7 +85,12 @@ class CommandError(Exception):
 
 
 def log(kind: Log, message: str) -> None:
-    """Print a colored log line on the standard error."""
+    """Print a colored log line on the standard error.
+
+    An error line also goes to error_logger.
+    """
+    if kind is Log.ERROR:
+        error_logger.error(message)
     color, icon = kind.value
     print(f"\033[{color}m{icon} {message}\033[0m", file=sys.stderr)
 
@@ -392,13 +418,19 @@ def main() -> int:
     """Update the plugins of each installed agent.
 
     Returns:
-        Always 0: an error must not stop mise bootstrap.
+        1 if the task logged an error line, and 0 if not. The task
+        bootstrap of mise continues after the code 1.
     """
+    error_counter = ErrorCounter()
+    error_logger.addHandler(error_counter)
+    # log() prints each line: a handler of the root logger must not
+    # print the error lines again.
+    error_logger.propagate = False
     try:
         declared_ids = read_declared_plugins()
     except (ConfigurationError, CommandError) as error:
         log(Log.ERROR, f"Could not read the plugins of the vars: {error}. No plugin changed.")
-        return 0
+        return 1
     agents = {"Claude Code": ("claude", update_claude_code), "Codex": ("codex", update_codex)}
     for agent_name, (command, update_agent) in agents.items():
         if shutil.which(command) is None:
@@ -410,6 +442,8 @@ def main() -> int:
             update_agent(declared_ids)
         except (CommandError, ValueError, KeyError, TypeError, OSError) as error:
             log(Log.ERROR, f"Could not update the plugins of {agent_name}: {error!r}")
+    if error_counter.error_count:
+        return 1
     return 0
 
 
