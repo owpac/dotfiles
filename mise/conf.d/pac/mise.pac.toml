@@ -21,13 +21,22 @@ uv = "latest"
 # version.
 "pypi:git+ssh://git@github.com/owpac/pac.git" = { version = "latest", postinstall = 'mkdir -p "$HOME/.local/bin/completions" && pac --completion zsh > "$HOME/.local/bin/completions/_pac"' }
 
+# pac reads one config file, ~/.config/pac/config.toml. The module pac merges the keys of pac that
+# are not about the agents, and the module agents merges the keys of the agents ([agent]). The
+# template enables the module inbox of pac only on a machine with the module agents: the Inbox
+# needs bd and the plugin t3code. mise does not remove a merged key. On one machine,
+# ~/.config/pac/config.local.toml wins over config.toml. A relative source starts in the folder of
+# this file.
+[dotfiles]
+"~/.config/pac/config.toml/pac" = { source = "home/.config/pac/config.toml", merge = true, template = "tera" }
+
 # A new minor version of Python breaks the venv of a Python tool, and mise does not reinstall the
 # tool. So reinstall pac if it does not start. mise runs the hooks of each config file.
 # Then write the zsh completion again. The completion shows only the active modules of pac. A
-# module of the dotfiles can enable a module of pac after the postinstall: for example, the module
-# agents merges [agent] enabled = true into ~/.config/pac/config.toml. mise applies the dotfiles
-# before the tools, so this hook sees each key. The hook writes to a temporary file first, so an
-# error keeps the old file. This error does not stop the bootstrap.
+# module of the dotfiles can enable a module of pac after the postinstall: for example, the modules
+# agents and pac merge [agent] and [inbox] enabled = true into ~/.config/pac/config.toml. mise
+# applies the dotfiles before the tools, so this hook sees each key. The hook writes to a temporary
+# file first, so an error keeps the old file. This error does not stop the bootstrap.
 # mise 2026.10.22 or later prints the description instead of the script. The codes \u001b[…m
 # print the name in green and bold, the color of the tools of owpac (see the task bootstrap), also in a pipe or with NO_COLOR.
 [bootstrap.hooks.post-tools]

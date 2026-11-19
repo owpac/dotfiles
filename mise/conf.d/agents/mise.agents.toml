@@ -24,9 +24,10 @@ agent_plugins_work = ""
 # relative source starts in the folder of this file. The group agents excludes these sources, so
 # it does not link them.
 # pac reads one config file, ~/.config/pac/config.toml. Each module of the dotfiles merges its keys
-# into this file, with the name of the module as id. mise does not remove a merged key: if a
-# machine loses the module agents, remove [agent] enabled from this file. On one machine,
-# ~/.config/pac/config.local.toml wins over config.toml.
+# into this file, with the name of the module as id. The module agents merges the keys of the
+# agents ([agent]), and the module pac merges the other keys. mise does not remove a merged key:
+# if a machine loses the module agents, remove [agent] and [inbox] enabled from this file. On one
+# machine, ~/.config/pac/config.local.toml wins over config.toml.
 # bd prints a warning in each hook output if the home workspace is not 0700. The group agents
 # makes this folder for PRIME.md. On a new machine, it makes the folder before `pac agent init`.
 # mise dot add sorts the entries of a table: keep them sorted, and keep the comments above it.
