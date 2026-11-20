@@ -40,7 +40,7 @@ flowchart LR
   B --> V["mise at min_version<br/>or later"]
   V --> C["link ~/.config/mise<br/>to ~/.dotfiles/mise"]
   C --> D[select the roles]
-  D --> F["mise bootstrap<br/>-E &lt;roles&gt; --save-env"]
+  D --> F["mise bootstrap<br/>-E #lt;roles#gt; --save-env"]
   F --> G{workstation?}
   G -- yes --> H[sign in to 1Password] --> I[mise bootstrap again]
   G -- no --> K[done]
@@ -63,8 +63,8 @@ A machine selects its setup on 3 axes:
 
 ```mermaid
 flowchart LR
-  L["miserc.local.toml<br/>env = [&quot;workstation&quot;, &quot;work&quot;]"] --> S["miserc.toml<br/>[env_sets]"]
-  S --> X["mise reads<br/>config.&lt;role&gt;.toml<br/>conf.d/&lt;module&gt;/mise.&lt;module&gt;.toml"]
+  L["miserc.local.toml<br/>env = [#quot;workstation#quot;, #quot;work#quot;]"] --> S["miserc.toml<br/>[env_sets]"]
+  S --> X["mise reads<br/>config.#lt;role#gt;.toml<br/>conf.d/#lt;module#gt;/mise.#lt;module#gt;.toml"]
 ```
 
 - **Roles**: the type of machine. A role is a set of environments (`[env_sets]` in `mise/miserc.toml`): the environment of the role and its modules. `mise/config.<role>.toml` holds the setup of a role.
