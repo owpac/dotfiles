@@ -15,12 +15,6 @@ hk = "latest"
 [bootstrap.brew]
 homebrew_metadata = true
 
-# mise asks gh for a GitHub token: on a Mac, gh keeps it in the Keychain, where mise cannot read it.
-# With a token, the GitHub API allows 5000 requests per hour. Without a token, the limit is 60,
-# for all the machines behind the same IP address, for example a VPN.
-[settings.github]
-credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
-
 # The packages of a module are in the file of the module.
 [bootstrap.packages]
 "brew:colima" = "latest"
@@ -60,3 +54,24 @@ credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
 
 [dotfiles]
 "~/Workspace" = { permissions = "0700" }
+
+# mise asks gh for a GitHub token: on a Mac, gh keeps it in the Keychain, where mise cannot read it.
+# With a token, the GitHub API allows 5000 requests per hour. Without a token, the limit is 60,
+# for all the machines behind the same IP address, for example a VPN.
+# mise accepts github.credential_command only in the global config. A worktree of this repository
+# has a copy of this file. When mise runs in the worktree, it reads the copy as a project config.
+# mise then ignores the setting and gives a warning. mise also keeps the path of the copy, and gives
+# the warning again at each run, in all the folders. Thus this entry writes the setting in
+# config.local.toml of the global config: git ignores this file, so a worktree has no copy of it.
+# mise bootstrap writes this file before the other dotfiles, then reads the config again. Thus the
+# step tools of the same run uses the token.
+# The whole file belongs to mise bootstrap, and mise bootstrap replaces a manual change of the
+# file. In a terminal, mise asks first. Without a terminal, or with --yes (install.sh), it does not
+# ask.
+[dotfiles."~/.config/mise/config.local.toml"]
+content = """
+# mise bootstrap writes this file from mise/config.workstation.toml of the dotfiles. It replaces a
+# manual change of this file. Change the entry in config.workstation.toml.
+[settings.github]
+credential_command = 'gh auth token --hostname "$MISE_CREDENTIAL_HOST"'
+"""
