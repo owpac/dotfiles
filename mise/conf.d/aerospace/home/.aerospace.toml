@@ -177,6 +177,10 @@ cmd-ctrl-alt-equal = 'resize smart +50'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#workspace
 # Workspaces = Hyper+digit (see the Hyper note at the top of this binding mode).
+# Letter workspaces (see the Applications section):
+# - Hyper+a opens workspace A, the workspace of T3 Code.
+# - Hyper+t opens workspace T, the workspace of iTerm2.
+# Hyper+shift+letter moves the focused window to the workspace of this letter.
 cmd-ctrl-alt-0 = 'workspace 0'
 cmd-ctrl-alt-1 = 'workspace 1'
 cmd-ctrl-alt-2 = 'workspace 2'
@@ -187,6 +191,8 @@ cmd-ctrl-alt-6 = 'workspace 6'
 cmd-ctrl-alt-7 = 'workspace 7'
 cmd-ctrl-alt-8 = 'workspace 8'
 cmd-ctrl-alt-9 = 'workspace 9'
+cmd-ctrl-alt-a = 'workspace A'
+cmd-ctrl-alt-t = 'workspace T'
 # alt-T = 'workspace T'
 # alt-a = 'workspace A' # In your config, you can drop workspace bindings that you don't need
 # alt-b = 'workspace B'
@@ -223,6 +229,8 @@ cmd-ctrl-alt-shift-6 = 'move-node-to-workspace 6'
 cmd-ctrl-alt-shift-7 = 'move-node-to-workspace 7'
 cmd-ctrl-alt-shift-8 = 'move-node-to-workspace 8'
 cmd-ctrl-alt-shift-9 = 'move-node-to-workspace 9'
+cmd-ctrl-alt-shift-a = 'move-node-to-workspace A'
+cmd-ctrl-alt-shift-t = 'move-node-to-workspace T'
 # alt-shift-t = 'move-node-to-workspace T'
 # alt-shift-a = 'move-node-to-workspace A'
 # alt-shift-b = 'move-node-to-workspace B'
@@ -348,6 +356,10 @@ run = ['move-node-to-workspace 5']
 [[on-window-detected]]
 if.app-id = "com.microsoft.VSCode"
 run = ['move-node-to-workspace 1']
+
+[[on-window-detected]]
+if.app-id = "com.t3tools.t3code"
+run = ['move-node-to-workspace A']
 
 [[on-window-detected]]
 if.app-id = "com.spotify.client"
