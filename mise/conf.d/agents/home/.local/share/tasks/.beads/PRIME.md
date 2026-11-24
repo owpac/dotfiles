@@ -19,7 +19,7 @@ bd ready -l repo:<name>           # the tasks of a repository with no blocker
 bd list -l repo:<name>            # all the tasks of a repository
 bd show <id>                      # details, notes, comments and dependencies
 bd search <query>                 # find a task by keyword
-bd create --title "…" --type task --priority 2 --labels repo:<name> --description "…"
+bd create --title "…" --type task --priority 2 --labels repo:<name>,owner:<owner> --description "…"
 bd create … --parent <id>         # a child task
 bd update <id> --claim            # claim the task: you are the assignee, status in_progress
 bd note <id> "…"                  # add a progress note
@@ -34,8 +34,10 @@ bd close <id> --reason "…"
 ## Labels
 
 - Label each task about a repository `repo:<name>`. `<name>` is the repository name of its `origin` remote, for example `repo:prompts`.
-- A task about more than one repository gets one label for each repository.
-- A task about no repository gets no `repo:` label.
+- Also label each task about a repository `owner:<owner>`. `<owner>` is the account or the organization of its `origin` remote, for example `owner:doctolib` or `owner:owpac`.
+- A task about more than one repository gets one `repo:` label for each repository, and one `owner:` label for each different owner.
+- A task about no repository gets no `repo:` label and no `owner:` label.
+- Do not add an `owner:` label to the tasks with the label `inbox` or `follow`. pac takes their owner from `external_ref`.
 
 ## Descriptions
 
