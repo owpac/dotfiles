@@ -72,6 +72,6 @@ exclude = [".claude/settings.json", ".codex/config.toml", ".config/bd/config.yam
 "~/.beads/redirect" = { mode = "template" }
 "~/.codex/rules/owpac.rules" = { mode = "copy" }
 
-# The tasks beads, agent-plugins (Python) and claude-token. A relative path starts in this folder.
+# The tasks beads and agent-plugins (Python). A relative path starts in this folder.
 [task_config]
 includes = ["tasks"]
