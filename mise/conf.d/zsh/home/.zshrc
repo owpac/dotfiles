@@ -31,17 +31,6 @@ source $ZSH/oh-my-zsh.sh
 
 {%- if os() == "macos" and "workstation" in envs %}
 
-### Claude
-
-# Subscription token of the VS Code Agents window (native mode, no Copilot). VS Code sets
-# VSCODE_RESOLVING_ENVIRONMENT while it reads the shell environment at launch from the Dock:
-# the token stays out of the other shells, so the claude CLI keeps its Keychain login.
-# The token comes from the task claude-token (mise run claude-token).
-if [[ -n "$VSCODE_RESOLVING_ENVIRONMENT" ]]; then
-  CLAUDE_CODE_OAUTH_TOKEN=$(security find-generic-password -a "$USER" -s claude-code-oauth-token -w 2>/dev/null) \
-    && export CLAUDE_CODE_OAUTH_TOKEN
-fi
-
 ### herdr
 
 # In iTerm2, use the "herdr" profile while the herdr client runs. In this profile, cmd + key

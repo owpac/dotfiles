@@ -78,12 +78,11 @@ if [ -n "$tty" ]; then
   on=$(printf '\033[1m') off=$(printf '\033[0m')
 fi
 printf '%s[mise]%s 🧭 Roles: %s · Modules: %s\n' "$on" "$off" "${roles:-none}" "${modules:-none}" >&2
-for task in beads agent-plugins herdr-plugins herdr-integrations macos-setup macos-preferences backups claude-token; do
+for task in beads agent-plugins herdr-plugins herdr-integrations macos-setup macos-preferences backups; do
   info=$(mise tasks info "$task" 2>/dev/null) || continue
   case "$task" in
     beads) icon='📿' color='1;35' ;;
     agent-plugins) icon='🔌' color='1;35' ;;
-    claude-token) icon='🔑' color='1;35' ;;
     herdr-plugins) icon='🧩' color='1;33' ;;
     herdr-integrations) icon='🔗' color='1;33' ;;
     macos-setup) icon='🍎' color='1;34' ;;
