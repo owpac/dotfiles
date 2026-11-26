@@ -5,7 +5,9 @@
 Claude Code and Codex clone their git marketplaces themselves. For
 each installed agent, the task:
 
-1. Updates all the marketplaces and all the installed plugins.
+1. Updates all the marketplaces and the installed plugins of these
+   marketplaces. The task does not update the builtin plugins of
+   Claude Code.
 2. Removes each plugin of a managed marketplace that the vars do not
    declare: a renamed plugin, a removed plugin, or a plugin that this
    machine does not use. A managed marketplace is the marketplace of
@@ -281,9 +283,14 @@ def update_claude_code(declared_ids: set[str]) -> None:
         if marketplace_of(plugin_id) in known_marketplaces:
             log(Log.TASK, f"Installing Claude Code plugin {plugin_id}...")
             try_command(["claude", "plugin", "install", plugin_id])
+    # Claude Code also lists its builtin plugins (<plugin>@builtin), with
+    # the scope user. No marketplace gives them, and claude plugin update
+    # does not find them. Thus the task updates only the plugins of the
+    # marketplace list.
+    updatable_marketplaces = known_marketplaces - failed_marketplaces
     # No -y: a command of a marketplace stays a question to a person.
     for plugin_id in sorted(installed_ids - leftovers):
-        if marketplace_of(plugin_id) not in failed_marketplaces:
+        if marketplace_of(plugin_id) in updatable_marketplaces:
             try_command(["claude", "plugin", "update", plugin_id])
 
     for plugin_id, new_version in sorted(list_claude_versions().items()):
