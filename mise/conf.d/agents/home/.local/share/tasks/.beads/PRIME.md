@@ -26,10 +26,13 @@ bd note <id> "…"                  # add a progress note
 bd update <id> --external-ref <url>        # the URL of the pull request
 bd update <id> --set-metadata <key>=<value>
 bd dep add <task> <blocker>       # <task> waits for <blocker>
-bd close <id> --reason "…"
+bd defer <id> --until <date>      # defer the task to a date
+bd defer <id>                     # defer the task with no date: the icebox
+bd undefer <id>                   # open a deferred task again
+bd close <id> --reason "…"        # the task is done or rejected
 ```
 
-- Types: `task`, `bug`, `feature`, `epic`, `chore`. Priorities: 0 (critical) to 4 (backlog), 2 by default.
+- Types: `task`, `bug`, `feature`, `epic`, `chore`. Priorities: 0 (critical) to 4 (the lowest), 2 by default.
 
 ## Labels
 
@@ -54,14 +57,30 @@ bd close <id> --reason "…"
 
 ## Life of a task
 
+### States
+
+A task has one of these states:
+
+- Open (status `open`, `in_progress` or `blocked`): to do. The open tasks and the deferred tasks are the backlog.
+- Deferred with a date (`bd defer <id> --until <date>`, status `deferred`): to do from this date. After this date, bd opens the task again.
+- Deferred with no date (`bd defer <id>`, status `deferred`): the icebox, to do when the user has time. The user read the task one time and decided to do it later. Thus it has less priority than the open tasks.
+- Closed (status `closed`): done or rejected. The reason of `bd close` tells if the task is done or rejected.
+
+A deferred task has the same life as an open task. An agent claims it, does the work, then closes it: done or rejected.
+
+### Steps
+
 1. Before you change code, make sure that a task exists for the work. If no task exists, create it.
-2. Claim the task: `bd update <id> --claim`.
-3. If earlier sessions worked on the task, read their context first: `bd show <id>` and `mem_search` on the task id.
-4. Write the progress with `bd note <id> "…"`.
-5. When you open a pull request, give its URL to the task: `bd update <id> --external-ref <url>`.
-6. Close the task after the merge of its work: `bd close <id>`. Do not close a task while its pull request is open.
+2. If the task is deferred, run `bd undefer <id>` first. The user does not see this step.
+3. Claim the task: `bd update <id> --claim`.
+4. If earlier sessions worked on the task, read their context first: `bd show <id>` and `mem_search` on the task id.
+5. Write the progress with `bd note <id> "…"`.
+6. When you open a pull request, give its URL to the task: `bd update <id> --external-ref <url>`.
+7. Close the task after the merge of its work: `bd close <id> --reason "…"`. Do not close a task while its pull request is open.
 
 If the work of a task has no pull request, close the task when the work is complete.
+
+If the user rejects the task, close it and give the reason: `bd close <id> --reason "…"`.
 
 ## Session link
 
